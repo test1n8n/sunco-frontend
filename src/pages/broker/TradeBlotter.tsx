@@ -70,7 +70,8 @@ export default function TradeBlotter() {
         headers: { 'X-API-Key': API_KEY },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as Trade[];
+      const json = await res.json();
+      const data = Array.isArray(json) ? json : (json.trades ?? []) as Trade[];
       setTrades(data);
     } catch {
       setTrades(MOCK_TRADES);
