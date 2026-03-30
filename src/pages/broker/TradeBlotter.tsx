@@ -38,10 +38,10 @@ const emptyForm = (): TradeFormState => ({
 function DirectionChip({ direction }: { direction: 'Buy' | 'Sell' }) {
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
+      className={`inline-block px-2 py-0.5 rounded text-xs font-bold tracking-widest uppercase ${
         direction === 'Buy'
-          ? 'bg-green-100 text-green-800'
-          : 'bg-red-100 text-red-800'
+          ? 'bg-positive/10 text-positive border border-positive/20'
+          : 'bg-negative/10 text-negative border border-negative/20'
       }`}
     >
       {direction}
@@ -122,19 +122,19 @@ export default function TradeBlotter() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showToast('success', 'Trade submitted successfully.');
+      showToast('success', 'Trade submitted.');
       setForm(emptyForm());
       setFormErrors({});
       await fetchTrades();
     } catch {
-      showToast('error', 'Failed to submit trade. Please try again.');
+      showToast('error', 'Failed to submit trade.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this trade?')) return;
+    if (!window.confirm('Delete this trade?')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/trades/${id}`, {
         method: 'DELETE',
@@ -177,36 +177,39 @@ export default function TradeBlotter() {
 
   const uniqueCommodities = Array.from(new Set(trades.map((t) => t.commodity)));
 
-  const fieldClass = (error?: string) =>
-    `w-full border ${error ? 'border-red-400' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent`;
+  const inputClass = (error?: string) =>
+    `w-full bg-surface border ${error ? 'border-negative' : 'border-border'} rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent`;
+
+  const selectClass =
+    'w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent';
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-6 max-w-5xl">
       <ToastContainer toasts={toasts} dismissToast={dismissToast} />
 
       {/* New Trade Form */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-navy font-semibold text-base uppercase tracking-wide mb-5">New Trade</h2>
+      <div className="bg-card border border-border rounded p-6">
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-5">New Trade</h2>
         <form onSubmit={(e) => void handleSubmit(e)} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Trade Date */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Trade Date *</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Trade Date *</label>
             <input
               type="date"
               value={form.trade_date}
               onChange={(e) => setForm({ ...form, trade_date: e.target.value })}
-              className={fieldClass(formErrors.trade_date)}
+              className={inputClass(formErrors.trade_date)}
             />
-            {formErrors.trade_date && <p className="text-red-500 text-xs mt-1">{formErrors.trade_date}</p>}
+            {formErrors.trade_date && <p className="text-negative text-xs mt-1">{formErrors.trade_date}</p>}
           </div>
 
           {/* Commodity */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Commodity *</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Commodity *</label>
             <select
               value={form.commodity}
               onChange={(e) => setForm({ ...form, commodity: e.target.value })}
-              className={fieldClass()}
+              className={selectClass}
             >
               {COMMODITIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -216,15 +219,15 @@ export default function TradeBlotter() {
 
           {/* Direction */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Direction *</label>
-            <div className="flex rounded-lg overflow-hidden border border-gray-300">
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Direction *</label>
+            <div className="flex rounded overflow-hidden border border-border">
               <button
                 type="button"
                 onClick={() => setForm({ ...form, direction: 'Buy' })}
-                className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                className={`flex-1 py-2 text-xs font-bold tracking-widest uppercase transition-colors ${
                   form.direction === 'Buy'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-green-50'
+                    ? 'bg-positive text-surface'
+                    : 'bg-surface text-text-secondary hover:bg-positive/10 hover:text-positive'
                 }`}
               >
                 Buy
@@ -232,10 +235,10 @@ export default function TradeBlotter() {
               <button
                 type="button"
                 onClick={() => setForm({ ...form, direction: 'Sell' })}
-                className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                className={`flex-1 py-2 text-xs font-bold tracking-widest uppercase transition-colors ${
                   form.direction === 'Sell'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-red-50'
+                    ? 'bg-negative text-surface'
+                    : 'bg-surface text-text-secondary hover:bg-negative/10 hover:text-negative'
                 }`}
               >
                 Sell
@@ -245,7 +248,7 @@ export default function TradeBlotter() {
 
           {/* Volume */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Volume (MT) *</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Volume (MT) *</label>
             <input
               type="number"
               min="0"
@@ -253,14 +256,14 @@ export default function TradeBlotter() {
               value={form.volume_mt}
               onChange={(e) => setForm({ ...form, volume_mt: e.target.value })}
               placeholder="e.g. 5000"
-              className={fieldClass(formErrors.volume_mt)}
+              className={inputClass(formErrors.volume_mt)}
             />
-            {formErrors.volume_mt && <p className="text-red-500 text-xs mt-1">{formErrors.volume_mt}</p>}
+            {formErrors.volume_mt && <p className="text-negative text-xs mt-1">{formErrors.volume_mt}</p>}
           </div>
 
           {/* Price */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Price (EUR/MT) *</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Price (EUR/MT) *</label>
             <input
               type="number"
               min="0"
@@ -268,52 +271,52 @@ export default function TradeBlotter() {
               value={form.price_eur_mt}
               onChange={(e) => setForm({ ...form, price_eur_mt: e.target.value })}
               placeholder="e.g. 1250"
-              className={fieldClass(formErrors.price_eur_mt)}
+              className={inputClass(formErrors.price_eur_mt)}
             />
-            {formErrors.price_eur_mt && <p className="text-red-500 text-xs mt-1">{formErrors.price_eur_mt}</p>}
+            {formErrors.price_eur_mt && <p className="text-negative text-xs mt-1">{formErrors.price_eur_mt}</p>}
           </div>
 
           {/* Counterparty */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Counterparty *</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Counterparty *</label>
             <input
               type="text"
               value={form.counterparty}
               onChange={(e) => setForm({ ...form, counterparty: e.target.value })}
               placeholder="e.g. EuroEnergy GmbH"
-              className={fieldClass(formErrors.counterparty)}
+              className={inputClass(formErrors.counterparty)}
             />
-            {formErrors.counterparty && <p className="text-red-500 text-xs mt-1">{formErrors.counterparty}</p>}
+            {formErrors.counterparty && <p className="text-negative text-xs mt-1">{formErrors.counterparty}</p>}
           </div>
 
           {/* Delivery Month */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Delivery Month *</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Delivery Month *</label>
             <input
               type="month"
               value={form.delivery_month}
               onChange={(e) => setForm({ ...form, delivery_month: e.target.value })}
-              className={fieldClass(formErrors.delivery_month)}
+              className={inputClass(formErrors.delivery_month)}
             />
-            {formErrors.delivery_month && <p className="text-red-500 text-xs mt-1">{formErrors.delivery_month}</p>}
+            {formErrors.delivery_month && <p className="text-negative text-xs mt-1">{formErrors.delivery_month}</p>}
           </div>
 
           {/* Delivery Location */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Delivery Location *</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Delivery Location *</label>
             <input
               type="text"
               value={form.delivery_location}
               onChange={(e) => setForm({ ...form, delivery_location: e.target.value })}
               placeholder="e.g. ARA, Rotterdam"
-              className={fieldClass(formErrors.delivery_location)}
+              className={inputClass(formErrors.delivery_location)}
             />
-            {formErrors.delivery_location && <p className="text-red-500 text-xs mt-1">{formErrors.delivery_location}</p>}
+            {formErrors.delivery_location && <p className="text-negative text-xs mt-1">{formErrors.delivery_location}</p>}
           </div>
 
           {/* Brokerage Fee */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Brokerage Fee (USD/MT)</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Brokerage Fee (USD/MT)</label>
             <input
               type="number"
               min="0"
@@ -321,30 +324,30 @@ export default function TradeBlotter() {
               value={form.brokerage_fee_usd_mt}
               onChange={(e) => setForm({ ...form, brokerage_fee_usd_mt: e.target.value })}
               placeholder="e.g. 2.50"
-              className={fieldClass()}
+              className={inputClass()}
             />
           </div>
 
           {/* Broker Name */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Broker Name</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Broker Name</label>
             <input
               type="text"
               value={form.broker_name}
               onChange={(e) => setForm({ ...form, broker_name: e.target.value })}
-              className={fieldClass()}
+              className={inputClass()}
             />
           </div>
 
           {/* Notes */}
           <div className="sm:col-span-2 lg:col-span-2">
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
+            <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">Notes</label>
             <input
               type="text"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               placeholder="Optional notes..."
-              className={fieldClass()}
+              className={inputClass()}
             />
           </div>
 
@@ -353,11 +356,11 @@ export default function TradeBlotter() {
             <button
               type="submit"
               disabled={submitting}
-              className="bg-navy text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60 flex items-center gap-2"
+              className="bg-accent text-surface px-6 py-2.5 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
             >
               {submitting ? (
                 <>
-                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
                   Submitting...
                 </>
               ) : (
@@ -368,17 +371,17 @@ export default function TradeBlotter() {
         </form>
       </div>
 
-      {/* Trade Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-5">
+      {/* Trade Blotter Table */}
+      <div className="bg-card border border-border rounded p-5">
         <div className="flex flex-wrap items-center gap-3 mb-4">
-          <h2 className="text-navy font-semibold text-base uppercase tracking-wide flex-1">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest flex-1">
             Trade Blotter
-            <span className="ml-2 inline-block bg-navy text-white text-xs px-2 py-0.5 rounded-full">{filteredTrades.length}</span>
+            <span className="ml-2 inline-block bg-accent/10 text-accent text-xs px-2 py-0.5 rounded border border-accent/20">{filteredTrades.length}</span>
           </h2>
           <select
             value={filterCommodity}
             onChange={(e) => setFilterCommodity(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
           >
             <option value="">All Commodities</option>
             {COMMODITIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -386,7 +389,7 @@ export default function TradeBlotter() {
           <select
             value={filterDirection}
             onChange={(e) => setFilterDirection(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
           >
             <option value="">All Directions</option>
             <option value="Buy">Buy</option>
@@ -396,45 +399,45 @@ export default function TradeBlotter() {
             type="month"
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
 
         {loading ? (
           <Spinner />
         ) : filteredTrades.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 text-sm">No trades match your filters.</div>
+          <div className="text-center py-10 text-text-dim text-sm">No trades match your filters.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">Date</th>
-                  <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">Commodity</th>
-                  <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">Dir.</th>
-                  <th className="text-right px-3 py-2.5 text-gray-600 font-semibold">Vol (MT)</th>
-                  <th className="text-right px-3 py-2.5 text-gray-600 font-semibold">Price</th>
-                  <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">Counterparty</th>
-                  <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">Del. Month</th>
-                  <th className="text-center px-3 py-2.5 text-gray-600 font-semibold">Actions</th>
+                <tr className="bg-surface border-b border-border">
+                  <th className="text-left px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Date</th>
+                  <th className="text-left px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Commodity</th>
+                  <th className="text-left px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Dir.</th>
+                  <th className="text-right px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Vol (MT)</th>
+                  <th className="text-right px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Price</th>
+                  <th className="text-left px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Counterparty</th>
+                  <th className="text-left px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Del. Month</th>
+                  <th className="text-center px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTrades.map((trade, idx) => (
-                  <tr key={trade.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-3 py-2.5 text-gray-700">{trade.trade_date}</td>
-                    <td className="px-3 py-2.5 font-medium text-gray-900">{trade.commodity}</td>
+                  <tr key={trade.id} className={`border-b border-border/50 ${idx % 2 === 0 ? 'bg-card' : 'bg-surface/50'} hover:bg-surface transition-colors`}>
+                    <td className="px-3 py-2.5 text-text-secondary font-mono text-xs">{trade.trade_date}</td>
+                    <td className="px-3 py-2.5 font-semibold text-text-primary text-xs tracking-wide">{trade.commodity}</td>
                     <td className="px-3 py-2.5">
                       <DirectionChip direction={trade.direction} />
                     </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-gray-700">{trade.volume_mt.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-gray-700">€{trade.price_eur_mt.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-gray-700">{trade.counterparty}</td>
-                    <td className="px-3 py-2.5 text-gray-700">{trade.delivery_month}</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-text-secondary text-xs">{trade.volume_mt.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-text-primary text-xs">€{trade.price_eur_mt.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-text-secondary text-xs">{trade.counterparty}</td>
+                    <td className="px-3 py-2.5 text-text-secondary font-mono text-xs">{trade.delivery_month}</td>
                     <td className="px-3 py-2.5 text-center">
                       <button
                         onClick={() => void handleDelete(trade.id)}
-                        className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                        className="text-negative/60 hover:text-negative text-xs font-semibold px-2 py-1 rounded hover:bg-negative/10 transition-colors"
                       >
                         Delete
                       </button>
@@ -448,17 +451,17 @@ export default function TradeBlotter() {
       </div>
 
       {/* PnL Calculator */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-navy font-semibold text-base uppercase tracking-wide mb-4">PnL Calculator</h2>
+      <div className="bg-card border border-border rounded p-6">
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">PnL Calculator</h2>
         {uniqueCommodities.length === 0 ? (
-          <p className="text-gray-500 text-sm">No trades to calculate PnL for.</p>
+          <p className="text-text-secondary text-sm">No trades to calculate PnL for.</p>
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
               {uniqueCommodities.map((commodity) => (
                 <div key={commodity}>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Current {commodity} (EUR/MT)
+                  <label className="block text-xs font-semibold text-text-dim mb-1 uppercase tracking-wider">
+                    {commodity} (EUR/MT)
                   </label>
                   <input
                     type="number"
@@ -466,8 +469,8 @@ export default function TradeBlotter() {
                     step="any"
                     value={pnlInputs[commodity] ?? ''}
                     onChange={(e) => setPnlInputs({ ...pnlInputs, [commodity]: e.target.value })}
-                    placeholder="Price..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    placeholder="Current price"
+                    className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
                   />
                 </div>
               ))}
@@ -475,11 +478,11 @@ export default function TradeBlotter() {
             <button
               onClick={() => void handleCalculatePnl()}
               disabled={calculatingPnl}
-              className="bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors disabled:opacity-60 flex items-center gap-2"
+              className="bg-card border border-border text-text-secondary px-5 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
             >
               {calculatingPnl ? (
                 <>
-                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
                   Calculating...
                 </>
               ) : (
@@ -492,31 +495,31 @@ export default function TradeBlotter() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[500px] mb-4">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">Commodity</th>
-                        <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">Del. Month</th>
-                        <th className="text-right px-3 py-2.5 text-gray-600 font-semibold">Net Vol (MT)</th>
-                        <th className="text-right px-3 py-2.5 text-gray-600 font-semibold">Avg Price</th>
-                        <th className="text-right px-3 py-2.5 text-gray-600 font-semibold">Curr. Price</th>
-                        <th className="text-right px-3 py-2.5 text-gray-600 font-semibold">Unreal. PnL (€)</th>
+                      <tr className="bg-surface border-b border-border">
+                        <th className="text-left px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Commodity</th>
+                        <th className="text-left px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Del. Month</th>
+                        <th className="text-right px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Net Vol (MT)</th>
+                        <th className="text-right px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Avg Price</th>
+                        <th className="text-right px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Curr. Price</th>
+                        <th className="text-right px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Unreal. PnL (€)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pnlResult.pnl_breakdown.map((item, idx) => (
-                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-3 py-2.5 font-medium text-gray-900">{item.commodity}</td>
-                          <td className="px-3 py-2.5 text-gray-700">{item.delivery_month}</td>
-                          <td className="px-3 py-2.5 text-right font-mono text-gray-700">{item.net_volume_mt.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-right font-mono text-gray-700">€{item.avg_price_eur_mt.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-right font-mono text-gray-700">
+                        <tr key={idx} className={`border-b border-border/50 ${idx % 2 === 0 ? 'bg-card' : 'bg-surface/50'}`}>
+                          <td className="px-3 py-2.5 font-semibold text-text-primary text-xs">{item.commodity}</td>
+                          <td className="px-3 py-2.5 text-text-secondary font-mono text-xs">{item.delivery_month}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-text-secondary text-xs">{item.net_volume_mt.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-text-secondary text-xs">€{item.avg_price_eur_mt.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-text-secondary text-xs">
                             {item.current_price_eur_mt !== null ? `€${item.current_price_eur_mt.toLocaleString()}` : '—'}
                           </td>
-                          <td className={`px-3 py-2.5 text-right font-mono font-semibold ${
+                          <td className={`px-3 py-2.5 text-right font-mono font-semibold text-xs ${
                             item.unrealised_pnl_eur === null
-                              ? 'text-gray-400'
+                              ? 'text-text-dim'
                               : item.unrealised_pnl_eur >= 0
-                              ? 'text-green-600'
-                              : 'text-red-600'
+                              ? 'text-positive'
+                              : 'text-negative'
                           }`}>
                             {item.unrealised_pnl_eur !== null
                               ? `${item.unrealised_pnl_eur >= 0 ? '+' : ''}€${item.unrealised_pnl_eur.toLocaleString()}`
@@ -526,23 +529,23 @@ export default function TradeBlotter() {
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-navy text-white font-semibold">
-                        <td colSpan={5} className="px-3 py-2.5">Total</td>
-                        <td className={`px-3 py-2.5 text-right font-mono ${
-                          pnlResult.total_unrealised_pnl_eur >= 0 ? 'text-green-300' : 'text-red-300'
+                      <tr className="bg-surface border-t border-border">
+                        <td colSpan={5} className="px-3 py-2.5 text-text-dim font-semibold text-xs uppercase tracking-widest">Total</td>
+                        <td className={`px-3 py-2.5 text-right font-mono font-bold text-sm ${
+                          pnlResult.total_unrealised_pnl_eur >= 0 ? 'text-positive' : 'text-negative'
                         }`}>
                           {pnlResult.total_unrealised_pnl_eur >= 0 ? '+' : ''}€{pnlResult.total_unrealised_pnl_eur.toLocaleString()}
                         </td>
                       </tr>
-                      <tr className="bg-gray-100 text-gray-700">
-                        <td colSpan={5} className="px-3 py-2 text-sm">Total Brokerage (USD)</td>
-                        <td className="px-3 py-2 text-right font-mono text-sm">${pnlResult.total_brokerage_usd.toLocaleString()}</td>
+                      <tr className="bg-surface/50">
+                        <td colSpan={5} className="px-3 py-2 text-text-dim text-xs">Total Brokerage (USD)</td>
+                        <td className="px-3 py-2 text-right font-mono text-text-secondary text-xs">${pnlResult.total_brokerage_usd.toLocaleString()}</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
                 {pnlResult.positions_with_no_price.length > 0 && (
-                  <p className="text-amber-700 text-xs bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                  <p className="text-accent text-xs bg-accent/5 border border-accent/20 rounded px-3 py-2">
                     No price provided for: {pnlResult.positions_with_no_price.join(', ')}
                   </p>
                 )}

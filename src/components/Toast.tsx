@@ -42,33 +42,25 @@ export function ToastContainer({ toasts, dismissToast }: ToastContainerProps) {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`flex items-start gap-3 px-4 py-3 rounded-md shadow-lg border-l-4 animate-slide-in
+          className={`flex items-center gap-3 px-4 py-3 rounded border shadow-xl
             ${
               toast.type === 'success'
-                ? 'bg-green-50 border-green-500'
-                : 'bg-red-50 border-red-500'
+                ? 'bg-card border-positive/30 border-l-2 border-l-positive'
+                : 'bg-card border-negative/30 border-l-2 border-l-negative'
             }`}
           style={{
             animation: 'slideInFromRight 0.3s ease-out forwards',
           }}
         >
-          <span className="text-lg leading-none">
-            {toast.type === 'success' ? '✅' : '❌'}
+          <span className={`text-xs font-bold ${toast.type === 'success' ? 'text-positive' : 'text-negative'}`}>
+            {toast.type === 'success' ? '✓' : '!'}
           </span>
-          <p
-            className={`flex-1 text-sm font-medium ${
-              toast.type === 'success' ? 'text-green-800' : 'text-red-800'
-            }`}
-          >
+          <p className="flex-1 text-sm font-medium text-text-primary">
             {toast.message}
           </p>
           <button
             onClick={() => dismissToast(toast.id)}
-            className={`text-xs font-bold leading-none ml-1 ${
-              toast.type === 'success'
-                ? 'text-green-600 hover:text-green-800'
-                : 'text-red-600 hover:text-red-800'
-            }`}
+            className="text-text-dim hover:text-text-secondary text-sm font-bold leading-none ml-1"
             aria-label="Dismiss notification"
           >
             ×

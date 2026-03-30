@@ -19,19 +19,19 @@ function formatDate(dateStr: string): string {
 }
 
 function DirectionIcon({ direction }: { direction: 'up' | 'down' | 'flat' }) {
-  if (direction === 'up') return <span className="text-green-600 font-bold">▲</span>;
-  if (direction === 'down') return <span className="text-red-600 font-bold">▼</span>;
-  return <span className="text-gray-400 font-bold">→</span>;
+  if (direction === 'up') return <span className="text-positive font-bold">▲</span>;
+  if (direction === 'down') return <span className="text-negative font-bold">▼</span>;
+  return <span className="text-text-dim font-bold">—</span>;
 }
 
 function RelevanceBadge({ relevance }: { relevance: 'high' | 'medium' | 'low' }) {
   const styles: Record<string, string> = {
-    high: 'bg-green-100 text-green-800',
-    medium: 'bg-orange-100 text-orange-700',
-    low: 'bg-gray-100 text-gray-600',
+    high: 'bg-positive/10 text-positive border border-positive/20',
+    medium: 'bg-accent/10 text-accent border border-accent/20',
+    low: 'bg-border/50 text-text-dim border border-border',
   };
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase ${styles[relevance]}`}>
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${styles[relevance]}`}>
       {relevance}
     </span>
   );
@@ -39,20 +39,20 @@ function RelevanceBadge({ relevance }: { relevance: 'high' | 'medium' | 'low' })
 
 export function NewsCard({ item }: { item: NewsItem }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4">
+    <div className="bg-card border border-border rounded p-4 hover:border-border/80 transition-colors">
       <div className="flex items-start justify-between gap-3 mb-2">
-        <h4 className="font-semibold text-gray-900 text-sm leading-snug flex-1">{item.headline}</h4>
+        <h4 className="font-semibold text-text-primary text-sm leading-snug flex-1">{item.headline}</h4>
         <RelevanceBadge relevance={item.relevance} />
       </div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{item.source}</span>
+        <span className="text-xs text-text-dim bg-surface px-2 py-0.5 rounded border border-border">{item.source}</span>
       </div>
-      <p className="text-gray-600 text-sm italic mb-2">{item.price_impact}</p>
+      <p className="text-text-secondary text-sm italic mb-3">{item.price_impact}</p>
       <a
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-accent text-sm font-medium hover:underline"
+        className="text-accent text-xs font-semibold hover:underline tracking-wide uppercase"
       >
         Read more →
       </a>
@@ -62,27 +62,27 @@ export function NewsCard({ item }: { item: NewsItem }) {
 
 export function MacroSignalsTable({ signals }: { signals: MacroSignal[] }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-card border border-border rounded overflow-hidden">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="text-left px-4 py-3 text-gray-600 font-semibold">Signal</th>
-            <th className="text-center px-4 py-3 text-gray-600 font-semibold">Direction</th>
-            <th className="text-right px-4 py-3 text-gray-600 font-semibold">Change %</th>
-            <th className="text-left px-4 py-3 text-gray-600 font-semibold hidden sm:table-cell">Biofuels Implication</th>
+          <tr className="bg-surface border-b border-border">
+            <th className="text-left px-4 py-3 text-text-dim font-semibold text-xs uppercase tracking-widest">Signal</th>
+            <th className="text-center px-4 py-3 text-text-dim font-semibold text-xs uppercase tracking-widest">Dir.</th>
+            <th className="text-right px-4 py-3 text-text-dim font-semibold text-xs uppercase tracking-widest">Chg %</th>
+            <th className="text-left px-4 py-3 text-text-dim font-semibold text-xs uppercase tracking-widest hidden sm:table-cell">Implication</th>
           </tr>
         </thead>
         <tbody>
           {signals.map((signal, idx) => (
-            <tr key={signal.name} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              <td className="px-4 py-3 font-medium text-gray-900">{signal.name}</td>
+            <tr key={signal.name} className={`border-b border-border/50 ${idx % 2 === 0 ? 'bg-card' : 'bg-surface/50'}`}>
+              <td className="px-4 py-3 font-medium text-text-primary">{signal.name}</td>
               <td className="px-4 py-3 text-center">
                 <DirectionIcon direction={signal.direction} />
               </td>
-              <td className={`px-4 py-3 text-right font-mono font-semibold ${signal.change_pct > 0 ? 'text-green-600' : signal.change_pct < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+              <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${signal.change_pct > 0 ? 'text-positive' : signal.change_pct < 0 ? 'text-negative' : 'text-text-dim'}`}>
                 {signal.change_pct > 0 ? '+' : ''}{signal.change_pct.toFixed(1)}%
               </td>
-              <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{signal.biofuels_implication}</td>
+              <td className="px-4 py-3 text-text-secondary text-sm hidden sm:table-cell">{signal.biofuels_implication}</td>
             </tr>
           ))}
         </tbody>
@@ -95,14 +95,14 @@ export function OutlookCard({ outlook }: { outlook: Outlook }) {
   const bulletItems = outlook.key_risks ?? outlook.key_themes ?? [];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border-l-4 border-navy p-5">
-      <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-2">{outlook.horizon}</p>
-      <p className="text-gray-800 text-sm leading-relaxed mb-3">{outlook.summary}</p>
+    <div className="bg-card border border-border rounded border-l-2 border-l-accent p-5">
+      <p className="text-xs text-text-dim font-semibold uppercase tracking-widest mb-2">{outlook.horizon}</p>
+      <p className="text-text-primary text-sm leading-relaxed mb-3">{outlook.summary}</p>
       {bulletItems.length > 0 && (
-        <ul className="space-y-1 mb-4">
+        <ul className="space-y-1.5 mb-4">
           {bulletItems.map((item, idx) => (
-            <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-              <span className="text-navy mt-0.5">•</span>
+            <li key={idx} className="text-sm text-text-secondary flex items-start gap-2">
+              <span className="text-accent mt-0.5 text-xs">›</span>
               <span>{item}</span>
             </li>
           ))}
@@ -163,9 +163,9 @@ export default function DailyReport() {
         body: JSON.stringify({ broker_notes: brokerNotes }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showToast('success', 'Broker notes saved successfully.');
+      showToast('success', 'Notes saved.');
     } catch {
-      showToast('error', 'Failed to save notes. Please try again.');
+      showToast('error', 'Failed to save notes.');
     } finally {
       setSavingNotes(false);
     }
@@ -179,9 +179,9 @@ export default function DailyReport() {
         headers: { 'X-API-Key': API_KEY },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showToast('success', 'Report sent to clients successfully.');
+      showToast('success', 'Report sent to clients.');
     } catch {
-      showToast('error', 'Failed to send to clients. Please try again.');
+      showToast('error', 'Failed to send to clients.');
     } finally {
       setSendingToClients(false);
     }
@@ -191,9 +191,9 @@ export default function DailyReport() {
 
   if (notFound) {
     return (
-      <div className="text-center py-20 text-gray-500">
-        <p className="text-xl font-semibold mb-2">Report Pending</p>
-        <p>Today's report is being generated. Check back shortly.</p>
+      <div className="text-center py-24 text-text-secondary">
+        <p className="text-lg font-semibold text-text-primary mb-2 tracking-wide">Report Pending</p>
+        <p className="text-sm">Today's report is being generated. Check back shortly.</p>
       </div>
     );
   }
@@ -203,55 +203,55 @@ export default function DailyReport() {
   const filteredNews = report.key_news.filter((n) => n.relevance === 'high' || n.relevance === 'medium');
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-5 max-w-4xl">
       <ToastContainer toasts={toasts} dismissToast={dismissToast} />
 
       {usedMock && <ErrorBanner />}
 
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-border">
         <div>
-          <p className="text-gray-500 text-sm">{formatDate(report.report_date)}</p>
-          <div className="flex items-center gap-3 mt-1">
+          <p className="text-text-dim text-xs tracking-widest uppercase mb-1">{formatDate(report.report_date)}</p>
+          <div className="flex items-center gap-3">
             <BiasBadge bias={report.short_term_outlook.bias} />
-            <span className="text-xs text-gray-400">Short-term bias</span>
+            <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleSendToClients}
             disabled={sendingToClients}
-            className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors disabled:opacity-60 flex items-center gap-2"
+            className="bg-accent text-surface px-4 py-2 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
           >
             {sendingToClients ? (
               <>
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
                 Sending...
               </>
             ) : (
-              '🚀 Send to Clients'
+              'Send to Clients'
             )}
           </button>
           <button
             onClick={() => window.print()}
-            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+            className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors uppercase tracking-widest"
           >
-            🖨 Download PDF
+            Download PDF
           </button>
         </div>
       </div>
 
       {/* Market Summary */}
-      <div className="bg-white rounded-lg shadow-sm border-l-4 border-navy p-5">
-        <h2 className="text-navy font-semibold text-sm uppercase tracking-wide mb-3">Market Summary</h2>
-        <p className="text-gray-800 text-base leading-relaxed">{report.market_summary}</p>
+      <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Summary</h2>
+        <p className="text-text-primary text-sm leading-relaxed">{report.market_summary}</p>
       </div>
 
       {/* Key News */}
       <div>
-        <h2 className="text-navy font-semibold text-sm uppercase tracking-wide mb-3">Key News</h2>
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Key News</h2>
         {filteredNews.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-100 p-6 text-center text-gray-500 text-sm">
+          <div className="bg-card border border-border rounded p-6 text-center text-text-dim text-sm">
             No high or medium relevance news items today.
           </div>
         ) : (
@@ -265,13 +265,13 @@ export default function DailyReport() {
 
       {/* Macro Signals */}
       <div>
-        <h2 className="text-navy font-semibold text-sm uppercase tracking-wide mb-3">Macro Signals</h2>
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Macro Signals</h2>
         <MacroSignalsTable signals={report.macro_signals} />
       </div>
 
       {/* Outlooks */}
       <div>
-        <h2 className="text-navy font-semibold text-sm uppercase tracking-wide mb-3">Market Outlook</h2>
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Outlook</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <OutlookCard outlook={report.short_term_outlook} />
           <OutlookCard outlook={report.long_term_outlook} />
@@ -279,30 +279,30 @@ export default function DailyReport() {
       </div>
 
       {/* SAF Note */}
-      <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-        <h2 className="text-navy font-semibold text-sm uppercase tracking-wide mb-2">SAF Note</h2>
-        <p className="text-gray-400 text-sm italic">{report.saf_note}</p>
+      <div className="bg-card border border-border rounded p-4">
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">SAF Note</h2>
+        <p className="text-text-secondary text-sm italic">{report.saf_note}</p>
       </div>
 
       {/* Broker Notes */}
-      <div className="bg-white rounded-lg shadow-sm p-5 border border-gray-100">
-        <h2 className="text-navy font-semibold text-sm uppercase tracking-wide mb-3">Broker Notes</h2>
+      <div className="bg-card border border-border rounded p-5">
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Broker Notes</h2>
         <textarea
           value={brokerNotes}
           onChange={(e) => setBrokerNotes(e.target.value)}
           rows={4}
           placeholder="Add internal broker notes here..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
+          className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-none"
         />
         <div className="mt-3 flex justify-end">
           <button
             onClick={() => void handleSaveNotes()}
             disabled={savingNotes}
-            className="bg-navy text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60 flex items-center gap-2"
+            className="bg-card border border-border text-text-secondary px-5 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
           >
             {savingNotes ? (
               <>
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
                 Saving...
               </>
             ) : (
