@@ -113,6 +113,13 @@ export function OutlookCard({ outlook }: { outlook: Outlook }) {
   );
 }
 
+const REFRESH_STEPS = [
+  { after: 0,  label: 'Fetching news & macro data…' },
+  { after: 15, label: 'Classifying articles with AI…' },
+  { after: 35, label: 'Generating report…' },
+  { after: 70, label: 'Finalising & saving…' },
+];
+
 export default function DailyReport() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,24 +128,30 @@ export default function DailyReport() {
   const [brokerNotes, setBrokerNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [sendingToClients, setSendingToClients] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStep, setRefreshStep] = useState('');
   const { toasts, showToast, dismissToast } = useToast();
 
+  const fetchLatestReport = async (): Promise<Report | null> => {
+    const res = await fetch(`${API_BASE_URL}/report/latest`, {
+      headers: { 'X-API-Key': API_KEY },
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as Report;
+  };
+
   useEffect(() => {
-    const fetchReport = async () => {
+    const loadReport = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/report/latest`, {
-          headers: { 'X-API-Key': API_KEY },
-        });
-        if (res.status === 404) {
+        const data = await fetchLatestReport();
+        if (data === null) {
           setNotFound(true);
-          setLoading(false);
-          return;
+        } else {
+          setReport(data);
+          setBrokerNotes(data.broker_notes ?? '');
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as Report;
-        setReport(data);
-        setBrokerNotes(data.broker_notes ?? '');
       } catch {
         setReport(MOCK_REPORT);
         setBrokerNotes(MOCK_REPORT.broker_notes ?? '');
@@ -147,8 +160,68 @@ export default function DailyReport() {
         setLoading(false);
       }
     };
-    void fetchReport();
+    void loadReport();
   }, []);
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setRefreshStep(REFRESH_STEPS[0].label);
+
+    // Capture current generated_at so we can detect when the new report lands
+    const previousGeneratedAt = report?.generated_at ?? null;
+
+    // Kick off step-label progression
+    const stepTimers: ReturnType<typeof setTimeout>[] = [];
+    REFRESH_STEPS.slice(1).forEach(({ after, label }) => {
+      stepTimers.push(setTimeout(() => setRefreshStep(label), after * 1000));
+    });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/run-now`, {
+        method: 'POST',
+        headers: { 'X-API-Key': API_KEY },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      // Poll /report/latest every 6 seconds until generated_at differs (max 150s)
+      const POLL_INTERVAL = 6000;
+      const MAX_POLLS = 25;
+      let polls = 0;
+
+      await new Promise<void>((resolve, reject) => {
+        const poll = setInterval(async () => {
+          polls++;
+          try {
+            const latest = await fetchLatestReport();
+            const newGeneratedAt = latest?.generated_at ?? null;
+            const updated = newGeneratedAt !== null && newGeneratedAt !== previousGeneratedAt;
+            if (updated || polls >= MAX_POLLS) {
+              clearInterval(poll);
+              if (latest) {
+                setReport(latest);
+                setBrokerNotes(latest.broker_notes ?? '');
+                setNotFound(false);
+                setUsedMock(false);
+              }
+              resolve();
+            }
+          } catch (err) {
+            clearInterval(poll);
+            reject(err);
+          }
+        }, POLL_INTERVAL);
+      });
+
+      showToast('success', 'Report refreshed successfully.');
+    } catch {
+      showToast('error', 'Refresh failed — please try again.');
+    } finally {
+      stepTimers.forEach(clearTimeout);
+      setRefreshing(false);
+      setRefreshStep('');
+    }
+  };
 
   const handleSaveNotes = async () => {
     if (!report) return;
@@ -192,8 +265,23 @@ export default function DailyReport() {
   if (notFound) {
     return (
       <div className="text-center py-24 text-text-secondary">
+        <ToastContainer toasts={toasts} dismissToast={dismissToast} />
         <p className="text-lg font-semibold text-text-primary mb-2 tracking-wide">Report Pending</p>
-        <p className="text-sm">Today's report is being generated. Check back shortly.</p>
+        <p className="text-sm mb-6">Today's report is being generated. Check back shortly.</p>
+        <button
+          onClick={() => void handleRefresh()}
+          disabled={refreshing}
+          className="bg-accent text-surface px-5 py-2.5 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-60 flex items-center gap-2 uppercase tracking-widest mx-auto"
+        >
+          {refreshing ? (
+            <>
+              <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
+              {refreshStep || 'Running…'}
+            </>
+          ) : (
+            '↻ Generate Report Now'
+          )}
+        </button>
       </div>
     );
   }
@@ -218,9 +306,27 @@ export default function DailyReport() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* Refresh — retriggers full pipeline and auto-reloads */}
+          <button
+            onClick={() => void handleRefresh()}
+            disabled={refreshing || sendingToClients}
+            title={refreshing ? refreshStep : 'Fetch latest news, reclassify and regenerate the report'}
+            className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest min-w-[120px] justify-center"
+          >
+            {refreshing ? (
+              <>
+                <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                <span className="hidden sm:inline">{refreshStep || 'Running…'}</span>
+                <span className="sm:hidden">Running…</span>
+              </>
+            ) : (
+              '↻ Refresh'
+            )}
+          </button>
+
           <button
             onClick={handleSendToClients}
-            disabled={sendingToClients}
+            disabled={sendingToClients || refreshing}
             className="bg-accent text-surface px-4 py-2 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
           >
             {sendingToClients ? (
