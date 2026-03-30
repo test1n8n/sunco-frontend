@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import type { Report, NewsItem, MacroSignal, Outlook } from '../../types';
+import type { Report, NewsItem, MacroSignal, Outlook, ProductSnapshot, SupplyDemandOutlook, KeyDate } from '../../types';
 import { MOCK_REPORT } from '../../mockData';
 import { API_BASE_URL, API_KEY } from '../../config';
 import BiasBadge from '../../components/BiasBadge';
 import Spinner from '../../components/Spinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import { useToast, ToastContainer } from '../../components/Toast';
+
+// ─── Formatters ──────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + 'T12:00:00Z');
@@ -17,6 +19,8 @@ function formatDate(dateStr: string): string {
     timeZone: 'UTC',
   });
 }
+
+// ─── Atoms ───────────────────────────────────────────────────────────────────
 
 function DirectionIcon({ direction }: { direction: 'up' | 'down' | 'flat' }) {
   if (direction === 'up') return <span className="text-positive font-bold">▲</span>;
@@ -37,17 +41,131 @@ function RelevanceBadge({ relevance }: { relevance: 'high' | 'medium' | 'low' })
   );
 }
 
-export function NewsCard({ item }: { item: NewsItem }) {
+function ConfidenceBadge({ confidence }: { confidence?: 'high' | 'moderate' | 'low' }) {
+  if (!confidence) return null;
+  const styles: Record<string, string> = {
+    high:     'bg-positive/10 text-positive border border-positive/20',
+    moderate: 'bg-accent/10 text-accent border border-accent/20',
+    low:      'bg-negative/10 text-negative border border-negative/20',
+  };
+  const label: Record<string, string> = {
+    high: '● HIGH DATA',
+    moderate: '● MODERATE DATA',
+    low: '● THIN DATA',
+  };
   return (
-    <div className="bg-card border border-border rounded p-4 hover:border-border/80 transition-colors">
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${styles[confidence]}`}>
+      {label[confidence]}
+    </span>
+  );
+}
+
+function SignalPill({ label, value, colorMap }: {
+  label: string;
+  value: string;
+  colorMap: Record<string, string>;
+}) {
+  const color = colorMap[value] ?? 'bg-border/50 text-text-dim border border-border';
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-text-dim uppercase tracking-widest w-20">{label}</span>
+      <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide border ${color}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+// ─── Product Snapshot Table ───────────────────────────────────────────────────
+
+const DIRECTION_LABELS: Record<string, string> = { up: '▲', down: '▼', flat: '—' };
+const DIRECTION_COLORS: Record<string, string> = {
+  up:   'text-positive',
+  down: 'text-negative',
+  flat: 'text-text-dim',
+};
+
+export function ProductSnapshotTable({ snapshots }: { snapshots: ProductSnapshot[] }) {
+  if (!snapshots || snapshots.length === 0) return null;
+  return (
+    <div className="bg-card border border-border rounded overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border bg-surface">
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Product Snapshot</h2>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border/50">
+            <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Product</th>
+            <th className="text-center px-3 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Dir.</th>
+            <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Status</th>
+            <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest hidden lg:table-cell">Spread / Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {snapshots.map((s, idx) => (
+            <tr key={s.product} className={`border-b border-border/40 ${idx % 2 === 0 ? 'bg-card' : 'bg-surface/40'}`}>
+              <td className="px-4 py-3 font-bold text-text-primary text-sm tracking-wide">{s.product}</td>
+              <td className={`px-3 py-3 text-center font-bold text-base ${DIRECTION_COLORS[s.direction]}`}>
+                {DIRECTION_LABELS[s.direction]}
+              </td>
+              <td className="px-4 py-3 text-text-secondary text-sm">{s.status}</td>
+              <td className="px-4 py-3 text-text-dim text-xs italic hidden lg:table-cell">
+                {s.spread_note ?? '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── What to Watch ───────────────────────────────────────────────────────────
+
+function WhatToWatchCard({ items }: { items: string[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="bg-card border border-border rounded p-4">
+      <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
+        ⏰ What to Watch Today
+      </h2>
+      <ul className="space-y-2">
+        {items.map((item, idx) => (
+          <li key={idx} className="flex items-start gap-2.5 text-sm text-text-secondary">
+            <span className="text-accent font-bold mt-0.5 text-xs shrink-0">{idx + 1}.</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ─── News Card ───────────────────────────────────────────────────────────────
+
+export function NewsCard({ item, compact = false }: { item: NewsItem; compact?: boolean }) {
+  return (
+    <div className={`bg-card border rounded transition-colors hover:border-border/80 ${
+      item.relevance === 'high'
+        ? 'border-accent/40 border-l-2 border-l-accent'
+        : 'border-border'
+    } ${compact ? 'p-3' : 'p-4'}`}>
       <div className="flex items-start justify-between gap-3 mb-2">
-        <h4 className="font-semibold text-text-primary text-sm leading-snug flex-1">{item.headline}</h4>
+        <h4 className={`font-semibold text-text-primary leading-snug flex-1 ${compact ? 'text-xs' : 'text-sm'}`}>
+          {item.relevance === 'high' && (
+            <span className="text-accent mr-1.5 text-xs">★</span>
+          )}
+          {item.headline}
+        </h4>
         <RelevanceBadge relevance={item.relevance} />
       </div>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span className="text-xs text-text-dim bg-surface px-2 py-0.5 rounded border border-border">{item.source}</span>
+        {item.published_date && (
+          <span className="text-xs text-text-dim">{item.published_date}</span>
+        )}
       </div>
-      <p className="text-text-secondary text-sm italic mb-3">{item.price_impact}</p>
+      <p className={`text-text-secondary italic mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>{item.price_impact}</p>
       <a
         href={item.url}
         target="_blank"
@@ -59,6 +177,53 @@ export function NewsCard({ item }: { item: NewsItem }) {
     </div>
   );
 }
+
+// ─── News Section (titled subsection) ────────────────────────────────────────
+
+const SECTION_META: Record<string, { label: string; tag: string }> = {
+  SAF:               { label: 'SAF',                               tag: 'Sustainable Aviation Fuel' },
+  advanced_biofuels: { label: 'Advanced Biofuels',                 tag: 'HVO · UCO · Tallow · POME' },
+  biodiesel:         { label: 'Biodiesel',                         tag: 'FAME0 · RME · UCOME · SME' },
+  general:           { label: 'General & Policy',                   tag: 'Macro · Regulation · Cross-product' },
+};
+
+function NewsSection({
+  category,
+  items,
+  note,
+}: {
+  category: string;
+  items: NewsItem[];
+  note?: string;
+}) {
+  if (items.length === 0 && !note) return null;
+  const meta = SECTION_META[category] ?? { label: category, tag: '' };
+
+  return (
+    <div>
+      <div className="flex items-baseline gap-2 mb-3">
+        <h3 className="text-text-primary font-semibold text-sm uppercase tracking-wide">{meta.label}</h3>
+        {meta.tag && (
+          <span className="text-text-dim text-xs">{meta.tag}</span>
+        )}
+      </div>
+      {items.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {items.map((item, idx) => (
+            <NewsCard key={idx} item={item} compact={true} />
+          ))}
+        </div>
+      )}
+      {note && (
+        <p className="text-text-dim text-xs italic mt-2 pl-1 border-l border-border/50">
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Macro Signals Table ──────────────────────────────────────────────────────
 
 export function MacroSignalsTable({ signals }: { signals: MacroSignal[] }) {
   return (
@@ -91,9 +256,10 @@ export function MacroSignalsTable({ signals }: { signals: MacroSignal[] }) {
   );
 }
 
+// ─── Outlook Card ─────────────────────────────────────────────────────────────
+
 export function OutlookCard({ outlook }: { outlook: Outlook }) {
   const bulletItems = outlook.key_risks ?? outlook.key_themes ?? [];
-
   return (
     <div className="bg-card border border-border rounded border-l-2 border-l-accent p-5">
       <p className="text-xs text-text-dim font-semibold uppercase tracking-widest mb-2">{outlook.horizon}</p>
@@ -113,12 +279,79 @@ export function OutlookCard({ outlook }: { outlook: Outlook }) {
   );
 }
 
+// ─── Supply & Demand Outlook ──────────────────────────────────────────────────
+
+const SUPPLY_COLORS: Record<string, string> = {
+  tight:   'bg-negative/10 text-negative border-negative/20',
+  ample:   'bg-positive/10 text-positive border-positive/20',
+  neutral: 'bg-border/50 text-text-dim border-border',
+};
+const DEMAND_COLORS: Record<string, string> = {
+  strong:  'bg-positive/10 text-positive border-positive/20',
+  weak:    'bg-negative/10 text-negative border-negative/20',
+  neutral: 'bg-border/50 text-text-dim border-border',
+};
+
+function SupplyDemandCard({ outlook }: { outlook: SupplyDemandOutlook }) {
+  if (!outlook.summary) return null;
+  return (
+    <div className="bg-card border border-border rounded p-5">
+      <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Supply / Demand Outlook</h2>
+      <div className="flex flex-wrap gap-3 mb-4">
+        <SignalPill label="Supply" value={outlook.supply_signal} colorMap={SUPPLY_COLORS} />
+        <SignalPill label="Demand" value={outlook.demand_signal} colorMap={DEMAND_COLORS} />
+      </div>
+      <p className="text-text-primary text-sm leading-relaxed mb-3">{outlook.summary}</p>
+      {outlook.key_drivers.length > 0 && (
+        <ul className="space-y-1.5">
+          {outlook.key_drivers.map((d, idx) => (
+            <li key={idx} className="text-sm text-text-secondary flex items-start gap-2">
+              <span className="text-accent mt-0.5 text-xs shrink-0">›</span>
+              <span>{d}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ─── Upcoming Key Dates ───────────────────────────────────────────────────────
+
+function KeyDatesCard({ dates }: { dates: KeyDate[] }) {
+  if (!dates || dates.length === 0) return null;
+  return (
+    <div className="bg-card border border-border rounded p-5">
+      <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
+        📅 Upcoming Key Dates
+      </h2>
+      <div className="space-y-3">
+        {dates.map((d, idx) => (
+          <div key={idx} className="flex items-start gap-3 pb-3 border-b border-border/40 last:border-0 last:pb-0">
+            <span className="text-xs font-mono font-semibold text-accent bg-accent/10 border border-accent/20 px-2 py-1 rounded shrink-0 mt-0.5">
+              {d.date}
+            </span>
+            <div>
+              <p className="text-text-primary text-sm font-medium">{d.event}</p>
+              <p className="text-text-dim text-xs mt-0.5 italic">{d.relevance}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Refresh step labels ──────────────────────────────────────────────────────
+
 const REFRESH_STEPS = [
   { after: 0,  label: 'Fetching news & macro data…' },
   { after: 15, label: 'Classifying articles with AI…' },
   { after: 35, label: 'Generating report…' },
   { after: 70, label: 'Finalising & saving…' },
 ];
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function DailyReport() {
   const [report, setReport] = useState<Report | null>(null);
@@ -167,28 +400,20 @@ export default function DailyReport() {
     if (refreshing) return;
     setRefreshing(true);
     setRefreshStep(REFRESH_STEPS[0].label);
-
-    // Capture current generated_at so we can detect when the new report lands
     const previousGeneratedAt = report?.generated_at ?? null;
-
-    // Kick off step-label progression
     const stepTimers: ReturnType<typeof setTimeout>[] = [];
     REFRESH_STEPS.slice(1).forEach(({ after, label }) => {
       stepTimers.push(setTimeout(() => setRefreshStep(label), after * 1000));
     });
-
     try {
       const res = await fetch(`${API_BASE_URL}/run-now`, {
         method: 'POST',
         headers: { 'X-API-Key': API_KEY },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      // Poll /report/latest every 6 seconds until generated_at differs (max 150s)
       const POLL_INTERVAL = 6000;
       const MAX_POLLS = 25;
       let polls = 0;
-
       await new Promise<void>((resolve, reject) => {
         const poll = setInterval(async () => {
           polls++;
@@ -212,7 +437,6 @@ export default function DailyReport() {
           }
         }, POLL_INTERVAL);
       });
-
       showToast('success', 'Report refreshed successfully.');
     } catch {
       showToast('error', 'Refresh failed — please try again.');
@@ -229,10 +453,7 @@ export default function DailyReport() {
     try {
       const res = await fetch(`${API_BASE_URL}/report/${report.report_date}/notes`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': API_KEY,
-        },
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
         body: JSON.stringify({ broker_notes: brokerNotes }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -288,7 +509,23 @@ export default function DailyReport() {
 
   if (!report) return null;
 
-  const filteredNews = report.key_news.filter((n) => n.relevance === 'high' || n.relevance === 'medium');
+  // ── Categorise news ──────────────────────────────────────────────────────
+  const sortedNews = [...report.key_news].sort((a, b) => {
+    const order = { high: 0, medium: 1, low: 2 };
+    return order[a.relevance] - order[b.relevance];
+  });
+
+  const safNews       = sortedNews.filter(n => n.product_category === 'SAF');
+  const advancedNews  = sortedNews.filter(n => n.product_category === 'advanced_biofuels');
+  const biodieselNews = sortedNews.filter(n => n.product_category === 'biodiesel');
+  const generalNews   = sortedNews.filter(n =>
+    !n.product_category || n.product_category === 'general'
+  );
+
+  const hasAnyNews = sortedNews.length > 0;
+  const hasSDOutlook =
+    report.supply_demand_outlook != null &&
+    report.supply_demand_outlook.summary != null;
 
   return (
     <div className="space-y-5 max-w-4xl">
@@ -296,17 +533,34 @@ export default function DailyReport() {
 
       {usedMock && <ErrorBanner />}
 
-      {/* Header */}
+      {/* Thin data warning */}
+      {report.data_confidence === 'low' && (
+        <div className="bg-negative/10 border border-negative/30 rounded px-4 py-3 text-sm text-negative flex items-start gap-2">
+          <span className="shrink-0 font-bold">⚠</span>
+          <span>
+            <span className="font-semibold">Limited market data today</span> — fewer than 4 relevant news
+            items were classified. This report is primarily driven by macro signals.
+            Treat directional analysis with extra caution.
+          </span>
+        </div>
+      )}
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-border">
         <div>
           <p className="text-text-dim text-xs tracking-widest uppercase mb-1">{formatDate(report.report_date)}</p>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <BiasBadge bias={report.short_term_outlook.bias} />
             <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
+            {report.data_confidence && (
+              <>
+                <span className="text-text-dim text-xs">·</span>
+                <ConfidenceBadge confidence={report.data_confidence} />
+              </>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {/* Refresh — retriggers full pipeline and auto-reloads */}
           <button
             onClick={() => void handleRefresh()}
             disabled={refreshing || sendingToClients}
@@ -323,7 +577,6 @@ export default function DailyReport() {
               '↻ Refresh'
             )}
           </button>
-
           <button
             onClick={handleSendToClients}
             disabled={sendingToClients || refreshing}
@@ -347,35 +600,65 @@ export default function DailyReport() {
         </div>
       </div>
 
-      {/* Market Summary */}
+      {/* ── Product Snapshot ──────────────────────────────────────────────── */}
+      {report.product_snapshot && report.product_snapshot.length > 0 && (
+        <ProductSnapshotTable snapshots={report.product_snapshot} />
+      )}
+
+      {/* ── Market Summary ────────────────────────────────────────────────── */}
       <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Summary</h2>
         <p className="text-text-primary text-sm leading-relaxed">{report.market_summary}</p>
       </div>
 
-      {/* Key News */}
-      <div>
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Key News</h2>
-        {filteredNews.length === 0 ? (
-          <div className="bg-card border border-border rounded p-6 text-center text-text-dim text-sm">
-            No high or medium relevance news items today.
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {filteredNews.map((item, idx) => (
-              <NewsCard key={idx} item={item} />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* ── What to Watch ─────────────────────────────────────────────────── */}
+      {report.what_to_watch && report.what_to_watch.length > 0 && (
+        <WhatToWatchCard items={report.what_to_watch} />
+      )}
 
-      {/* Macro Signals */}
+      {/* ── News by Product Category ──────────────────────────────────────── */}
+      {hasAnyNews && (
+        <div className="space-y-5">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market News</h2>
+
+          {/* SAF */}
+          <NewsSection
+            category="SAF"
+            items={safNews}
+            note={safNews.length === 0 ? report.saf_note : undefined}
+          />
+
+          {/* Advanced Biofuels */}
+          <NewsSection category="advanced_biofuels" items={advancedNews} />
+
+          {/* Biodiesel */}
+          <NewsSection category="biodiesel" items={biodieselNews} />
+
+          {/* General & Policy */}
+          <NewsSection category="general" items={generalNews} />
+
+          {/* SAF note as footer if SAF news is present */}
+          {safNews.length > 0 && report.saf_note && (
+            <p className="text-text-dim text-xs italic border-l-2 border-border pl-3">
+              <span className="font-semibold text-text-dim uppercase tracking-wide text-xs">SAF pricing note:</span>{' '}
+              {report.saf_note}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Supply & Demand Outlook ───────────────────────────────────────── */}
+      {hasSDOutlook && (
+        <SupplyDemandCard outlook={report.supply_demand_outlook!} />
+      )}
+
+      {/* ── Macro Signals ─────────────────────────────────────────────────── */}
       <div>
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Macro Signals</h2>
         <MacroSignalsTable signals={report.macro_signals} />
       </div>
 
-      {/* Outlooks */}
+      {/* ── Market Outlook ────────────────────────────────────────────────── */}
       <div>
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Outlook</h2>
         <div className="grid gap-4 md:grid-cols-2">
@@ -384,13 +667,12 @@ export default function DailyReport() {
         </div>
       </div>
 
-      {/* SAF Note */}
-      <div className="bg-card border border-border rounded p-4">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">SAF Note</h2>
-        <p className="text-text-secondary text-sm italic">{report.saf_note}</p>
-      </div>
+      {/* ── Upcoming Key Dates ────────────────────────────────────────────── */}
+      {report.upcoming_key_dates && report.upcoming_key_dates.length > 0 && (
+        <KeyDatesCard dates={report.upcoming_key_dates} />
+      )}
 
-      {/* Broker Notes */}
+      {/* ── Broker Notes ──────────────────────────────────────────────────── */}
       <div className="bg-card border border-border rounded p-5">
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Broker Notes</h2>
         <textarea

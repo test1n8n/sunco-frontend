@@ -11,6 +11,28 @@ export interface NewsItem {
   url: string;
   price_impact: string;
   relevance: 'high' | 'medium' | 'low';
+  published_date?: string;
+  product_category?: 'SAF' | 'advanced_biofuels' | 'biodiesel' | 'general';
+}
+
+export interface ProductSnapshot {
+  product: string;
+  direction: 'up' | 'down' | 'flat';
+  status: string;
+  spread_note?: string | null;
+}
+
+export interface SupplyDemandOutlook {
+  summary: string | null;
+  supply_signal: 'tight' | 'ample' | 'neutral';
+  demand_signal: 'strong' | 'weak' | 'neutral';
+  key_drivers: string[];
+}
+
+export interface KeyDate {
+  date: string;
+  event: string;
+  relevance: string;
 }
 
 export interface Outlook {
@@ -25,10 +47,15 @@ export interface Report {
   id: string;
   report_date: string;
   market_summary: string;
+  data_confidence?: 'high' | 'moderate' | 'low';
+  product_snapshot?: ProductSnapshot[];
+  what_to_watch?: string[];
   key_news: NewsItem[];
   macro_signals: MacroSignal[];
+  supply_demand_outlook?: SupplyDemandOutlook | null;
   short_term_outlook: Outlook;
   long_term_outlook: Outlook;
+  upcoming_key_dates?: KeyDate[];
   saf_note: string;
   broker_notes: string;
   generated_at: string;

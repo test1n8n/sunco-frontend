@@ -4,30 +4,99 @@ export const MOCK_REPORT: Report = {
   id: 'mock-2026-03-29',
   report_date: '2026-03-29',
   market_summary:
-    'European FAME0 markets firmed modestly today, supported by a recovery in soybean oil and tightening UCO availability out of Asia. HVO premiums held steady as refiners maintain cautious output amid uncertain feedstock margins. Sentiment is cautiously bullish ahead of Q2 mandate season.',
+    'European FAME0 markets firmed modestly on Friday, supported by a recovery in soybean oil futures and tightening UCO availability out of Asia. RME held steady with limited directional news, though the German THG-Quote compliance window approaching Q2 is providing structural support. HVO premiums widened slightly as refiners maintain cautious output amid uncertain HEFA feedstock margins. UCO double-count premium versus FAME0 is estimated at approximately 50–55 EUR/MT, in line with recent weeks. On the macro side, Brent crude ticked up 0.8%, keeping blending economics modestly supportive. The EUR/USD dip is marginally supportive for ARA-basis competitiveness. Sentiment is cautiously bullish heading into Q2 mandate season, though thin liquidity on Fridays limits directional conviction.',
+  data_confidence: 'moderate',
+  product_snapshot: [
+    {
+      product: 'FAME0',
+      direction: 'up',
+      status: 'Firming on UCO tightness and soybean oil recovery',
+      spread_note: 'FAME0/gasoil blending spread modestly supportive — Brent holding above $80',
+    },
+    {
+      product: 'RME',
+      direction: 'flat',
+      status: 'Stable; Q2 THG-Quote demand providing floor',
+      spread_note: null,
+    },
+    {
+      product: 'HVO',
+      direction: 'up',
+      status: 'Premium widening slightly on HEFA feedstock tightness',
+      spread_note: null,
+    },
+    {
+      product: 'UCO',
+      direction: 'up',
+      status: 'Tightening Asian supply pushing European import costs higher',
+      spread_note: 'Double-count premium vs FAME0 ~50–55 EUR/MT, stable week-on-week',
+    },
+    {
+      product: 'SAF',
+      direction: 'flat',
+      status: 'No spot price available — ReFuelEU mandate discussion ongoing',
+      spread_note: null,
+    },
+  ],
+  what_to_watch: [
+    "Tonight's CBOT soy oil close — directional signal for FAME0 and SME feedstock costs this week",
+    'Friday USDA weekly export sales report — large soy sales to China would tighten US supply and lift BO=F',
+    'Monitor any Argentine customs data release — UCOME shipment volumes to Europe for March',
+  ],
   key_news: [
     {
       headline: 'EU Commission proposes increased SAF blending mandate for 2026',
       source: 'Biofuels Digest',
       url: 'https://biofuelsdigest.com',
-      price_impact:
-        'Bullish for SAF and HVO demand, likely to support HEFA feedstock premiums',
+      published_date: '29 Mar 2026',
+      price_impact: 'Bullish for SAF and HVO demand, likely to support HEFA feedstock premiums',
       relevance: 'high',
+      product_category: 'SAF',
     },
     {
       headline: 'UCO exports from China tighten as domestic collection declines',
       source: 'Reuters',
       url: 'https://reuters.com',
-      price_impact:
-        'Upward pressure on UCO prices in Europe, supporting FAME and HVO feedstock costs',
+      published_date: '28 Mar 2026',
+      price_impact: 'Upward pressure on UCO prices in Europe, supporting FAME and HVO feedstock costs',
       relevance: 'high',
+      product_category: 'advanced_biofuels',
+    },
+    {
+      headline: 'German THG-Quote Q2 compliance window opens — blenders accelerate FAME0 purchases',
+      source: 'Biofuels International',
+      url: 'https://biofuels-news.com',
+      published_date: '29 Mar 2026',
+      price_impact: 'Supportive for FAME0 and RME demand in Germany through April',
+      relevance: 'high',
+      product_category: 'biodiesel',
     },
     {
       headline: 'US soybean crop estimate revised upward by USDA',
       source: 'USDA',
       url: 'https://usda.gov',
+      published_date: '28 Mar 2026',
       price_impact: 'Modest bearish pressure on soy oil and SME feedstock costs',
       relevance: 'medium',
+      product_category: 'biodiesel',
+    },
+    {
+      headline: 'Neste raises NExBTL HVO output guidance on strong aviation demand',
+      source: 'Reuters',
+      url: 'https://reuters.com',
+      published_date: '27 Mar 2026',
+      price_impact: 'Neutral to slightly bearish for HVO premiums if additional volume reaches market',
+      relevance: 'medium',
+      product_category: 'advanced_biofuels',
+    },
+    {
+      headline: 'ReFuelEU Aviation delegated act: HEFA pathway GHG threshold confirmed',
+      source: 'European Commission',
+      url: 'https://ec.europa.eu',
+      published_date: '27 Mar 2026',
+      price_impact: 'Supports HEFA-based SAF producers; clarifies compliance pathway for 2025 obligation',
+      relevance: 'medium',
+      product_category: 'SAF',
     },
   ],
   macro_signals: [
@@ -38,11 +107,10 @@ export const MOCK_REPORT: Report = {
       biofuels_implication: 'Upward pressure on FAME0 and SME feedstock costs',
     },
     {
-      name: 'WTI Crude',
+      name: 'Brent Crude',
       direction: 'up',
       change_pct: 0.8,
-      biofuels_implication:
-        'Supportive for biofuel blending economics vs fossil diesel',
+      biofuels_implication: 'Supportive for biofuel blending economics vs fossil diesel',
     },
     {
       name: 'EUR/USD',
@@ -56,30 +124,63 @@ export const MOCK_REPORT: Report = {
       change_pct: 0.1,
       biofuels_implication: 'Neutral — within normal trading range',
     },
+    {
+      name: 'USD/CNY',
+      direction: 'flat',
+      change_pct: 0.1,
+      biofuels_implication: 'Neutral — Chinese UCO export competitiveness unchanged',
+    },
   ],
+  supply_demand_outlook: {
+    summary:
+      'Supply is tightening on the UCO side as Chinese collection volumes decline seasonally into Q2. FAME0 physical availability at ARA remains adequate but forward selling is limited. Demand is picking up with Q2 mandate season approaching.',
+    supply_signal: 'tight',
+    demand_signal: 'strong',
+    key_drivers: [
+      'Chinese UCO domestic consumption rising — fewer exports to Europe',
+      'Q2 German THG-Quote window driving early FAME0 buying',
+    ],
+  },
   short_term_outlook: {
     horizon: '1-5 days',
     summary:
-      'FAME0 expected to hold firm near current levels. UCO tightness likely to persist. Watch Friday USDA weekly export data for soy direction.',
+      'FAME0 expected to hold firm near current levels. UCO tightness likely to persist through the week. Watch Friday USDA weekly export data for soy direction and any Argentine customs shipping data.',
     key_risks: [
-      'Sudden crude selloff compressing blending economics',
-      'Surprise UCO supply from new Asian exporters',
+      'Sudden Brent selloff compressing blending economics',
+      'Surprise UCO supply from new Asian exporters or ISCC-certified operators',
     ],
     bias: 'bullish',
   },
   long_term_outlook: {
     horizon: '1-3 months',
     summary:
-      'Q2 mandate season demand expected to support prices. RED III implementation uncertainty remains a wildcard. SAF ramp-up absorbing HVO capacity.',
+      'Q2 mandate season demand expected to support prices across FAME0, RME, and UCO. RED III GHG threshold tightening in 2025 could constrain cheaper feedstock options. SAF ramp-up continues to absorb HVO capacity, supporting premiums.',
     key_themes: [
-      'Q2 seasonal demand pickup',
-      'RED III GHG threshold implementation',
-      'SAF capacity absorbing HVO supply',
+      'Q2 seasonal demand pickup — THG-Quote and RTFO compliance buying',
+      'RED III 65% GHG threshold: palm-based feedstocks increasingly excluded',
+      'SAF HEFA capacity absorbing HVO supply — structural premium support',
     ],
     bias: 'neutral',
   },
+  upcoming_key_dates: [
+    {
+      date: '31 Mar 2026',
+      event: 'Q1 German THG-Quote reporting deadline',
+      relevance: 'Late compliance buying likely in final days — supportive for FAME0 and RME spot',
+    },
+    {
+      date: '10 Apr 2026',
+      event: 'USDA WASDE monthly crop report',
+      relevance: 'Soy and corn supply/demand revisions directly affect FAME0/SME feedstock costs',
+    },
+    {
+      date: '30 Apr 2026',
+      event: 'UK RTFO Q1 obligation period end',
+      relevance: 'UK blenders finalising Q1 positions — additional FAME0 and HVO demand possible',
+    },
+  ],
   saf_note:
-    'No publicly available SAF spot prices. EU mandate discussions ongoing — watch for ReFuelEU Aviation updates. HEFA pathway feedstock premiums remain elevated.',
+    'No publicly available SAF spot prices. ReFuelEU Aviation HEFA pathway GHG threshold confirmed — supports compliance clarity for 2025 obligations. Watch for any updates to the 2026 blending mandate level.',
   broker_notes: '',
   generated_at: '2026-03-29T07:00:00Z',
   version: '1.0',
