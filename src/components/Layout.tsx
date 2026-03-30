@@ -7,9 +7,10 @@ interface LayoutProps {
 }
 
 const navLinks = [
-  { to: '/broker', label: 'Daily Report', end: true },
-  { to: '/broker/blotter', label: 'Trade Blotter', end: false },
-  { to: '/broker/archive', label: 'Archive', end: false },
+  { to: '/broker',          label: 'Daily Report',  end: true  },
+  { to: '/broker/charts',   label: 'Charts',        end: false },
+  { to: '/broker/blotter',  label: 'Trade Blotter', end: false },
+  { to: '/broker/archive',  label: 'Archive',       end: false },
 ];
 
 export default function Layout({ children, pageTitle }: LayoutProps) {

@@ -3,6 +3,7 @@ import Login from './pages/Login';
 import DailyReport from './pages/broker/DailyReport';
 import TradeBlotter from './pages/broker/TradeBlotter';
 import ReportArchive from './pages/broker/ReportArchive';
+import Charts from './pages/broker/Charts';
 import ClientReport from './pages/client/ClientReport';
 import Layout from './components/Layout';
 
@@ -51,6 +52,16 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Report Archive">
                 <ReportArchive />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/charts"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Market Charts">
+                <Charts />
               </Layout>
             </ProtectedRoute>
           }
