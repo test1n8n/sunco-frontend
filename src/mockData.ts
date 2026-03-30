@@ -101,7 +101,7 @@ export const MOCK_REPORT: Report = {
   ],
   macro_signals: [
     {
-      name: 'Soybean Oil',
+      name: 'Soybean Oil (CBOT)',
       direction: 'up',
       change_pct: 1.2,
       biofuels_implication: 'Upward pressure on FAME0 and SME feedstock costs',
@@ -111,6 +111,12 @@ export const MOCK_REPORT: Report = {
       direction: 'up',
       change_pct: 0.8,
       biofuels_implication: 'Supportive for biofuel blending economics vs fossil diesel',
+    },
+    {
+      name: 'Heating Oil (gasoil proxy)',
+      direction: 'up',
+      change_pct: 0.6,
+      biofuels_implication: 'Gasoil proxy firming — FAME0 blending spread modestly supportive',
     },
     {
       name: 'EUR/USD',

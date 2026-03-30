@@ -17,23 +17,21 @@ interface BiasPoint    { date: string; bias: 'bullish' | 'bearish' | 'neutral' }
 // ─── Colour palette (visible on dark bg) ─────────────────────────────────────
 
 const COLOURS: Record<string, string> = {
-  'BO=F':     '#f59e0b',   // Soy Oil       — amber
-  'RSO=F':    '#34d399',   // Rapeseed      — emerald
-  'FCPO=F':   '#fb923c',   // Palm Oil      — orange
+  'ZL=F':     '#f59e0b',   // Soybean Oil   — amber
+  'ZS=F':     '#34d399',   // Soybeans      — emerald
+  'ZC=F':     '#fb923c',   // Corn          — orange
   'BZ=F':     '#60a5fa',   // Brent         — blue
+  'HO=F':     '#fbbf24',   // Heating Oil   — yellow (gasoil proxy)
   'NG=F':     '#f87171',   // Natural Gas   — red
   'EURUSD=X': '#a78bfa',   // EUR/USD       — violet
   'USDCNY=X': '#f472b6',   // USD/CNY       — pink
-  'LGO=F':    '#fbbf24',   // ICE Gasoil    — yellow
-  'ZS=F':     '#6ee7b7',   // Soybeans      — teal
-  'ZC=F':     '#fca5a5',   // Corn          — rose
 };
 
 // ─── Chart groups ─────────────────────────────────────────────────────────────
 
-const FEEDSTOCK_TICKERS  = ['BO=F', 'RSO=F', 'FCPO=F', 'ZS=F'];
-const ENERGY_TICKERS     = ['BZ=F', 'LGO=F', 'NG=F'];
-const FX_TICKERS         = ['EURUSD=X', 'USDCNY=X'];
+const FEEDSTOCK_TICKERS = ['ZL=F', 'ZS=F', 'ZC=F'];
+const ENERGY_TICKERS    = ['BZ=F', 'HO=F', 'NG=F'];
+const FX_TICKERS        = ['EURUSD=X', 'USDCNY=X'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -481,7 +479,7 @@ export default function Charts() {
           {/* ── 1. Biofuel Feedstock Costs ────────────────────────────────── */}
           <ChartCard
             title="Biofuel Feedstock Costs"
-            subtitle={`Soy Oil · Rapeseed · Palm Oil · Soybeans — base-100 indexed, ${days}-day`}
+            subtitle={`Soybean Oil · Soybeans · Corn — base-100 indexed, ${days}-day`}
             height={300}
           >
             <MultiLineChart tickers={FEEDSTOCK_TICKERS} tickerMap={tickerMap} height={260} />
@@ -490,7 +488,7 @@ export default function Charts() {
           {/* ── 2. Energy & Blending Economics ───────────────────────────── */}
           <ChartCard
             title="Energy & Blending Economics"
-            subtitle={`Brent Crude · ICE Gasoil · Natural Gas — base-100 indexed, ${days}-day`}
+            subtitle={`Brent Crude · Heating Oil (gasoil proxy) · Natural Gas — base-100 indexed, ${days}-day`}
             height={300}
           >
             <MultiLineChart tickers={ENERGY_TICKERS} tickerMap={tickerMap} height={260} />
