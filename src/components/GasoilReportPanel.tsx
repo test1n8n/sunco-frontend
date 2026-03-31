@@ -120,9 +120,10 @@ function DropZone({
 
 interface Props {
   reportDate?: string; // today's report date for context (reserved for future use)
+  readOnly?: boolean;  // true = hide upload area, show charts only (for Daily Report)
 }
 
-export default function GasoilReportPanel(_props: Props) {
+export default function GasoilReportPanel({ readOnly = false }: Props) {
   const [gasoilReport, setGasoilReport] = useState<GasoilReport | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,15 +190,17 @@ export default function GasoilReportPanel(_props: Props) {
         )}
       </div>
 
-      {/* Drop Zone */}
-      <DropZone
-        onFile={handleFile}
-        uploading={uploading}
-        filename={gasoilReport?.source_filename ?? null}
-      />
+      {/* Drop Zone — only in full mode (Products Data tab) */}
+      {!readOnly && (
+        <DropZone
+          onFile={handleFile}
+          uploading={uploading}
+          filename={gasoilReport?.source_filename ?? null}
+        />
+      )}
 
       {/* Error */}
-      {error && (
+      {!readOnly && error && (
         <div className="bg-negative/10 border border-negative/30 rounded px-4 py-2 text-sm text-negative">
           ⚠ {error}
         </div>
@@ -329,7 +332,9 @@ export default function GasoilReportPanel(_props: Props) {
       {/* Empty state */}
       {!gasoilReport && !uploading && (
         <p className="text-text-dim text-xs text-center py-4">
-          Upload the ICE daily PDF to see the forward curve, volume, open interest and VWAP.
+          {readOnly
+            ? 'No gasoil data yet — upload the ICE daily PDF in the Products Data tab.'
+            : 'Upload the ICE daily PDF to see the forward curve, volume, open interest and VWAP.'}
         </p>
       )}
     </div>
