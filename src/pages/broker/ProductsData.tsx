@@ -1,8 +1,34 @@
+import { useState, useEffect } from 'react';
+import type { PricePanel } from '../../types';
+import { API_BASE_URL, API_KEY } from '../../config';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
+import PricePanelForm from '../../components/PricePanelForm';
 
 export default function ProductsData() {
+  const [panel, setPanel] = useState<PricePanel | null>(null);
+  const [reportDate, setReportDate] = useState<string>(
+    new Date().toISOString().slice(0, 10)
+  );
+
+  // Load latest price panel on mount
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/price-panel/latest`, {
+      headers: { 'X-API-Key': API_KEY },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((p: PricePanel | null) => {
+        if (p) {
+          setPanel(p);
+          setReportDate(p.report_date);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
-    <div className="max-w-4xl space-y-2">
+    <div className="max-w-4xl space-y-6">
+
+      {/* Page header */}
       <div className="pb-3 border-b border-border">
         <p className="text-text-dim text-xs tracking-widest uppercase mb-1">Products Data</p>
         <h1 className="text-text-primary font-semibold text-base">ICE LS Gasoil — Daily Settlement Analysis</h1>
@@ -11,7 +37,24 @@ export default function ProductsData() {
         </p>
       </div>
 
+      {/* Section 1: PDF upload + forward curve + charts */}
       <GasoilReportPanel />
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Section 2: Biodiesel diff entry + flat prices */}
+      <div>
+        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">
+          Biodiesel Settlements
+        </h2>
+        <PricePanelForm
+          panel={panel}
+          reportDate={reportDate}
+          onDiffsUpdated={setPanel}
+        />
+      </div>
+
     </div>
   );
 }
