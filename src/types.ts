@@ -110,3 +110,23 @@ export interface ToastMessage {
   type: 'success' | 'error';
   message: string;
 }
+
+export interface LsGoContractRow {
+  contract: string;
+  month_label: string;
+  settlement: number;
+  change: number;
+  volume: number | null;
+  open_interest: number | null;
+  source: 'ice' | 'yfinance';
+}
+
+export interface PricePanel {
+  id: string;
+  report_date: string;
+  ls_go_curve: LsGoContractRow[];
+  bio_diffs: Record<string, number | null>;  // {FAME0: -45.0, UCOME: -38.0, ...}
+  flat_prices: Record<string, number>;       // {FAME0: 607.5, ...}
+  fetched_at: string | null;
+  diffs_updated_at: string | null;
+}

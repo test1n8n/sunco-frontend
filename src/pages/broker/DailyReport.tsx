@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Report, NewsItem, MacroSignal, Outlook, ProductSnapshot, SupplyDemandOutlook, KeyDate } from '../../types';
+import type { Report, NewsItem, MacroSignal, Outlook, SupplyDemandOutlook, KeyDate, PricePanel, LsGoContractRow } from '../../types';
 import { MOCK_REPORT } from '../../mockData';
 import { API_BASE_URL, API_KEY } from '../../config';
 import BiasBadge from '../../components/BiasBadge';
@@ -76,46 +76,219 @@ function SignalPill({ label, value, colorMap }: {
   );
 }
 
-// ─── Product Snapshot Table ───────────────────────────────────────────────────
+// ─── Price Panel ──────────────────────────────────────────────────────────────
 
-const DIRECTION_LABELS: Record<string, string> = { up: '▲', down: '▼', flat: '—' };
-const DIRECTION_COLORS: Record<string, string> = {
-  up:   'text-positive',
-  down: 'text-negative',
-  flat: 'text-text-dim',
-};
+const DIFF_PRODUCTS = ['FAME0', 'UCOME', 'RME', 'HVO'] as const;
+type DiffProduct = typeof DIFF_PRODUCTS[number];
 
-export function ProductSnapshotTable({ snapshots }: { snapshots: ProductSnapshot[] }) {
-  if (!snapshots || snapshots.length === 0) return null;
+function ChangeCell({ change }: { change: number }) {
+  const color = change > 0 ? 'text-positive' : change < 0 ? 'text-negative' : 'text-text-dim';
+  const label = change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
+  return <span className={`font-mono font-semibold ${color}`}>{label}</span>;
+}
+
+export function PricePanelTable({
+  panel,
+  isBroker,
+  reportDate,
+  onDiffsUpdated,
+}: {
+  panel: PricePanel | null;
+  isBroker: boolean;
+  reportDate: string;
+  onDiffsUpdated: (updated: PricePanel) => void;
+}) {
+  const [diffs, setDiffs] = useState<Record<DiffProduct, string>>({
+    FAME0: '', UCOME: '', RME: '', HVO: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  // Initialise form from existing panel diffs
+  useEffect(() => {
+    if (panel?.bio_diffs) {
+      setDiffs({
+        FAME0: panel.bio_diffs.FAME0 != null ? String(panel.bio_diffs.FAME0) : '',
+        UCOME: panel.bio_diffs.UCOME != null ? String(panel.bio_diffs.UCOME) : '',
+        RME:   panel.bio_diffs.RME   != null ? String(panel.bio_diffs.RME)   : '',
+        HVO:   panel.bio_diffs.HVO   != null ? String(panel.bio_diffs.HVO)   : '',
+      });
+    }
+  }, [panel]);
+
+  const handleSaveDiffs = async () => {
+    setSaving(true);
+    setSaveError('');
+    const body: Record<string, number> = {};
+    for (const p of DIFF_PRODUCTS) {
+      const val = parseFloat(diffs[p]);
+      if (!isNaN(val)) body[p] = val;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/price-panel/${reportDate}/diffs`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const updated = await res.json() as PricePanel;
+      onDiffsUpdated(updated);
+    } catch {
+      setSaveError('Failed to save diffs — try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const curve: LsGoContractRow[] = panel?.ls_go_curve ?? [];
+  const flatPrices = panel?.flat_prices ?? {};
+  const existingDiffs = panel?.bio_diffs ?? {};
+  const lsGoM1 = curve[0]?.settlement ?? null;
+  const hasDiffs = DIFF_PRODUCTS.some(p => existingDiffs[p] != null);
+
   return (
-    <div className="bg-card border border-border rounded overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-border bg-surface">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Product Snapshot</h2>
+    <div className="space-y-3">
+      {/* ── LS GO Curve ── */}
+      <div className="bg-card border border-border rounded overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-border bg-surface flex items-center justify-between">
+          <div>
+            <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
+              LS Gasoil (ICE Futures Europe)
+            </h2>
+            <p className="text-text-dim text-xs mt-0.5">Settlement · USD/MT</p>
+          </div>
+          {curve.length > 0 && (
+            <span className="text-text-dim text-xs bg-surface border border-border px-2 py-0.5 rounded">
+              {curve[0].source === 'ice' ? 'ICE Settlement' : 'yfinance'}
+            </span>
+          )}
+        </div>
+        {curve.length === 0 ? (
+          <p className="px-4 py-4 text-text-dim text-xs italic">
+            LS GO data unavailable — will populate during next pipeline run.
+          </p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/50 bg-surface/50">
+                <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Contract</th>
+                <th className="text-right px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Settlement</th>
+                <th className="text-right px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Chg</th>
+                <th className="text-right px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest hidden sm:table-cell">Volume</th>
+                <th className="text-right px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest hidden lg:table-cell">OI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {curve.map((row, idx) => (
+                <tr key={row.contract} className={`border-b border-border/40 ${idx % 2 === 0 ? 'bg-card' : 'bg-surface/40'}`}>
+                  <td className="px-4 py-3 font-semibold text-text-primary text-sm">{row.month_label}</td>
+                  <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">{row.settlement.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right"><ChangeCell change={row.change} /></td>
+                  <td className="px-4 py-3 text-right text-text-dim text-xs hidden sm:table-cell font-mono">
+                    {row.volume != null ? row.volume.toLocaleString() : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right text-text-dim text-xs hidden lg:table-cell font-mono">
+                    {row.open_interest != null ? row.open_interest.toLocaleString() : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border/50">
-            <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Product</th>
-            <th className="text-center px-3 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Dir.</th>
-            <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Status</th>
-            <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest hidden lg:table-cell">Spread / Note</th>
-          </tr>
-        </thead>
-        <tbody>
-          {snapshots.map((s, idx) => (
-            <tr key={s.product} className={`border-b border-border/40 ${idx % 2 === 0 ? 'bg-card' : 'bg-surface/40'}`}>
-              <td className="px-4 py-3 font-bold text-text-primary text-sm tracking-wide">{s.product}</td>
-              <td className={`px-3 py-3 text-center font-bold text-base ${DIRECTION_COLORS[s.direction]}`}>
-                {DIRECTION_LABELS[s.direction]}
-              </td>
-              <td className="px-4 py-3 text-text-secondary text-sm">{s.status}</td>
-              <td className="px-4 py-3 text-text-dim text-xs italic hidden lg:table-cell">
-                {s.spread_note ?? '—'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      {/* ── Biodiesel Flat Prices ── */}
+      {(hasDiffs || isBroker) && (
+        <div className="bg-card border border-border rounded overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-border bg-surface flex items-center justify-between">
+            <div>
+              <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
+                Biodiesel Flat Prices
+              </h2>
+              <p className="text-text-dim text-xs mt-0.5">
+                LS GO M1 {lsGoM1 != null ? `(${lsGoM1.toFixed(2)})` : ''} + Diff · USD/MT
+              </p>
+            </div>
+            {panel?.diffs_updated_at && (
+              <span className="text-text-dim text-xs">
+                Updated {new Date(panel.diffs_updated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
+              </span>
+            )}
+          </div>
+
+          {hasDiffs ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 bg-surface/50">
+                  <th className="text-left px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Product</th>
+                  <th className="text-right px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Diff vs GO</th>
+                  <th className="text-right px-4 py-2 text-text-dim font-semibold text-xs uppercase tracking-widest">Flat Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DIFF_PRODUCTS.filter(p => existingDiffs[p] != null).map((p, idx) => {
+                  const diff = existingDiffs[p] as number;
+                  const flat = flatPrices[p];
+                  return (
+                    <tr key={p} className={`border-b border-border/40 ${idx % 2 === 0 ? 'bg-card' : 'bg-surface/40'}`}>
+                      <td className="px-4 py-3 font-bold text-text-primary text-sm">{p}</td>
+                      <td className="px-4 py-3 text-right"><ChangeCell change={diff} /></td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">
+                        {flat != null ? flat.toFixed(2) : lsGoM1 == null ? '—' : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="px-4 py-3 text-text-dim text-xs italic">
+              No diffs entered yet. Enter them below.
+            </p>
+          )}
+
+          {/* Broker diff input form */}
+          {isBroker && (
+            <div className="border-t border-border px-4 py-4">
+              <p className="text-text-dim text-xs uppercase tracking-widest font-semibold mb-3">
+                Enter Today's Diffs (USD/MT vs LS GO)
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                {DIFF_PRODUCTS.map(p => (
+                  <div key={p}>
+                    <label className="block text-text-dim text-xs mb-1 uppercase tracking-wide">{p}</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      placeholder="e.g. -45.0"
+                      value={diffs[p]}
+                      onChange={e => setDiffs(prev => ({ ...prev, [p]: e.target.value }))}
+                      className="w-full bg-surface border border-border rounded px-2 py-1.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+              {saveError && (
+                <p className="text-negative text-xs mb-2">{saveError}</p>
+              )}
+              <button
+                onClick={() => void handleSaveDiffs()}
+                disabled={saving}
+                className="bg-card border border-border text-text-secondary px-4 py-1.5 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
+              >
+                {saving ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  'Save Diffs & Recalculate'
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -356,6 +529,7 @@ const REFRESH_STEPS = [
 export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'client' }) {
   const isBroker = role === 'broker';
   const [report, setReport] = useState<Report | null>(null);
+  const [panel, setPanel] = useState<PricePanel | null>(null);
   const [loading, setLoading] = useState(true);
   const [usedMock, setUsedMock] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -385,6 +559,13 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         } else {
           setReport(data);
           setBrokerNotes(data.broker_notes ?? '');
+          // Fetch price panel in parallel (non-blocking — failures are silent)
+          fetch(`${API_BASE_URL}/price-panel/latest`, {
+            headers: { 'X-API-Key': API_KEY },
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then((p: PricePanel | null) => { if (p) setPanel(p); })
+            .catch(() => {});
         }
       } catch {
         setReport(MOCK_REPORT);
@@ -562,14 +743,19 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
               </>
             )}
           </div>
+          {report.generated_at && (
+            <p className="text-text-dim text-xs mt-1.5">
+              Generated {new Date(report.generated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {isBroker && (
             <button
               onClick={() => void handleRefresh()}
               disabled={refreshing || sendingToClients}
-              title={refreshing ? refreshStep : 'Fetch latest news, reclassify and regenerate the report'}
-              className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest min-w-[120px] justify-center"
+              title={refreshing ? refreshStep : 'Re-run the pipeline: fetch latest news, reclassify and regenerate the report'}
+              className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest min-w-[140px] justify-center"
             >
               {refreshing ? (
                 <>
@@ -578,7 +764,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                   <span className="sm:hidden">Running…</span>
                 </>
               ) : (
-                '↻ Refresh'
+                '↻ Regenerate'
               )}
             </button>
           )}
@@ -607,10 +793,13 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         </div>
       </div>
 
-      {/* ── Product Snapshot ──────────────────────────────────────────────── */}
-      {report.product_snapshot && report.product_snapshot.length > 0 && (
-        <ProductSnapshotTable snapshots={report.product_snapshot} />
-      )}
+      {/* ── Price Panel (LS GO curve + biodiesel diffs) ───────────────────── */}
+      <PricePanelTable
+        panel={panel}
+        isBroker={isBroker}
+        reportDate={report.report_date}
+        onDiffsUpdated={setPanel}
+      />
 
       {/* ── Market Summary ────────────────────────────────────────────────── */}
       <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
