@@ -118,7 +118,37 @@ export interface LsGoContractRow {
   change: number;
   volume: number | null;
   open_interest: number | null;
-  source: 'ice' | 'yfinance';
+  source: 'ice' | 'yfinance' | 'manual';
+}
+
+export interface GasoilCurveRow {
+  contract: string;
+  settlement: number;
+  change: number;
+}
+
+export interface GasoilVolumeRow {
+  contract: string;
+  volume: number;
+  settlement: number;
+}
+
+export interface GasoilOIRow {
+  contract: string;
+  oi: number;
+}
+
+export interface GasoilReport {
+  id: string;
+  report_date: string;
+  forward_curve: GasoilCurveRow[];
+  volume_by_delivery: GasoilVolumeRow[];
+  oi_curve: GasoilOIRow[];
+  vwap: number | null;
+  total_volume: number;
+  total_oi: number;
+  uploaded_at: string | null;
+  source_filename: string;
 }
 
 export interface PricePanel {

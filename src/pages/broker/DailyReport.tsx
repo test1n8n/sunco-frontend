@@ -6,6 +6,7 @@ import BiasBadge from '../../components/BiasBadge';
 import Spinner from '../../components/Spinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import { useToast, ToastContainer } from '../../components/Toast';
+import GasoilReportPanel from '../../components/GasoilReportPanel';
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
@@ -871,6 +872,11 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           )}
         </div>
       )}
+
+      {/* ── LS Gasoil Forward Curve & Market Data ─────────────────────────── */}
+      <div className="bg-card border border-border rounded p-5">
+        <GasoilReportPanel reportDate={report.report_date} />
+      </div>
 
       {/* ── Supply & Demand Outlook ───────────────────────────────────────── */}
       {hasSDOutlook && (
