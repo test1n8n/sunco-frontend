@@ -1,12 +1,19 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
+interface NavItem {
+  to: string;
+  label: string;
+  end: boolean;
+}
+
 interface LayoutProps {
   children: React.ReactNode;
   pageTitle: string;
+  navLinks?: NavItem[];
 }
 
-const navLinks = [
+const BROKER_NAV: NavItem[] = [
   { to: '/broker',          label: 'Daily Report',  end: true  },
   { to: '/broker/charts',   label: 'Charts',        end: false },
   { to: '/broker/blotter',  label: 'Trade Blotter', end: false },
@@ -14,9 +21,20 @@ const navLinks = [
   { to: '/broker/ai',       label: 'Biofuels AI',   end: false },
 ];
 
-export default function Layout({ children, pageTitle }: LayoutProps) {
+const CLIENT_NAV: NavItem[] = [
+  { to: '/client',          label: 'Daily Report',  end: true  },
+  { to: '/client/charts',   label: 'Charts',        end: false },
+  { to: '/client/archive',  label: 'Archive',       end: false },
+  { to: '/client/ai',       label: 'Biofuels AI',   end: false },
+];
+
+export { BROKER_NAV, CLIENT_NAV };
+
+export default function Layout({ children, pageTitle, navLinks }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+
+  const links = navLinks ?? BROKER_NAV;
 
   const handleLogout = () => {
     localStorage.clear();
@@ -30,7 +48,7 @@ export default function Layout({ children, pageTitle }: LayoutProps) {
         <div className="text-text-secondary text-xs mt-1 tracking-wide">Biofuels Intelligence</div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navLinks.map((link) => (
+        {links.map((link) => (
           <NavLink
             key={link.to}
             to={link.to}

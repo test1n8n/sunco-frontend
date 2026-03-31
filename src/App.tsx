@@ -5,8 +5,7 @@ import TradeBlotter from './pages/broker/TradeBlotter';
 import ReportArchive from './pages/broker/ReportArchive';
 import Charts from './pages/broker/Charts';
 import BiofuelsAI from './pages/broker/BiofuelsAI';
-import ClientReport from './pages/client/ClientReport';
-import Layout from './components/Layout';
+import Layout, { BROKER_NAV, CLIENT_NAV } from './components/Layout';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -27,12 +26,13 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Login />} />
 
+        {/* ── Broker routes ─────────────────────────────────────────── */}
         <Route
           path="/broker"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Daily Report">
-                <DailyReport />
+              <Layout pageTitle="Daily Report" navLinks={BROKER_NAV}>
+                <DailyReport role="broker" />
               </Layout>
             </ProtectedRoute>
           }
@@ -41,7 +41,7 @@ export default function App() {
           path="/broker/blotter"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Trade Blotter">
+              <Layout pageTitle="Trade Blotter" navLinks={BROKER_NAV}>
                 <TradeBlotter />
               </Layout>
             </ProtectedRoute>
@@ -51,7 +51,7 @@ export default function App() {
           path="/broker/archive"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Report Archive">
+              <Layout pageTitle="Report Archive" navLinks={BROKER_NAV}>
                 <ReportArchive />
               </Layout>
             </ProtectedRoute>
@@ -61,29 +61,61 @@ export default function App() {
           path="/broker/charts"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Market Charts">
+              <Layout pageTitle="Market Charts" navLinks={BROKER_NAV}>
                 <Charts />
               </Layout>
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/broker/ai"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Biofuels AI">
+              <Layout pageTitle="Biofuels AI" navLinks={BROKER_NAV}>
                 <BiofuelsAI />
               </Layout>
             </ProtectedRoute>
           }
         />
 
+        {/* ── Client routes (same components, no broker-only features) ── */}
         <Route
           path="/client"
           element={
             <ProtectedRoute requiredRole="client">
-              <ClientReport />
+              <Layout pageTitle="Daily Report" navLinks={CLIENT_NAV}>
+                <DailyReport role="client" />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/charts"
+          element={
+            <ProtectedRoute requiredRole="client">
+              <Layout pageTitle="Market Charts" navLinks={CLIENT_NAV}>
+                <Charts />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/archive"
+          element={
+            <ProtectedRoute requiredRole="client">
+              <Layout pageTitle="Report Archive" navLinks={CLIENT_NAV}>
+                <ReportArchive />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/ai"
+          element={
+            <ProtectedRoute requiredRole="client">
+              <Layout pageTitle="Biofuels AI" navLinks={CLIENT_NAV}>
+                <BiofuelsAI />
+              </Layout>
             </ProtectedRoute>
           }
         />

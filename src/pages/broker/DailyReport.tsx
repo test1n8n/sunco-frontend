@@ -353,7 +353,8 @@ const REFRESH_STEPS = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function DailyReport() {
+export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'client' }) {
+  const isBroker = role === 'broker';
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [usedMock, setUsedMock] = useState(false);
@@ -489,20 +490,22 @@ export default function DailyReport() {
         <ToastContainer toasts={toasts} dismissToast={dismissToast} />
         <p className="text-lg font-semibold text-text-primary mb-2 tracking-wide">Report Pending</p>
         <p className="text-sm mb-6">Today's report is being generated. Check back shortly.</p>
-        <button
-          onClick={() => void handleRefresh()}
-          disabled={refreshing}
-          className="bg-accent text-surface px-5 py-2.5 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-60 flex items-center gap-2 uppercase tracking-widest mx-auto"
-        >
-          {refreshing ? (
-            <>
-              <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
-              {refreshStep || 'Running…'}
-            </>
-          ) : (
-            '↻ Generate Report Now'
-          )}
-        </button>
+        {isBroker && (
+          <button
+            onClick={() => void handleRefresh()}
+            disabled={refreshing}
+            className="bg-accent text-surface px-5 py-2.5 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-60 flex items-center gap-2 uppercase tracking-widest mx-auto"
+          >
+            {refreshing ? (
+              <>
+                <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
+                {refreshStep || 'Running…'}
+              </>
+            ) : (
+              '↻ Generate Report Now'
+            )}
+          </button>
+        )}
       </div>
     );
   }
@@ -561,36 +564,40 @@ export default function DailyReport() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => void handleRefresh()}
-            disabled={refreshing || sendingToClients}
-            title={refreshing ? refreshStep : 'Fetch latest news, reclassify and regenerate the report'}
-            className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest min-w-[120px] justify-center"
-          >
-            {refreshing ? (
-              <>
-                <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
-                <span className="hidden sm:inline">{refreshStep || 'Running…'}</span>
-                <span className="sm:hidden">Running…</span>
-              </>
-            ) : (
-              '↻ Refresh'
-            )}
-          </button>
-          <button
-            onClick={handleSendToClients}
-            disabled={sendingToClients || refreshing}
-            className="bg-accent text-surface px-4 py-2 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
-          >
-            {sendingToClients ? (
-              <>
-                <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
-                Sending...
-              </>
-            ) : (
-              'Send to Clients'
-            )}
-          </button>
+          {isBroker && (
+            <button
+              onClick={() => void handleRefresh()}
+              disabled={refreshing || sendingToClients}
+              title={refreshing ? refreshStep : 'Fetch latest news, reclassify and regenerate the report'}
+              className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest min-w-[120px] justify-center"
+            >
+              {refreshing ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                  <span className="hidden sm:inline">{refreshStep || 'Running…'}</span>
+                  <span className="sm:hidden">Running…</span>
+                </>
+              ) : (
+                '↻ Refresh'
+              )}
+            </button>
+          )}
+          {isBroker && (
+            <button
+              onClick={handleSendToClients}
+              disabled={sendingToClients || refreshing}
+              className="bg-accent text-surface px-4 py-2 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
+            >
+              {sendingToClients ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Send to Clients'
+              )}
+            </button>
+          )}
           <button
             onClick={() => window.print()}
             className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors uppercase tracking-widest"
@@ -672,33 +679,35 @@ export default function DailyReport() {
         <KeyDatesCard dates={report.upcoming_key_dates} />
       )}
 
-      {/* ── Broker Notes ──────────────────────────────────────────────────── */}
-      <div className="bg-card border border-border rounded p-5">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Broker Notes</h2>
-        <textarea
-          value={brokerNotes}
-          onChange={(e) => setBrokerNotes(e.target.value)}
-          rows={4}
-          placeholder="Add internal broker notes here..."
-          className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-none"
-        />
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={() => void handleSaveNotes()}
-            disabled={savingNotes}
-            className="bg-card border border-border text-text-secondary px-5 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
-          >
-            {savingNotes ? (
-              <>
-                <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Notes'
-            )}
-          </button>
+      {/* ── Broker Notes (broker only) ─────────────────────────────────── */}
+      {isBroker && (
+        <div className="bg-card border border-border rounded p-5">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Broker Notes</h2>
+          <textarea
+            value={brokerNotes}
+            onChange={(e) => setBrokerNotes(e.target.value)}
+            rows={4}
+            placeholder="Add internal broker notes here..."
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-none"
+          />
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={() => void handleSaveNotes()}
+              disabled={savingNotes}
+              className="bg-card border border-border text-text-secondary px-5 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
+            >
+              {savingNotes ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Notes'
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
