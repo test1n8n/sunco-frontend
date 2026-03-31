@@ -81,7 +81,8 @@ function SignalPill({ label, value, colorMap }: {
 const DIFF_PRODUCTS = ['FAME0', 'UCOME', 'RME', 'HVO'] as const;
 type DiffProduct = typeof DIFF_PRODUCTS[number];
 
-function ChangeCell({ change }: { change: number }) {
+function ChangeCell({ change }: { change: number | null }) {
+  if (change == null) return <span className="text-text-dim font-mono">—</span>;
   const color = change > 0 ? 'text-positive' : change < 0 ? 'text-negative' : 'text-text-dim';
   const label = change > 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
   return <span className={`font-mono font-semibold ${color}`}>{label}</span>;
@@ -98,21 +99,26 @@ export function PricePanelTable({
   reportDate: string;
   onDiffsUpdated: (updated: PricePanel) => void;
 }) {
+  const [lsGoInput, setLsGoInput] = useState('');
   const [diffs, setDiffs] = useState<Record<DiffProduct, string>>({
     FAME0: '', UCOME: '', RME: '', HVO: '',
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  // Initialise form from existing panel diffs
+  // Initialise form from existing panel data
   useEffect(() => {
-    if (panel?.bio_diffs) {
-      setDiffs({
-        FAME0: panel.bio_diffs.FAME0 != null ? String(panel.bio_diffs.FAME0) : '',
-        UCOME: panel.bio_diffs.UCOME != null ? String(panel.bio_diffs.UCOME) : '',
-        RME:   panel.bio_diffs.RME   != null ? String(panel.bio_diffs.RME)   : '',
-        HVO:   panel.bio_diffs.HVO   != null ? String(panel.bio_diffs.HVO)   : '',
-      });
+    if (panel) {
+      const m1 = panel.ls_go_curve?.[0]?.settlement;
+      if (m1 != null) setLsGoInput(String(m1));
+      if (panel.bio_diffs) {
+        setDiffs({
+          FAME0: panel.bio_diffs.FAME0 != null ? String(panel.bio_diffs.FAME0) : '',
+          UCOME: panel.bio_diffs.UCOME != null ? String(panel.bio_diffs.UCOME) : '',
+          RME:   panel.bio_diffs.RME   != null ? String(panel.bio_diffs.RME)   : '',
+          HVO:   panel.bio_diffs.HVO   != null ? String(panel.bio_diffs.HVO)   : '',
+        });
+      }
     }
   }, [panel]);
 
@@ -120,6 +126,8 @@ export function PricePanelTable({
     setSaving(true);
     setSaveError('');
     const body: Record<string, number> = {};
+    const lsGoVal = parseFloat(lsGoInput);
+    if (!isNaN(lsGoVal)) body['ls_go_m1'] = lsGoVal;
     for (const p of DIFF_PRODUCTS) {
       const val = parseFloat(diffs[p]);
       if (!isNaN(val)) body[p] = val;
@@ -134,7 +142,7 @@ export function PricePanelTable({
       const updated = await res.json() as PricePanel;
       onDiffsUpdated(updated);
     } catch {
-      setSaveError('Failed to save diffs — try again.');
+      setSaveError('Failed to save — try again.');
     } finally {
       setSaving(false);
     }
@@ -159,7 +167,7 @@ export function PricePanelTable({
           </div>
           {curve.length > 0 && (
             <span className="text-text-dim text-xs bg-surface border border-border px-2 py-0.5 rounded">
-              {curve[0].source === 'ice' ? 'ICE Settlement' : 'yfinance'}
+              {curve[0].source === 'ice' ? 'ICE Settlement' : curve[0].source === 'manual' ? 'Manual Entry' : 'Auto'}
             </span>
           )}
         </div>
@@ -247,11 +255,32 @@ export function PricePanelTable({
             </p>
           )}
 
-          {/* Broker diff input form */}
+          {/* Broker input form */}
           {isBroker && (
             <div className="border-t border-border px-4 py-4">
-              <p className="text-text-dim text-xs uppercase tracking-widest font-semibold mb-3">
-                Enter Today's Diffs (USD/MT vs LS GO)
+              <p className="text-text-dim text-xs uppercase tracking-widest font-semibold mb-1">
+                Enter Today's Settlements (USD/MT) — available after 16:30 London
+              </p>
+              <p className="text-text-dim text-xs mb-3 italic">
+                LS GO from ICE Report Center · Diffs from your trading screen
+              </p>
+              {/* LS GO M1 Settlement */}
+              <div className="mb-4">
+                <label className="block text-text-dim text-xs mb-1 uppercase tracking-wide font-semibold">
+                  LS GO M1 Settlement
+                </label>
+                <input
+                  type="number"
+                  step="0.25"
+                  placeholder="e.g. 652.50"
+                  value={lsGoInput}
+                  onChange={e => setLsGoInput(e.target.value)}
+                  className="w-48 bg-surface border border-accent/40 rounded px-2 py-1.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent font-mono"
+                />
+              </div>
+              {/* Biodiesel Diffs */}
+              <p className="text-text-dim text-xs uppercase tracking-widest font-semibold mb-2">
+                Biodiesel Diffs vs LS GO
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 {DIFF_PRODUCTS.map(p => (
