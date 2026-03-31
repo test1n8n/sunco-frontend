@@ -4,6 +4,7 @@ import DailyReport from './pages/broker/DailyReport';
 import TradeBlotter from './pages/broker/TradeBlotter';
 import ReportArchive from './pages/broker/ReportArchive';
 import Charts from './pages/broker/Charts';
+import BiofuelsAI from './pages/broker/BiofuelsAI';
 import ClientReport from './pages/client/ClientReport';
 import Layout from './components/Layout';
 
@@ -62,6 +63,17 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Market Charts">
                 <Charts />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/broker/ai"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Biofuels AI">
+                <BiofuelsAI />
               </Layout>
             </ProtectedRoute>
           }

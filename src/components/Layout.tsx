@@ -11,6 +11,7 @@ const navLinks = [
   { to: '/broker/charts',   label: 'Charts',        end: false },
   { to: '/broker/blotter',  label: 'Trade Blotter', end: false },
   { to: '/broker/archive',  label: 'Archive',       end: false },
+  { to: '/broker/ai',       label: 'Biofuels AI',   end: false },
 ];
 
 export default function Layout({ children, pageTitle }: LayoutProps) {
