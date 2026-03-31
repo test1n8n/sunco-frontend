@@ -5,6 +5,7 @@ import TradeBlotter from './pages/broker/TradeBlotter';
 import ReportArchive from './pages/broker/ReportArchive';
 import Charts from './pages/broker/Charts';
 import BiofuelsAI from './pages/broker/BiofuelsAI';
+import ProductsData from './pages/broker/ProductsData';
 import Layout, { BROKER_NAV, CLIENT_NAV } from './components/Layout';
 
 interface ProtectedRouteProps {
@@ -53,6 +54,16 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Report Archive" navLinks={BROKER_NAV}>
                 <ReportArchive />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/products"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Products Data" navLinks={BROKER_NAV}>
+                <ProductsData />
               </Layout>
             </ProtectedRoute>
           }

@@ -14,11 +14,12 @@ interface LayoutProps {
 }
 
 const BROKER_NAV: NavItem[] = [
-  { to: '/broker',          label: 'Daily Report',  end: true  },
-  { to: '/broker/charts',   label: 'Charts',        end: false },
-  { to: '/broker/blotter',  label: 'Trade Blotter', end: false },
-  { to: '/broker/archive',  label: 'Archive',       end: false },
-  { to: '/broker/ai',       label: 'Biofuels AI',   end: false },
+  { to: '/broker',           label: 'Daily Report',  end: true  },
+  { to: '/broker/products',  label: 'Products Data', end: false },
+  { to: '/broker/charts',    label: 'Charts',        end: false },
+  { to: '/broker/blotter',   label: 'Trade Blotter', end: false },
+  { to: '/broker/archive',   label: 'Archive',       end: false },
+  { to: '/broker/ai',        label: 'Biofuels AI',   end: false },
 ];
 
 const CLIENT_NAV: NavItem[] = [
