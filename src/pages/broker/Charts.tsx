@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  LineChart, Line, BarChart, Bar,
+  LineChart, Line, BarChart, Bar, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
@@ -18,6 +18,27 @@ interface PetroleumData {
   inventories: { date: string; value: number }[];
   refinery_runs: { date: string; value: number }[];
   imports: { date: string; value: number }[];
+  source: string;
+}
+interface CotEntry {
+  report_date: string; open_interest: number;
+  noncomm_long: number; noncomm_short: number;
+  comm_long: number; comm_short: number; net_spec: number;
+}
+interface CotData {
+  corn: CotEntry[]; soybeans: CotEntry[];
+  soybean_oil: CotEntry[]; heating_oil: CotEntry[];
+  source: string;
+}
+interface WeatherPoint { date: string; temp_max: number; temp_min: number | null; precipitation: number }
+interface WeatherRegion { label: string; data: WeatherPoint[] }
+interface WeatherData {
+  us_midwest: WeatherRegion; eu_france: WeatherRegion; malaysia: WeatherRegion;
+  source: string;
+}
+interface FredSeries { date: string; value: number }
+interface FredData {
+  fed_funds_rate: FredSeries[]; dollar_index: FredSeries[]; yield_curve: FredSeries[];
   source: string;
 }
 // ─── Colour palette (visible on dark bg) ─────────────────────────────────────
@@ -105,6 +126,18 @@ function mandateProgress(start: Date, end: Date): number {
   const s    = start.getTime();
   const e    = end.getTime();
   return Math.round(Math.min(100, Math.max(0, ((now - s) / (e - s)) * 100)));
+}
+
+// ─── USD/MT conversion factors ──────────────────────────────────────────────
+const USD_MT_FACTORS: Record<string, number> = {
+  'ZL=F': 22.0462,   // USc/lb → USD/MT  (1 MT = 2204.62 lbs ÷ 100)
+  'ZS=F': 0.36744,   // USc/bu → USD/MT  (1 MT = 36.744 bu ÷ 100)
+  'ZC=F': 0.39368,   // USc/bu → USD/MT  (1 MT = 39.368 bu ÷ 100)
+};
+
+/** Convert a price series to USD/MT using the conversion factor. */
+function toUsdPerMt(data: PricePoint[], factor: number): PricePoint[] {
+  return data.map(p => ({ date: p.date, value: parseFloat((p.value * factor).toFixed(2)) }));
 }
 
 // ─── Shared chart config ──────────────────────────────────────────────────────
@@ -493,6 +526,122 @@ function RangeBtn({ label, active, onClick }: { label: string; active: boolean; 
   );
 }
 
+// ─── Feedstock USD/MT chart ──────────────────────────────────────────────────
+
+function FeedstockUsdChart({ data, color }: { data: PricePoint[]; color: string }) {
+  if (data.length === 0) {
+    return <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>;
+  }
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)} width={48} />
+        <Tooltip content={({ active, payload, label }) => {
+          if (!active || !payload?.length) return null;
+          return (
+            <div className="bg-panel border border-border rounded p-3 text-xs shadow-xl">
+              <p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p>
+              <p className="text-text-primary font-mono font-bold">${(payload[0].value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} /MT</p>
+            </div>
+          );
+        }} />
+        <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── COT Net Spec bar chart ─────────────────────────────────────────────────
+
+function CotNetSpecChart({ data, commodities }: { data: CotData | null; commodities: { key: keyof Omit<CotData, 'source'>; label: string; color: string }[] }) {
+  if (!data) return <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>;
+
+  // Build merged data by report_date
+  const dateSet = new Set<string>();
+  for (const c of commodities) {
+    for (const entry of (data[c.key] as CotEntry[])) {
+      dateSet.add(entry.report_date);
+    }
+  }
+  const dates = Array.from(dateSet).sort();
+
+  const chartData = dates.map(d => {
+    const row: Record<string, string | number> = { date: d };
+    for (const c of commodities) {
+      const entry = (data[c.key] as CotEntry[]).find(e => e.report_date === d);
+      if (entry) row[c.key] = entry.net_spec;
+    }
+    return row;
+  });
+
+  if (chartData.length === 0) return <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>;
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={Math.max(1, Math.floor(chartData.length / 6))} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v < -1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} width={44} />
+        <Tooltip content={({ active, payload, label }) => {
+          if (!active || !payload?.length) return null;
+          return (
+            <div className="bg-panel border border-border rounded p-3 text-xs shadow-xl min-w-[180px]">
+              <p className="text-text-dim mb-2 font-semibold">{fmtFullDate(label as string)}</p>
+              {payload.map((entry: any, i: number) => (
+                <div key={i} className="flex items-center justify-between gap-4 mb-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.color }} />
+                    <span className="text-text-secondary">{entry.name}</span>
+                  </div>
+                  <span className={`font-mono ${(entry.value as number) >= 0 ? 'text-positive' : 'text-negative'}`}>
+                    {(entry.value as number)?.toLocaleString()} contracts
+                  </span>
+                </div>
+              ))}
+            </div>
+          );
+        }} />
+        <Legend wrapperStyle={{ fontSize: 11, color: AXIS_COLOR, paddingTop: 8 }} />
+        {commodities.map(c => (
+          <Bar key={c.key} dataKey={c.key} name={c.label} fill={c.color} radius={[2, 2, 0, 0]} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── Weather chart (ComposedChart with temp lines + precip bars) ─────────────
+
+function WeatherChart({ region }: { region: WeatherRegion | undefined }) {
+  if (!region?.data?.length) return <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>;
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart data={region.data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(region.data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
+        <YAxis yAxisId="temp" tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => `${v}\u00B0`} width={36} />
+        <YAxis yAxisId="precip" orientation="right" tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={[0, 'auto']} tickFormatter={(v: number) => `${v}`} width={32} />
+        <Tooltip content={({ active, payload, label }) => {
+          if (!active || !payload?.length) return null;
+          return (
+            <div className="bg-panel border border-border rounded p-3 text-xs shadow-xl">
+              <p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p>
+              {payload.map((e: any, i: number) => (
+                <p key={i} className="text-text-primary"><span style={{ color: e.color }}>{e.name}</span>: {(e.value as number)?.toFixed(1)}{e.dataKey === 'precipitation' ? ' mm' : '\u00B0C'}</p>
+              ))}
+            </div>
+          );
+        }} />
+        <Bar yAxisId="precip" dataKey="precipitation" fill="#38bdf8" opacity={0.3} name="Precip (mm)" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_max" stroke="#f87171" strokeWidth={1.5} dot={false} name="Max \u00B0C" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_min" stroke="#60a5fa" strokeWidth={1.5} dot={false} name="Min \u00B0C" />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
 // ─── Main Charts component ────────────────────────────────────────────────────
 
 export default function Charts() {
@@ -502,9 +651,14 @@ export default function Charts() {
   const [sentiment, setSentiment]     = useState<BiasPoint[]>([]);
   const [eurusd, setEurusd]             = useState<EurUsdPoint[]>([]);
   const [petroleum, setPetroleum]       = useState<PetroleumData | null>(null);
+  const [cot, setCot]                   = useState<CotData | null>(null);
+  const [weather, setWeather]           = useState<WeatherData | null>(null);
+  const [fred, setFred]                 = useState<FredData | null>(null);
   const [loadingPrices, setLoadingPrices] = useState(true);
   const [loadingOther, setLoadingOther]   = useState(true);
   const [error, setError]             = useState('');
+
+  const eurUsdRate = eurusd.length > 0 ? eurusd[eurusd.length - 1].rate : 1.08;
 
   // Fetch price history whenever 'days' changes
   useEffect(() => {
@@ -537,10 +691,13 @@ export default function Charts() {
     const load = async () => {
       setLoadingOther(true);
       try {
-        const [ethRes, sentRes, petRes] = await Promise.all([
+        const [ethRes, sentRes, petRes, cotRes, weatherRes, fredRes] = await Promise.all([
           fetch(`${API_BASE_URL}/charts/ethanol`, { headers: { 'X-API-Key': API_KEY } }),
           fetch(`${API_BASE_URL}/charts/sentiment`, { headers: { 'X-API-Key': API_KEY } }),
           fetch(`${API_BASE_URL}/charts/petroleum`, { headers: { 'X-API-Key': API_KEY } }),
+          fetch(`${API_BASE_URL}/charts/cot`, { headers: { 'X-API-Key': API_KEY } }),
+          fetch(`${API_BASE_URL}/charts/weather`, { headers: { 'X-API-Key': API_KEY } }),
+          fetch(`${API_BASE_URL}/charts/fred`, { headers: { 'X-API-Key': API_KEY } }),
         ]);
         if (ethRes.ok) {
           const j = await ethRes.json() as { history: EthanolPoint[] };
@@ -553,6 +710,18 @@ export default function Charts() {
         if (petRes.ok) {
           const j = await petRes.json() as PetroleumData;
           setPetroleum(j);
+        }
+        if (cotRes.ok) {
+          const j = await cotRes.json() as CotData;
+          setCot(j);
+        }
+        if (weatherRes.ok) {
+          const j = await weatherRes.json() as WeatherData;
+          setWeather(j);
+        }
+        if (fredRes.ok) {
+          const j = await fredRes.json() as FredData;
+          setFred(j);
         }
       } finally {
         setLoadingOther(false);
@@ -708,94 +877,93 @@ export default function Charts() {
             </ChartCard>
           </div>
 
-          {/* ── Biofuel Feedstock Prices (individual) ─────────────────── */}
+          {/* ── Biofuel Feedstock Prices (USD/MT) ─────────────────── */}
           <div className="pt-2">
             <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              Biofuel Feedstock Prices — Individual
+              Biofuel Feedstock Prices — USD per Metric Ton
             </h3>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard
-              title="Rapeseed (Euronext)"
-              subtitle={`EUR/MT — ${days}-day`}
-              height={280}
-            >
-              {tickerMap['GNF=F']?.data?.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={tickerMap['GNF=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
-                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['GNF=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(0)} width={44} />
-                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} EUR/MT</p></div>); }} />
-                    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
-              )}
+            <ChartCard title="Rapeseed (Euronext)" subtitle={`USD/MT — ${days}-day`} height={280}>
+              <FeedstockUsdChart data={tickerMap['GNF=F']?.data?.length > 0 ? tickerMap['GNF=F'].data.map(p => ({ date: p.date, value: parseFloat((p.value * eurUsdRate).toFixed(2)) })) : []} color="#22d3ee" />
             </ChartCard>
-
-            <ChartCard
-              title="Soybeans (CBOT)"
-              subtitle={`USc/bu — ${days}-day`}
-              height={280}
-            >
-              {tickerMap['ZS=F']?.data?.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={tickerMap['ZS=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
-                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['ZS=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(0)} width={44} />
-                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} USc/bu</p></div>); }} />
-                    <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
-              )}
+            <ChartCard title="Soybeans (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
+              <FeedstockUsdChart data={tickerMap['ZS=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZS=F'].data, USD_MT_FACTORS['ZS=F']) : []} color="#34d399" />
             </ChartCard>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard
-              title="Soybean Oil (CBOT)"
-              subtitle={`USc/lb — ${days}-day`}
-              height={280}
-            >
-              {tickerMap['ZL=F']?.data?.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={tickerMap['ZL=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
-                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['ZL=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(1)} width={44} />
-                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} USc/lb</p></div>); }} />
-                    <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
-              )}
+            <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
+              <FeedstockUsdChart data={tickerMap['ZL=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZL=F'].data, USD_MT_FACTORS['ZL=F']) : []} color="#f59e0b" />
             </ChartCard>
+            <ChartCard title="Corn (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
+              <FeedstockUsdChart data={tickerMap['ZC=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZC=F'].data, USD_MT_FACTORS['ZC=F']) : []} color="#fb923c" />
+            </ChartCard>
+          </div>
 
-            <ChartCard
-              title="Corn (CBOT)"
-              subtitle={`USc/bu — ${days}-day`}
-              height={280}
-            >
-              {tickerMap['ZC=F']?.data?.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={tickerMap['ZC=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
-                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['ZC=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(0)} width={44} />
-                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} USc/bu</p></div>); }} />
-                    <Line type="monotone" dataKey="value" stroke="#fb923c" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
-              )}
+          {/* ── CFTC Commitments of Traders ──────────────────────── */}
+          <div className="pt-2">
+            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
+              CFTC Commitments of Traders — Net Speculative Positioning
+            </h3>
+          </div>
+
+          <ChartCard
+            title="Net Speculative Positions"
+            subtitle="Non-commercial long minus short (contracts) — weekly"
+            height={320}
+          >
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : (
+              <CotNetSpecChart
+                data={cot}
+                commodities={[
+                  { key: 'corn', label: 'Corn', color: '#fb923c' },
+                  { key: 'soybeans', label: 'Soybeans', color: '#34d399' },
+                  { key: 'soybean_oil', label: 'Soybean Oil', color: '#f59e0b' },
+                  { key: 'heating_oil', label: 'Heating Oil', color: '#fbbf24' },
+                ]}
+              />
+            )}
+          </ChartCard>
+
+          {/* ── Weather — Growing Regions ────────────────────────── */}
+          <div className="pt-2">
+            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
+              Weather — Key Growing Regions
+            </h3>
+          </div>
+
+          <ChartCard title="US Midwest (Iowa)" subtitle="Soybeans & corn belt — temperature + precipitation (90 days)" height={280}>
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.us_midwest} />}
+          </ChartCard>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Northern France" subtitle="Rapeseed growing region — temperature + precipitation" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.eu_france} />}
+            </ChartCard>
+            <ChartCard title="Malaysia" subtitle="Palm oil growing region — temperature + precipitation" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.malaysia} />}
+            </ChartCard>
+          </div>
+
+          {/* ── FRED Economic Indicators ─────────────────────────── */}
+          <div className="pt-2">
+            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
+              Economic Indicators — FRED
+            </h3>
+          </div>
+
+          <ChartCard title="US Dollar Index" subtitle="Trade-weighted broad dollar — affects USD-priced commodity competitiveness" height={280}>
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.dollar_index ?? []} unit="" color="#a78bfa" />}
+          </ChartCard>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Federal Funds Rate" subtitle="Effective rate (%) — impacts commodity financing costs" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.fed_funds_rate ?? []} unit="%" color="#60a5fa" />}
+            </ChartCard>
+            <ChartCard title="Yield Curve (10Y-2Y)" subtitle="10-Year minus 2-Year Treasury spread — recession signal" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.yield_curve ?? []} unit="%" color="#f87171" />}
             </ChartCard>
           </div>
         </>
