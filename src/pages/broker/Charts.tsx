@@ -20,14 +20,6 @@ interface PetroleumData {
   imports: { date: string; value: number }[];
   source: string;
 }
-interface CropSeries   { year: number; value: number }
-interface CropsData {
-  rapeseed: { production: CropSeries[]; ending_stocks: CropSeries[] };
-  soybeans: { production: CropSeries[]; ending_stocks: CropSeries[] };
-  palm_oil: { production: CropSeries[]; ending_stocks: CropSeries[] };
-  source: string;
-}
-
 // ─── Colour palette (visible on dark bg) ─────────────────────────────────────
 
 const COLOURS: Record<string, string> = {
@@ -39,11 +31,12 @@ const COLOURS: Record<string, string> = {
   'NG=F':     '#f87171',   // Natural Gas   — red
   'EURUSD=X': '#a78bfa',   // EUR/USD       — violet
   'USDCNY=X': '#f472b6',   // USD/CNY       — pink
+  'GNF=F':    '#22d3ee',   // Rapeseed      — cyan
 };
 
 // ─── Chart groups ─────────────────────────────────────────────────────────────
 
-const FEEDSTOCK_TICKERS = ['ZL=F', 'ZS=F', 'ZC=F'];
+const FEEDSTOCK_TICKERS = ['ZL=F', 'ZS=F', 'ZC=F', 'GNF=F'];
 const ENERGY_TICKERS    = ['BZ=F', 'HO=F', 'NG=F'];
 const FX_TICKERS        = ['EURUSD=X', 'USDCNY=X'];
 
@@ -414,72 +407,6 @@ function PetroleumChart({ data, unit, color }: { data: { date: string; value: nu
   );
 }
 
-// ─── USDA crop bar chart ─────────────────────────────────────────────────────
-
-function CropBarChart({ data, title }: { data: { production: CropSeries[]; ending_stocks: CropSeries[] }; title: string }) {
-  // Merge production and ending_stocks into single array by year
-  const merged = data.production.map(p => {
-    const stocks = data.ending_stocks.find(s => s.year === p.year);
-    return {
-      year: String(p.year),
-      production: p.value,
-      ending_stocks: stocks?.value ?? 0,
-    };
-  });
-
-  if (merged.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-text-dim text-sm">
-        USDA data unavailable — check USDA_API_KEY
-      </div>
-    );
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={merged} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
-        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
-        <XAxis
-          dataKey="year"
-          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
-          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
-          width={44}
-        />
-        <Tooltip
-          content={({ active, payload, label }) => {
-            if (!active || !payload?.length) return null;
-            return (
-              <div className="bg-panel border border-border rounded p-3 text-xs shadow-xl min-w-[160px]">
-                <p className="text-text-dim mb-2 font-semibold">{title} — {label}</p>
-                {payload.map((entry: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between gap-4 mb-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.color }} />
-                      <span className="text-text-secondary">{entry.name}</span>
-                    </div>
-                    <span className="text-text-primary font-mono">{(entry.value as number)?.toLocaleString()}</span>
-                  </div>
-                ))}
-                <p className="text-text-dim mt-1.5 text-[10px]">1000 MT</p>
-              </div>
-            );
-          }}
-        />
-        <Legend wrapperStyle={{ fontSize: 11, color: AXIS_COLOR, paddingTop: 8 }} />
-        <Bar dataKey="production" name="Production" fill="#34d399" radius={[2, 2, 0, 0]} />
-        <Bar dataKey="ending_stocks" name="Ending Stocks" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
 // ─── Mandate progress bars ────────────────────────────────────────────────────
 
 interface MandateItem {
@@ -575,7 +502,6 @@ export default function Charts() {
   const [sentiment, setSentiment]     = useState<BiasPoint[]>([]);
   const [eurusd, setEurusd]             = useState<EurUsdPoint[]>([]);
   const [petroleum, setPetroleum]       = useState<PetroleumData | null>(null);
-  const [crops, setCrops]               = useState<CropsData | null>(null);
   const [loadingPrices, setLoadingPrices] = useState(true);
   const [loadingOther, setLoadingOther]   = useState(true);
   const [error, setError]             = useState('');
@@ -611,11 +537,10 @@ export default function Charts() {
     const load = async () => {
       setLoadingOther(true);
       try {
-        const [ethRes, sentRes, petRes, cropRes] = await Promise.all([
+        const [ethRes, sentRes, petRes] = await Promise.all([
           fetch(`${API_BASE_URL}/charts/ethanol`, { headers: { 'X-API-Key': API_KEY } }),
           fetch(`${API_BASE_URL}/charts/sentiment`, { headers: { 'X-API-Key': API_KEY } }),
           fetch(`${API_BASE_URL}/charts/petroleum`, { headers: { 'X-API-Key': API_KEY } }),
-          fetch(`${API_BASE_URL}/charts/crops`, { headers: { 'X-API-Key': API_KEY } }),
         ]);
         if (ethRes.ok) {
           const j = await ethRes.json() as { history: EthanolPoint[] };
@@ -628,10 +553,6 @@ export default function Charts() {
         if (petRes.ok) {
           const j = await petRes.json() as PetroleumData;
           setPetroleum(j);
-        }
-        if (cropRes.ok) {
-          const j = await cropRes.json() as CropsData;
-          setCrops(j);
         }
       } finally {
         setLoadingOther(false);
@@ -675,7 +596,7 @@ export default function Charts() {
           {/* ── 1. Biofuel Feedstock Costs ────────────────────────────────── */}
           <ChartCard
             title="Biofuel Feedstock Costs"
-            subtitle={`Soybean Oil · Soybeans · Corn — base-100 indexed, ${days}-day`}
+            subtitle={`Soybean Oil · Soybeans · Corn · Rapeseed — base-100 indexed, ${days}-day`}
             height={300}
           >
             <MultiLineChart tickers={FEEDSTOCK_TICKERS} tickerMap={tickerMap} height={260} />
@@ -787,36 +708,94 @@ export default function Charts() {
             </ChartCard>
           </div>
 
-          {/* ── USDA Crop Data ────────────────────────────────────────── */}
+          {/* ── Biofuel Feedstock Prices (individual) ─────────────────── */}
           <div className="pt-2">
             <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              Global Crop Production & Stocks — USDA
+              Biofuel Feedstock Prices — Individual
             </h3>
           </div>
 
-          <ChartCard
-            title="Rapeseed"
-            subtitle="World production & ending stocks (1000 MT) — USDA FAS"
-            height={300}
-          >
-            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <CropBarChart data={crops?.rapeseed ?? { production: [], ending_stocks: [] }} title="Rapeseed" />}
-          </ChartCard>
-
           <div className="grid gap-5 md:grid-cols-2">
             <ChartCard
-              title="Soybeans"
-              subtitle="World production & ending stocks (1000 MT)"
-              height={300}
+              title="Rapeseed (Euronext)"
+              subtitle={`EUR/MT — ${days}-day`}
+              height={280}
             >
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <CropBarChart data={crops?.soybeans ?? { production: [], ending_stocks: [] }} title="Soybeans" />}
+              {tickerMap['GNF=F']?.data?.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={tickerMap['GNF=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['GNF=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(0)} width={44} />
+                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} EUR/MT</p></div>); }} />
+                    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
+              )}
             </ChartCard>
 
             <ChartCard
-              title="Palm Oil"
-              subtitle="World production & ending stocks (1000 MT)"
-              height={300}
+              title="Soybeans (CBOT)"
+              subtitle={`USc/bu — ${days}-day`}
+              height={280}
             >
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <CropBarChart data={crops?.palm_oil ?? { production: [], ending_stocks: [] }} title="Palm Oil" />}
+              {tickerMap['ZS=F']?.data?.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={tickerMap['ZS=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['ZS=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(0)} width={44} />
+                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} USc/bu</p></div>); }} />
+                    <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
+              )}
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard
+              title="Soybean Oil (CBOT)"
+              subtitle={`USc/lb — ${days}-day`}
+              height={280}
+            >
+              {tickerMap['ZL=F']?.data?.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={tickerMap['ZL=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['ZL=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(1)} width={44} />
+                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} USc/lb</p></div>); }} />
+                    <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
+              )}
+            </ChartCard>
+
+            <ChartCard
+              title="Corn (CBOT)"
+              subtitle={`USc/bu — ${days}-day`}
+              height={280}
+            >
+              {tickerMap['ZC=F']?.data?.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={tickerMap['ZC=F'].data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+                    <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickFormatter={fmtAxisDate} interval={tickInterval(tickerMap['ZC=F'].data.length)} tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(0)} width={44} />
+                    <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; return (<div className="bg-panel border border-border rounded p-3 text-xs shadow-xl"><p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p><p className="text-text-primary font-mono font-bold">{(payload[0].value as number)?.toFixed(2)} USc/bu</p></div>); }} />
+                    <Line type="monotone" dataKey="value" stroke="#fb923c" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-text-dim text-sm">No data available</div>
+              )}
             </ChartCard>
           </div>
         </>
