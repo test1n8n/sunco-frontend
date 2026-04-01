@@ -13,6 +13,20 @@ interface PricePoint  { date: string; value: number }
 interface TickerInfo  { name: string; relevance: string; data: PricePoint[] }
 interface EthanolPoint { date: string; production: number }
 interface BiasPoint    { date: string; bias: 'bullish' | 'bearish' | 'neutral' }
+interface EurUsdPoint  { date: string; rate: number }
+interface PetroleumData {
+  inventories: { date: string; value: number }[];
+  refinery_runs: { date: string; value: number }[];
+  imports: { date: string; value: number }[];
+  source: string;
+}
+interface CropSeries   { year: number; value: number }
+interface CropsData {
+  rapeseed: { production: CropSeries[]; ending_stocks: CropSeries[] };
+  soybeans: { production: CropSeries[]; ending_stocks: CropSeries[] };
+  palm_oil: { production: CropSeries[]; ending_stocks: CropSeries[] };
+  source: string;
+}
 
 // ─── Colour palette (visible on dark bg) ─────────────────────────────────────
 
@@ -302,6 +316,170 @@ function BiasHistory({ history }: { history: BiasPoint[] }) {
   );
 }
 
+// ─── EUR/USD line chart ──────────────────────────────────────────────────────
+
+function EurUsdChart({ data }: { data: EurUsdPoint[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-dim text-sm">
+        ECB data unavailable
+      </div>
+    );
+  }
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+        <XAxis
+          dataKey="date"
+          tickFormatter={fmtAxisDate}
+          interval={tickInterval(data.length)}
+          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
+          axisLine={false}
+          tickLine={false}
+          domain={['auto', 'auto']}
+          tickFormatter={(v: number) => v.toFixed(4)}
+          width={52}
+        />
+        <Tooltip
+          content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
+            return (
+              <div className="bg-panel border border-border rounded p-3 text-xs shadow-xl">
+                <p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p>
+                <p className="text-text-primary font-mono font-bold">
+                  {(payload[0].value as number)?.toFixed(4)}
+                </p>
+              </div>
+            );
+          }}
+        />
+        <Line type="monotone" dataKey="rate" stroke="#a78bfa" strokeWidth={2} dot={false} name="EUR/USD" />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── Petroleum line chart ────────────────────────────────────────────────────
+
+function PetroleumChart({ data, unit, color }: { data: { date: string; value: number }[]; unit: string; color: string }) {
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-dim text-sm">
+        EIA data unavailable — check EIA_API_KEY
+      </div>
+    );
+  }
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+        <XAxis
+          dataKey="date"
+          tickFormatter={fmtAxisDate}
+          interval={tickInterval(data.length)}
+          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
+          axisLine={false}
+          tickLine={false}
+          domain={['auto', 'auto']}
+          tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0)}
+          width={44}
+        />
+        <Tooltip
+          content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
+            return (
+              <div className="bg-panel border border-border rounded p-3 text-xs shadow-xl">
+                <p className="text-text-dim mb-1">{fmtFullDate(label as string)}</p>
+                <p className="text-text-primary font-mono font-bold">
+                  {(payload[0].value as number)?.toLocaleString()} {unit}
+                </p>
+              </div>
+            );
+          }}
+        />
+        <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── USDA crop bar chart ─────────────────────────────────────────────────────
+
+function CropBarChart({ data, title }: { data: { production: CropSeries[]; ending_stocks: CropSeries[] }; title: string }) {
+  // Merge production and ending_stocks into single array by year
+  const merged = data.production.map(p => {
+    const stocks = data.ending_stocks.find(s => s.year === p.year);
+    return {
+      year: String(p.year),
+      production: p.value,
+      ending_stocks: stocks?.value ?? 0,
+    };
+  });
+
+  if (merged.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-dim text-sm">
+        USDA data unavailable — check USDA_API_KEY
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={merged} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+        <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
+        <XAxis
+          dataKey="year"
+          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          tick={{ fill: AXIS_COLOR, fontSize: CHART_FONT }}
+          axisLine={false}
+          tickLine={false}
+          tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+          width={44}
+        />
+        <Tooltip
+          content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
+            return (
+              <div className="bg-panel border border-border rounded p-3 text-xs shadow-xl min-w-[160px]">
+                <p className="text-text-dim mb-2 font-semibold">{title} — {label}</p>
+                {payload.map((entry: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between gap-4 mb-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.color }} />
+                      <span className="text-text-secondary">{entry.name}</span>
+                    </div>
+                    <span className="text-text-primary font-mono">{(entry.value as number)?.toLocaleString()}</span>
+                  </div>
+                ))}
+                <p className="text-text-dim mt-1.5 text-[10px]">1000 MT</p>
+              </div>
+            );
+          }}
+        />
+        <Legend wrapperStyle={{ fontSize: 11, color: AXIS_COLOR, paddingTop: 8 }} />
+        <Bar dataKey="production" name="Production" fill="#34d399" radius={[2, 2, 0, 0]} />
+        <Bar dataKey="ending_stocks" name="Ending Stocks" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 // ─── Mandate progress bars ────────────────────────────────────────────────────
 
 interface MandateItem {
@@ -395,6 +573,9 @@ export default function Charts() {
   const [tickerMap, setTickerMap]     = useState<Record<string, TickerInfo>>({});
   const [ethanol, setEthanol]         = useState<EthanolPoint[]>([]);
   const [sentiment, setSentiment]     = useState<BiasPoint[]>([]);
+  const [eurusd, setEurusd]             = useState<EurUsdPoint[]>([]);
+  const [petroleum, setPetroleum]       = useState<PetroleumData | null>(null);
+  const [crops, setCrops]               = useState<CropsData | null>(null);
   const [loadingPrices, setLoadingPrices] = useState(true);
   const [loadingOther, setLoadingOther]   = useState(true);
   const [error, setError]             = useState('');
@@ -405,12 +586,17 @@ export default function Charts() {
       setLoadingPrices(true);
       setError('');
       try {
-        const res = await fetch(`${API_BASE_URL}/charts/prices?days=${days}`, {
-          headers: { 'X-API-Key': API_KEY },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json() as { tickers: Record<string, TickerInfo> };
+        const [priceRes, eurusdRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/charts/prices?days=${days}`, { headers: { 'X-API-Key': API_KEY } }),
+          fetch(`${API_BASE_URL}/charts/eurusd?days=${days}`, { headers: { 'X-API-Key': API_KEY } }),
+        ]);
+        if (!priceRes.ok) throw new Error(`HTTP ${priceRes.status}`);
+        const json = await priceRes.json() as { tickers: Record<string, TickerInfo> };
         setTickerMap(json.tickers);
+        if (eurusdRes.ok) {
+          const j = await eurusdRes.json() as { history: EurUsdPoint[] };
+          setEurusd(j.history);
+        }
       } catch (e) {
         setError('Failed to load price history — please refresh.');
       } finally {
@@ -425,9 +611,11 @@ export default function Charts() {
     const load = async () => {
       setLoadingOther(true);
       try {
-        const [ethRes, sentRes] = await Promise.all([
+        const [ethRes, sentRes, petRes, cropRes] = await Promise.all([
           fetch(`${API_BASE_URL}/charts/ethanol`, { headers: { 'X-API-Key': API_KEY } }),
           fetch(`${API_BASE_URL}/charts/sentiment`, { headers: { 'X-API-Key': API_KEY } }),
+          fetch(`${API_BASE_URL}/charts/petroleum`, { headers: { 'X-API-Key': API_KEY } }),
+          fetch(`${API_BASE_URL}/charts/crops`, { headers: { 'X-API-Key': API_KEY } }),
         ]);
         if (ethRes.ok) {
           const j = await ethRes.json() as { history: EthanolPoint[] };
@@ -436,6 +624,14 @@ export default function Charts() {
         if (sentRes.ok) {
           const j = await sentRes.json() as { history: BiasPoint[] };
           setSentiment(j.history);
+        }
+        if (petRes.ok) {
+          const j = await petRes.json() as PetroleumData;
+          setPetroleum(j);
+        }
+        if (cropRes.ok) {
+          const j = await cropRes.json() as CropsData;
+          setCrops(j);
         }
       } finally {
         setLoadingOther(false);
@@ -547,6 +743,81 @@ export default function Charts() {
               </div>
             </div>
 
+          </div>
+
+          {/* ── EUR/USD Exchange Rate ─────────────────────────────── */}
+          <ChartCard
+            title="EUR/USD Exchange Rate"
+            subtitle={`Daily spot rate from ECB — ${days}-day`}
+            height={300}
+          >
+            {loadingPrices ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <EurUsdChart data={eurusd} />}
+          </ChartCard>
+
+          {/* ── EIA Petroleum Data ──────────────────────────────────── */}
+          <div className="pt-2">
+            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
+              US Weekly Petroleum Data — EIA
+            </h3>
+          </div>
+
+          <ChartCard
+            title="Crude Oil Inventories"
+            subtitle="US commercial stocks excl. SPR — thousand barrels (weekly)"
+            height={280}
+          >
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.inventories ?? []} unit="k bbl" color="#60a5fa" />}
+          </ChartCard>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard
+              title="Refinery Crude Oil Runs"
+              subtitle="US refiner net input — thousand bbl/day (weekly)"
+              height={280}
+            >
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.refinery_runs ?? []} unit="k bbl/d" color="#f59e0b" />}
+            </ChartCard>
+
+            <ChartCard
+              title="Crude Oil Imports"
+              subtitle="US weekly imports — thousand bbl/day"
+              height={280}
+            >
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.imports ?? []} unit="k bbl/d" color="#f87171" />}
+            </ChartCard>
+          </div>
+
+          {/* ── USDA Crop Data ────────────────────────────────────────── */}
+          <div className="pt-2">
+            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
+              Global Crop Production & Stocks — USDA
+            </h3>
+          </div>
+
+          <ChartCard
+            title="Rapeseed"
+            subtitle="World production & ending stocks (1000 MT) — USDA FAS"
+            height={300}
+          >
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <CropBarChart data={crops?.rapeseed ?? { production: [], ending_stocks: [] }} title="Rapeseed" />}
+          </ChartCard>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard
+              title="Soybeans"
+              subtitle="World production & ending stocks (1000 MT)"
+              height={300}
+            >
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <CropBarChart data={crops?.soybeans ?? { production: [], ending_stocks: [] }} title="Soybeans" />}
+            </ChartCard>
+
+            <ChartCard
+              title="Palm Oil"
+              subtitle="World production & ending stocks (1000 MT)"
+              height={300}
+            >
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <CropBarChart data={crops?.palm_oil ?? { production: [], ending_stocks: [] }} title="Palm Oil" />}
+            </ChartCard>
           </div>
         </>
       )}
