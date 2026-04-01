@@ -57,7 +57,6 @@ const COLOURS: Record<string, string> = {
 
 // ─── Chart groups ─────────────────────────────────────────────────────────────
 
-const FEEDSTOCK_TICKERS = ['ZL=F', 'ZS=F', 'ZC=F', 'GNF=F'];
 const ENERGY_TICKERS    = ['BZ=F', 'HO=F', 'NG=F'];
 const FX_TICKERS        = ['EURUSD=X', 'USDCNY=X'];
 
@@ -754,24 +753,23 @@ export default function Charts() {
       )}
 
       <p className="text-text-dim text-xs">
-        All prices sourced via Yahoo Finance (yfinance) — 15-min delayed. Charts show base-100 indexed values
-        so series with different units can be compared on a single axis. Unavailable tickers are hidden automatically.
+        All prices sourced via Yahoo Finance (yfinance) — 15-min delayed. Indexed charts use base-100
+        so series with different units can be compared. Unavailable tickers are hidden automatically.
       </p>
 
       {loadingPrices ? (
         <div className="py-16"><Spinner /></div>
       ) : (
         <>
-          {/* ── 1. Biofuel Feedstock Costs ────────────────────────────────── */}
-          <ChartCard
-            title="Biofuel Feedstock Costs"
-            subtitle={`Soybean Oil · Soybeans · Corn · Rapeseed — base-100 indexed, ${days}-day`}
-            height={300}
-          >
-            <MultiLineChart tickers={FEEDSTOCK_TICKERS} tickerMap={tickerMap} height={260} />
-          </ChartCard>
+          {/* ================================================================
+              SECTION 1 — GASOIL & ENERGY
+              Impacts: LS Gasoil, Heating Oil, fossil fuel blending economics
+              ================================================================ */}
+          <div className="pt-3 pb-1 border-b border-accent/30">
+            <h2 className="text-accent font-bold text-sm uppercase tracking-widest">Gasoil & Energy</h2>
+            <p className="text-text-dim text-xs mt-0.5">Crude oil, gasoil, and refinery fundamentals — drives LS Gasoil pricing</p>
+          </div>
 
-          {/* ── 2. Energy & Blending Economics ───────────────────────────── */}
           <ChartCard
             title="Energy & Blending Economics"
             subtitle={`Brent Crude · Heating Oil (gasoil proxy) · Natural Gas — base-100 indexed, ${days}-day`}
@@ -780,35 +778,154 @@ export default function Charts() {
             <MultiLineChart tickers={ENERGY_TICKERS} tickerMap={tickerMap} height={260} />
           </ChartCard>
 
-          {/* ── 3. FX + 4. Ethanol  (side by side) ───────────────────────── */}
-          <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard
-              title="FX Impact"
-              subtitle={`EUR/USD · USD/CNY — base-100 indexed, ${days}-day`}
-              height={280}
-            >
-              <MultiLineChart tickers={FX_TICKERS} tickerMap={tickerMap} height={230} />
-            </ChartCard>
+          <ChartCard
+            title="Crude Oil Inventories"
+            subtitle="US commercial stocks excl. SPR — thousand barrels (weekly)"
+            height={280}
+          >
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.inventories ?? []} unit="k bbl" color="#60a5fa" />}
+          </ChartCard>
 
-            <ChartCard
-              title="US Ethanol Production"
-              subtitle="Weekly output (thousand barrels/day) — EIA Open Data"
-              height={280}
-            >
-              {loadingOther ? (
-                <div className="flex items-center justify-center h-full">
-                  <Spinner />
-                </div>
-              ) : (
-                <EthanolChart data={ethanol} />
-              )}
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Refinery Crude Oil Runs" subtitle="US refiner net input — thousand bbl/day (weekly)" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.refinery_runs ?? []} unit="k bbl/d" color="#f59e0b" />}
+            </ChartCard>
+            <ChartCard title="Crude Oil Imports" subtitle="US weekly imports — thousand bbl/day" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.imports ?? []} unit="k bbl/d" color="#f87171" />}
             </ChartCard>
           </div>
 
-          {/* ── 5. Bias History + 6. Mandate Calendar (side by side) ──────── */}
-          <div className="grid gap-5 md:grid-cols-2">
+          <ChartCard
+            title="Heating Oil — Net Speculative Positioning"
+            subtitle="CFTC non-commercial long minus short (contracts) — weekly"
+            height={280}
+          >
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : (
+              <CotNetSpecChart data={cot} commodities={[{ key: 'heating_oil', label: 'Heating Oil / ULSD', color: '#60a5fa' }]} />
+            )}
+          </ChartCard>
 
-            {/* Market Bias History */}
+          {/* ================================================================
+              SECTION 2 — BIODIESEL
+              Impacts: FAME0, RME, SME, UCOME (soybean oil, rapeseed, soybeans)
+              ================================================================ */}
+          <div className="pt-6 pb-1 border-b border-positive/30">
+            <h2 className="text-positive font-bold text-sm uppercase tracking-widest">Biodiesel</h2>
+            <p className="text-text-dim text-xs mt-0.5">Feedstock costs and positioning — drives FAME0, RME, SME, UCOME pricing</p>
+          </div>
+
+          <ChartCard
+            title="Biodiesel Feedstock Comparison"
+            subtitle={`Soybean Oil · Soybeans · Rapeseed — base-100 indexed, ${days}-day`}
+            height={300}
+          >
+            <MultiLineChart tickers={['ZL=F', 'ZS=F', 'GNF=F']} tickerMap={tickerMap} height={260} />
+          </ChartCard>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Rapeseed (Euronext)" subtitle={`USD/MT — ${days}-day — RME feedstock`} height={280}>
+              <FeedstockUsdChart data={tickerMap['GNF=F']?.data?.length > 0 ? tickerMap['GNF=F'].data.map(p => ({ date: p.date, value: parseFloat((p.value * eurUsdRate).toFixed(2)) })) : []} color="#22d3ee" />
+            </ChartCard>
+            <ChartCard title="Soybeans (CBOT)" subtitle={`USD/MT — ${days}-day — SME/FAME0 feedstock`} height={280}>
+              <FeedstockUsdChart data={tickerMap['ZS=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZS=F'].data, USD_MT_FACTORS['ZS=F']) : []} color="#34d399" />
+            </ChartCard>
+          </div>
+
+          <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day — primary FAME0 feedstock`} height={280}>
+            <FeedstockUsdChart data={tickerMap['ZL=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZL=F'].data, USD_MT_FACTORS['ZL=F']) : []} color="#e879f9" />
+          </ChartCard>
+
+          <ChartCard
+            title="Biodiesel Feedstocks — Net Speculative Positioning"
+            subtitle="CFTC non-commercial long minus short (contracts) — weekly"
+            height={300}
+          >
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : (
+              <CotNetSpecChart data={cot} commodities={[
+                { key: 'soybeans', label: 'Soybeans', color: '#34d399' },
+                { key: 'soybean_oil', label: 'Soybean Oil', color: '#e879f9' },
+              ]} />
+            )}
+          </ChartCard>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Northern France" subtitle="Rapeseed growing region — temperature + precipitation" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.eu_france} />}
+            </ChartCard>
+            <ChartCard title="US Midwest (Iowa)" subtitle="Soybean belt — temperature + precipitation" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.us_midwest} />}
+            </ChartCard>
+          </div>
+
+          {/* ================================================================
+              SECTION 3 — ADVANCED BIOFUELS
+              Impacts: HVO, SAF, Ethanol, UCO, Tallow
+              ================================================================ */}
+          <div className="pt-6 pb-1 border-b border-accent/30" style={{ borderColor: '#22d3ee33' }}>
+            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#22d3ee' }}>Advanced Biofuels</h2>
+            <p className="text-text-dim text-xs mt-0.5">Ethanol, palm oil (HVO), and corn — drives HVO, SAF, EthanolT2 pricing</p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Corn (CBOT)" subtitle={`USD/MT — ${days}-day — ethanol feedstock`} height={280}>
+              <FeedstockUsdChart data={tickerMap['ZC=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZC=F'].data, USD_MT_FACTORS['ZC=F']) : []} color="#f87171" />
+            </ChartCard>
+            <ChartCard title="US Ethanol Production" subtitle="Weekly output (thousand barrels/day) — EIA" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <EthanolChart data={ethanol} />}
+            </ChartCard>
+          </div>
+
+          <ChartCard
+            title="Corn — Net Speculative Positioning"
+            subtitle="CFTC non-commercial long minus short (contracts) — weekly"
+            height={280}
+          >
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : (
+              <CotNetSpecChart data={cot} commodities={[{ key: 'corn', label: 'Corn', color: '#f87171' }]} />
+            )}
+          </ChartCard>
+
+          <ChartCard title="Malaysia" subtitle="Palm oil growing region (HVO/SAF feedstock) — temperature + precipitation" height={280}>
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.malaysia} />}
+          </ChartCard>
+
+          {/* ================================================================
+              SECTION 4 — FX, RATES & MACRO
+              Impacts: All biofuels (pricing, financing, demand outlook)
+              ================================================================ */}
+          <div className="pt-6 pb-1 border-b border-[#a78bfa]/30">
+            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#a78bfa' }}>FX, Rates & Macro</h2>
+            <p className="text-text-dim text-xs mt-0.5">Currency, interest rates, and economic indicators — affects all commodity pricing</p>
+          </div>
+
+          <ChartCard
+            title="EUR/USD Exchange Rate"
+            subtitle={`Daily spot rate from ECB — ${days}-day`}
+            height={300}
+          >
+            <EurUsdChart data={eurusd} />
+          </ChartCard>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="FX Impact" subtitle={`EUR/USD · USD/CNY — base-100 indexed, ${days}-day`} height={280}>
+              <MultiLineChart tickers={FX_TICKERS} tickerMap={tickerMap} height={230} />
+            </ChartCard>
+            <ChartCard title="US Dollar Index" subtitle="Trade-weighted broad dollar — FRED" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.dollar_index ?? []} unit="" color="#a78bfa" />}
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Federal Funds Rate" subtitle="Effective rate (%) — commodity financing costs" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.fed_funds_rate ?? []} unit="%" color="#60a5fa" />}
+            </ChartCard>
+            <ChartCard title="Yield Curve (10Y-2Y)" subtitle="Treasury spread — recession signal" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.yield_curve ?? []} unit="%" color="#f87171" />}
+            </ChartCard>
+          </div>
+
+          {/* ── Market Outlook & Mandates ──────────────────────────── */}
+          <div className="grid gap-5 md:grid-cols-2">
             <div className="bg-card border border-border rounded p-5">
               <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">
                 Short-Term Market Bias — Recent Reports
@@ -820,8 +937,6 @@ export default function Charts() {
                 </p>
               )}
             </div>
-
-            {/* Mandate Calendar */}
             <div className="bg-card border border-border rounded p-5">
               <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">
                 Annual Blending Obligation Progress
@@ -832,139 +947,6 @@ export default function Charts() {
                 ))}
               </div>
             </div>
-
-          </div>
-
-          {/* ── EUR/USD Exchange Rate ─────────────────────────────── */}
-          <ChartCard
-            title="EUR/USD Exchange Rate"
-            subtitle={`Daily spot rate from ECB — ${days}-day`}
-            height={300}
-          >
-            {loadingPrices ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <EurUsdChart data={eurusd} />}
-          </ChartCard>
-
-          {/* ── EIA Petroleum Data ──────────────────────────────────── */}
-          <div className="pt-2">
-            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              US Weekly Petroleum Data — EIA
-            </h3>
-          </div>
-
-          <ChartCard
-            title="Crude Oil Inventories"
-            subtitle="US commercial stocks excl. SPR — thousand barrels (weekly)"
-            height={280}
-          >
-            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.inventories ?? []} unit="k bbl" color="#60a5fa" />}
-          </ChartCard>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard
-              title="Refinery Crude Oil Runs"
-              subtitle="US refiner net input — thousand bbl/day (weekly)"
-              height={280}
-            >
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.refinery_runs ?? []} unit="k bbl/d" color="#f59e0b" />}
-            </ChartCard>
-
-            <ChartCard
-              title="Crude Oil Imports"
-              subtitle="US weekly imports — thousand bbl/day"
-              height={280}
-            >
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.imports ?? []} unit="k bbl/d" color="#f87171" />}
-            </ChartCard>
-          </div>
-
-          {/* ── Biofuel Feedstock Prices (USD/MT) ─────────────────── */}
-          <div className="pt-2">
-            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              Biofuel Feedstock Prices — USD per Metric Ton
-            </h3>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Rapeseed (Euronext)" subtitle={`USD/MT — ${days}-day`} height={280}>
-              <FeedstockUsdChart data={tickerMap['GNF=F']?.data?.length > 0 ? tickerMap['GNF=F'].data.map(p => ({ date: p.date, value: parseFloat((p.value * eurUsdRate).toFixed(2)) })) : []} color="#22d3ee" />
-            </ChartCard>
-            <ChartCard title="Soybeans (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
-              <FeedstockUsdChart data={tickerMap['ZS=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZS=F'].data, USD_MT_FACTORS['ZS=F']) : []} color="#34d399" />
-            </ChartCard>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
-              <FeedstockUsdChart data={tickerMap['ZL=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZL=F'].data, USD_MT_FACTORS['ZL=F']) : []} color="#e879f9" />
-            </ChartCard>
-            <ChartCard title="Corn (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
-              <FeedstockUsdChart data={tickerMap['ZC=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZC=F'].data, USD_MT_FACTORS['ZC=F']) : []} color="#f87171" />
-            </ChartCard>
-          </div>
-
-          {/* ── CFTC Commitments of Traders ──────────────────────── */}
-          <div className="pt-2">
-            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              CFTC Commitments of Traders — Net Speculative Positioning
-            </h3>
-          </div>
-
-          <ChartCard
-            title="Net Speculative Positions"
-            subtitle="Non-commercial long minus short (contracts) — weekly"
-            height={320}
-          >
-            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : (
-              <CotNetSpecChart
-                data={cot}
-                commodities={[
-                  { key: 'corn', label: 'Corn', color: '#f87171' },
-                  { key: 'soybeans', label: 'Soybeans', color: '#34d399' },
-                  { key: 'soybean_oil', label: 'Soybean Oil', color: '#e879f9' },
-                  { key: 'heating_oil', label: 'Heating Oil', color: '#60a5fa' },
-                ]}
-              />
-            )}
-          </ChartCard>
-
-          {/* ── Weather — Growing Regions ────────────────────────── */}
-          <div className="pt-2">
-            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              Weather — Key Growing Regions
-            </h3>
-          </div>
-
-          <ChartCard title="US Midwest (Iowa)" subtitle="Soybeans & corn belt — temperature + precipitation (90 days)" height={280}>
-            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.us_midwest} />}
-          </ChartCard>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Northern France" subtitle="Rapeseed growing region — temperature + precipitation" height={280}>
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.eu_france} />}
-            </ChartCard>
-            <ChartCard title="Malaysia" subtitle="Palm oil growing region — temperature + precipitation" height={280}>
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.malaysia} />}
-            </ChartCard>
-          </div>
-
-          {/* ── FRED Economic Indicators ─────────────────────────── */}
-          <div className="pt-2">
-            <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              Economic Indicators — FRED
-            </h3>
-          </div>
-
-          <ChartCard title="US Dollar Index" subtitle="Trade-weighted broad dollar — affects USD-priced commodity competitiveness" height={280}>
-            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.dollar_index ?? []} unit="" color="#a78bfa" />}
-          </ChartCard>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Federal Funds Rate" subtitle="Effective rate (%) — impacts commodity financing costs" height={280}>
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.fed_funds_rate ?? []} unit="%" color="#60a5fa" />}
-            </ChartCard>
-            <ChartCard title="Yield Curve (10Y-2Y)" subtitle="10-Year minus 2-Year Treasury spread — recession signal" height={280}>
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.yield_curve ?? []} unit="%" color="#f87171" />}
-            </ChartCard>
           </div>
         </>
       )}
