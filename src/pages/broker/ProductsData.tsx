@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { PricePanel } from '../../types';
 import { API_BASE_URL, API_KEY } from '../../config';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
+import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
 import PricePanelForm from '../../components/PricePanelForm';
 
 export default function ProductsData() {
@@ -43,7 +44,13 @@ export default function ProductsData() {
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Section 2: Biodiesel diff entry + flat prices */}
+      {/* Section 2: Biodiesel trade screenshots */}
+      <BiodieselTradesPanel />
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Section 3: Biodiesel diff entry + flat prices */}
       <div>
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">
           Biodiesel Settlements

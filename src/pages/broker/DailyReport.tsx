@@ -7,6 +7,7 @@ import Spinner from '../../components/Spinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import { useToast, ToastContainer } from '../../components/Toast';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
+import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
@@ -687,6 +688,9 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ── LS Gasoil Charts (read-only — data from Products Data tab) ───── */}
       <GasoilReportPanel readOnly reportDate={report.report_date} />
+
+      {/* ── Biodiesel Trades (read-only — data from Products Data tab) ────── */}
+      <BiodieselTradesPanel readOnly />
 
       {/* ── Supply & Demand Outlook ───────────────────────────────────────── */}
       {hasSDOutlook && (
