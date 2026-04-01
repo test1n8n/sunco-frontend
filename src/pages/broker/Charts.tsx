@@ -44,9 +44,9 @@ interface FredData {
 // ─── Colour palette (visible on dark bg) ─────────────────────────────────────
 
 const COLOURS: Record<string, string> = {
-  'ZL=F':     '#f59e0b',   // Soybean Oil   — amber
+  'ZL=F':     '#e879f9',   // Soybean Oil   — fuchsia
   'ZS=F':     '#34d399',   // Soybeans      — emerald
-  'ZC=F':     '#fb923c',   // Corn          — orange
+  'ZC=F':     '#f87171',   // Corn          — red
   'BZ=F':     '#60a5fa',   // Brent         — blue
   'HO=F':     '#fbbf24',   // Heating Oil   — yellow (gasoil proxy)
   'NG=F':     '#f87171',   // Natural Gas   — red
@@ -895,10 +895,10 @@ export default function Charts() {
 
           <div className="grid gap-5 md:grid-cols-2">
             <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
-              <FeedstockUsdChart data={tickerMap['ZL=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZL=F'].data, USD_MT_FACTORS['ZL=F']) : []} color="#f59e0b" />
+              <FeedstockUsdChart data={tickerMap['ZL=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZL=F'].data, USD_MT_FACTORS['ZL=F']) : []} color="#e879f9" />
             </ChartCard>
             <ChartCard title="Corn (CBOT)" subtitle={`USD/MT — ${days}-day`} height={280}>
-              <FeedstockUsdChart data={tickerMap['ZC=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZC=F'].data, USD_MT_FACTORS['ZC=F']) : []} color="#fb923c" />
+              <FeedstockUsdChart data={tickerMap['ZC=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZC=F'].data, USD_MT_FACTORS['ZC=F']) : []} color="#f87171" />
             </ChartCard>
           </div>
 
@@ -918,10 +918,10 @@ export default function Charts() {
               <CotNetSpecChart
                 data={cot}
                 commodities={[
-                  { key: 'corn', label: 'Corn', color: '#fb923c' },
+                  { key: 'corn', label: 'Corn', color: '#f87171' },
                   { key: 'soybeans', label: 'Soybeans', color: '#34d399' },
-                  { key: 'soybean_oil', label: 'Soybean Oil', color: '#f59e0b' },
-                  { key: 'heating_oil', label: 'Heating Oil', color: '#fbbf24' },
+                  { key: 'soybean_oil', label: 'Soybean Oil', color: '#e879f9' },
+                  { key: 'heating_oil', label: 'Heating Oil', color: '#60a5fa' },
                 ]}
               />
             )}
