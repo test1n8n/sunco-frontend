@@ -279,7 +279,7 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
         </h2>
         {uploadedAt && report && (
           <span className="text-text-dim text-xs">
-            {report.source_screenshots} screenshot{report.source_screenshots !== 1 ? 's' : ''} · uploaded {uploadedAt}
+            uploaded {uploadedAt}
           </span>
         )}
       </div>
@@ -322,10 +322,14 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
       {report && (
         <>
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <MetricCard
               label="Total Trades"
               value={report.total_trades.toLocaleString()}
+            />
+            <MetricCard
+              label="Total Volume"
+              value={`${report.total_volume.toLocaleString()} lots`}
             />
             <MetricCard
               label="Outright Volume"
