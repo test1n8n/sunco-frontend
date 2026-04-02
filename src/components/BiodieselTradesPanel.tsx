@@ -104,37 +104,33 @@ function MetricCard({ label, value, sub }: { label: string; value: string; sub?:
   );
 }
 
-// ─── Multi-Image Drop Zone ───────────────────────────────────────────────────
+// ─── File Drop Zone (Excel/CSV) ─────────────────────────────────────────────
 
-function ImageDropZone({
-  onFiles,
+function FileDropZone({
+  onFile,
   uploading,
-  fileCount,
+  filename,
 }: {
-  onFiles: (files: File[]) => void;
+  onFile: (file: File) => void;
   uploading: boolean;
-  fileCount: number;
+  filename: string | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-
-  const ACCEPTED = ['image/png', 'image/jpeg'];
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      const dropped = Array.from(e.dataTransfer.files).filter((f) =>
-        ACCEPTED.includes(f.type),
-      );
-      if (dropped.length) onFiles(dropped);
+      const file = e.dataTransfer.files?.[0];
+      if (file) onFile(file);
     },
-    [onFiles],
+    [onFile],
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files ?? []);
-    if (selected.length) onFiles(selected);
+    const file = e.target.files?.[0];
+    if (file) onFile(file);
   };
 
   return (
@@ -155,8 +151,7 @@ function ImageDropZone({
       <input
         ref={inputRef}
         type="file"
-        accept=".png,.jpg,.jpeg"
-        multiple
+        accept=".xlsx,.csv"
         className="hidden"
         onChange={handleChange}
       />
@@ -165,21 +160,21 @@ function ImageDropZone({
         <>
           <span className="inline-block w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
           <div>
-            <p className="text-text-primary text-sm font-semibold">Extracting trade data with AI...</p>
-            <p className="text-text-dim text-xs">Processing screenshots via Anthropic Claude</p>
+            <p className="text-text-primary text-sm font-semibold">Processing trade data...</p>
+            <p className="text-text-dim text-xs">Parsing Excel and computing analytics</p>
           </div>
         </>
       ) : (
         <>
-          <span className="text-2xl shrink-0">📸</span>
+          <span className="text-2xl shrink-0">📊</span>
           <div>
             <p className="text-text-primary text-sm font-semibold">
-              {fileCount > 0
-                ? `${fileCount} screenshot${fileCount > 1 ? 's' : ''} uploaded — drop new images to replace`
-                : 'Drop ICE biodiesel screenshots here, or click to select'}
+              {filename
+                ? `Uploaded: ${filename} — drop new file to replace`
+                : 'Drop ICE biodiesel trades Excel/CSV here, or click to select'}
             </p>
             <p className="text-text-dim text-xs mt-0.5">
-              PNG/JPEG images from the ICE biodiesel diff futures screen
+              .xlsx or .csv with columns: Type, Product, Delivery, Lots, Price, Time
             </p>
           </div>
         </>
@@ -217,12 +212,14 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
       .catch(() => {});
   }, []);
 
-  const handleFiles = async (files: File[]) => {
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+
+  const handleFile = async (file: File) => {
     setUploading(true);
     setError(null);
     try {
       const formData = new FormData();
-      files.forEach((f) => formData.append('files', f));
+      formData.append('file', file);
 
       const today = new Date().toISOString().slice(0, 10);
       const params = new URLSearchParams({ report_date: today });
@@ -246,6 +243,7 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
 
       const data: BiodieselTradeReport = await res.json();
       setReport(data);
+      setUploadedFilename(file.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -290,10 +288,10 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
       {!readOnly && (
         <div className="flex gap-3 items-start">
           <div className="flex-1">
-            <ImageDropZone
-              onFiles={handleFiles}
+            <FileDropZone
+              onFile={handleFile}
               uploading={uploading}
-              fileCount={report?.source_screenshots ?? 0}
+              filename={uploadedFilename}
             />
           </div>
           <div className="flex flex-col gap-1 shrink-0">
