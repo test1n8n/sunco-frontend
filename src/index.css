@@ -283,6 +283,11 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 
 @media print {
+  /* ── Always hide compact news in regular print ──────────────────────── */
+  [data-section="news-compact"] {
+    display: none !important;
+  }
+
   /* ── Hide sections not needed in short PDF ─────────────────────────── */
   body.short-pdf [data-section="what-to-watch"],
   body.short-pdf [data-section="news"],
@@ -292,6 +297,28 @@
   body.short-pdf [data-section="oi-chart"],
   body.short-pdf [data-section="spread-trades"] {
     display: none !important;
+  }
+
+  /* ── Show compact news in short PDF ────────────────────────────────── */
+  body.short-pdf [data-section="news-compact"] {
+    display: block !important;
+  }
+
+  body.short-pdf [data-section="news-compact"] p {
+    font-size: 8pt !important;
+    line-height: 1.3 !important;
+    margin-bottom: 1pt !important;
+  }
+
+  body.short-pdf [data-section="news-compact"] a {
+    font-size: 7pt !important;
+    color: #666 !important;
+    word-break: break-all;
+  }
+
+  /* Hide the auto-appended URL after links in compact news (already inline) */
+  body.short-pdf [data-section="news-compact"] a[href^="http"]::after {
+    content: none !important;
   }
 
   /* ── Tighter page margins ──────────────────────────────────────────── */

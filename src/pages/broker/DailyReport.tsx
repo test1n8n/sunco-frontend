@@ -704,6 +704,39 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         </div>
       )}
 
+      {/* ── Compact News (short PDF only — hidden on screen & full PDF) ──── */}
+      {hasAnyNews && (
+        <div data-section="news-compact" className="hidden">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">Market News</h2>
+
+          {([
+            { label: 'SAF', items: safNews },
+            { label: 'Advanced Biofuels', items: advancedNews },
+            { label: 'Biodiesel', items: biodieselNews },
+            { label: 'General & Policy', items: generalNews },
+          ] as { label: string; items: NewsItem[] }[])
+            .filter(g => g.items.length > 0)
+            .map(g => (
+              <div key={g.label} className="mb-2">
+                <p className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-0.5">{g.label}</p>
+                {g.items.map((n, i) => (
+                  <p key={i} className="text-text-primary text-xs leading-snug ml-2">
+                    • {n.headline}{' '}
+                    <span className="text-text-dim">({n.source})</span>
+                    {n.url && (
+                      <>
+                        {' — '}
+                        <a href={n.url} className="text-accent underline">{n.url}</a>
+                      </>
+                    )}
+                  </p>
+                ))}
+              </div>
+            ))
+          }
+        </div>
+      )}
+
       {/* ── LS Gasoil Charts (read-only — data from Products Data tab) ───── */}
       <GasoilReportPanel readOnly reportDate={report.report_date} />
 
