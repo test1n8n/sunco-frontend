@@ -322,14 +322,10 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
       {report && (
         <>
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MetricCard
               label="Total Trades"
               value={report.total_trades.toLocaleString()}
-            />
-            <MetricCard
-              label="Total Volume"
-              value={`${report.total_volume.toLocaleString()} lots`}
             />
             <MetricCard
               label="Outright Volume"

@@ -147,6 +147,7 @@ export interface GasoilReport {
   vwap: number | null;
   total_volume: number;
   total_oi: number;
+  total_spread_volume: number;
   uploaded_at: string | null;
   source_filename: string;
 }

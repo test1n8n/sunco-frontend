@@ -210,7 +210,7 @@ export default function GasoilReportPanel({ readOnly = false }: Props) {
       {gasoilReport && (
         <>
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <MetricCard
               label="VWAP"
               value={gasoilReport.vwap != null ? `${gasoilReport.vwap.toLocaleString()} $/MT` : '—'}
@@ -234,6 +234,11 @@ export default function GasoilReportPanel({ readOnly = false }: Props) {
               label="Total Open Interest"
               value={gasoilReport.total_oi.toLocaleString()}
               sub="lots outstanding"
+            />
+            <MetricCard
+              label="Spread Volume"
+              value={gasoilReport.total_spread_volume.toLocaleString()}
+              sub="spread lots traded"
             />
           </div>
 
