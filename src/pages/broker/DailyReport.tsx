@@ -638,6 +638,22 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           >
             Download PDF
           </button>
+          <button
+            onClick={() => {
+              document.body.classList.add('short-pdf');
+              requestAnimationFrame(() => {
+                window.print();
+                // Remove class after print dialog closes
+                const cleanup = () => { document.body.classList.remove('short-pdf'); window.removeEventListener('afterprint', cleanup); };
+                window.addEventListener('afterprint', cleanup);
+                // Fallback: remove after 5s in case afterprint doesn't fire
+                setTimeout(() => document.body.classList.remove('short-pdf'), 5000);
+              });
+            }}
+            className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors uppercase tracking-widest"
+          >
+            Download Short PDF
+          </button>
         </div>
       </div>
 
@@ -652,12 +668,14 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ── What to Watch ─────────────────────────────────────────────────── */}
       {report.what_to_watch && report.what_to_watch.length > 0 && (
-        <WhatToWatchCard items={report.what_to_watch} />
+        <div data-section="what-to-watch">
+          <WhatToWatchCard items={report.what_to_watch} />
+        </div>
       )}
 
       {/* ── News by Product Category ──────────────────────────────────────── */}
       {hasAnyNews && (
-        <div className="space-y-5">
+        <div className="space-y-5" data-section="news">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market News</h2>
 
           {/* SAF */}
@@ -694,11 +712,13 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ── Supply & Demand Outlook ───────────────────────────────────────── */}
       {hasSDOutlook && (
-        <SupplyDemandCard outlook={report.supply_demand_outlook!} />
+        <div data-section="supply-demand">
+          <SupplyDemandCard outlook={report.supply_demand_outlook!} />
+        </div>
       )}
 
       {/* ── Macro Signals ─────────────────────────────────────────────────── */}
-      <div>
+      <div data-section="macro-signals">
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Macro Signals</h2>
         <MacroSignalsTable signals={report.macro_signals} />
       </div>
@@ -714,7 +734,9 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ── Upcoming Key Dates ────────────────────────────────────────────── */}
       {report.upcoming_key_dates && report.upcoming_key_dates.length > 0 && (
-        <KeyDatesCard dates={report.upcoming_key_dates} />
+        <div data-section="key-dates">
+          <KeyDatesCard dates={report.upcoming_key_dates} />
+        </div>
       )}
 
       {/* ── Broker Notes (broker only) ─────────────────────────────────── */}

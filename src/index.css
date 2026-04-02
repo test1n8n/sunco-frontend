@@ -271,3 +271,115 @@
     }
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SHORT PDF MODE
+   Activated when body has class "short-pdf". Hides non-essential sections,
+   tightens spacing to fit a concise 2-page executive summary.
+   Keeps: header, flat prices, market summary, metric cards, all charts,
+          product summary table, market outlook.
+   Removes: news, what to watch, macro signals, supply/demand, key dates,
+            OI chart, spread trades table.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@media print {
+  /* ── Hide sections not needed in short PDF ─────────────────────────── */
+  body.short-pdf [data-section="what-to-watch"],
+  body.short-pdf [data-section="news"],
+  body.short-pdf [data-section="supply-demand"],
+  body.short-pdf [data-section="macro-signals"],
+  body.short-pdf [data-section="key-dates"],
+  body.short-pdf [data-section="oi-chart"],
+  body.short-pdf [data-section="spread-trades"] {
+    display: none !important;
+  }
+
+  /* ── Tighter page margins ──────────────────────────────────────────── */
+  body.short-pdf {
+    font-size: 9.5pt !important;
+    line-height: 1.35 !important;
+  }
+
+  /* ── Tighter spacing between sections ──────────────────────────────── */
+  body.short-pdf .space-y-5 > * + * {
+    margin-top: 8pt !important;
+  }
+
+  body.short-pdf .space-y-4 > * + * {
+    margin-top: 6pt !important;
+  }
+
+  /* ── Compact cards ─────────────────────────────────────────────────── */
+  body.short-pdf [class*="bg-card"],
+  body.short-pdf [class*="bg-surface"] {
+    padding: 6pt 8pt !important;
+  }
+
+  /* ── Compact metric card grid ──────────────────────────────────────── */
+  body.short-pdf [class*="grid"] {
+    gap: 4pt !important;
+  }
+
+  body.short-pdf [class*="bg-surface"] span[class*="text-xl"] {
+    font-size: 12pt !important;
+  }
+
+  body.short-pdf [class*="bg-surface"] span[class*="text-xs"] {
+    font-size: 7pt !important;
+  }
+
+  /* ── Compact tables ────────────────────────────────────────────────── */
+  body.short-pdf th {
+    padding: 3pt 5pt !important;
+    font-size: 7pt !important;
+  }
+
+  body.short-pdf td {
+    padding: 3pt 5pt !important;
+    font-size: 8.5pt !important;
+  }
+
+  /* ── Smaller charts ────────────────────────────────────────────────── */
+  body.short-pdf .recharts-wrapper {
+    max-height: 140px !important;
+  }
+
+  body.short-pdf .recharts-wrapper svg {
+    max-height: 140px !important;
+  }
+
+  /* ── Compact headings ──────────────────────────────────────────────── */
+  body.short-pdf h2 {
+    font-size: 8pt !important;
+    margin-bottom: 4pt !important;
+  }
+
+  body.short-pdf h3 {
+    font-size: 7.5pt !important;
+    margin-bottom: 3pt !important;
+  }
+
+  /* ── Market summary text ───────────────────────────────────────────── */
+  body.short-pdf p[class*="leading-relaxed"] {
+    font-size: 9pt !important;
+    line-height: 1.3 !important;
+  }
+
+  /* ── Outlook cards: more compact ───────────────────────────────────── */
+  body.short-pdf [class*="md:grid-cols-2"] {
+    gap: 6pt !important;
+  }
+
+  /* ── Header: compact report branding ───────────────────────────────── */
+  body.short-pdf .space-y-5.max-w-4xl::before {
+    content: "SUNCO BROKERS  ·  Daily Market Summary";
+    font-size: 8pt !important;
+    padding-bottom: 4pt !important;
+    margin-bottom: 6pt !important;
+  }
+
+  /* ── Hide link URLs in short mode (saves space) ────────────────────── */
+  body.short-pdf a[href^="http"]::after {
+    content: none !important;
+  }
+}

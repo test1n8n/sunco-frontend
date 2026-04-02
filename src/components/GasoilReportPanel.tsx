@@ -306,7 +306,7 @@ export default function GasoilReportPanel({ readOnly = false }: Props) {
 
           {/* Open Interest Curve */}
           {oiData.length > 0 && (
-            <div className="bg-card border border-border rounded p-5">
+            <div className="bg-card border border-border rounded p-5" data-section="oi-chart">
               <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
                 Open Interest by Contract (lots)
               </h3>

@@ -465,7 +465,7 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
 
           {/* Spread Trades Table */}
           {report.spreads.length > 0 && (
-            <div className="bg-card border border-border rounded p-5">
+            <div className="bg-card border border-border rounded p-5" data-section="spread-trades">
               <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
                 Spread Trades
               </h3>
