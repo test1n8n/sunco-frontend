@@ -336,23 +336,35 @@
     margin-top: 6pt !important;
   }
 
-  /* ── Compact cards ─────────────────────────────────────────────────── */
-  body.short-pdf [class*="bg-card"],
-  body.short-pdf [class*="bg-surface"] {
+  /* ── Compact content cards (market summary, outlook, etc.) ─────────── */
+  body.short-pdf [class*="bg-card"] {
     padding: 6pt 8pt !important;
+  }
+
+  /* ── Metric cards: small & tight ───────────────────────────────────── */
+  body.short-pdf [class*="bg-surface"] {
+    padding: 3pt 6pt !important;
+    gap: 0 !important;
+  }
+
+  body.short-pdf [class*="bg-surface"] span[class*="text-xl"] {
+    font-size: 10pt !important;
+    font-weight: 800 !important;
+  }
+
+  body.short-pdf [class*="bg-surface"] span[class*="text-xs"]:first-child {
+    font-size: 6pt !important;
+    letter-spacing: 0.3pt !important;
+  }
+
+  /* Hide the sub text on metric cards to save space */
+  body.short-pdf [class*="bg-surface"] span[class*="text-xs"]:last-child:not(:first-child) {
+    display: none !important;
   }
 
   /* ── Compact metric card grid ──────────────────────────────────────── */
   body.short-pdf [class*="grid"] {
     gap: 4pt !important;
-  }
-
-  body.short-pdf [class*="bg-surface"] span[class*="text-xl"] {
-    font-size: 12pt !important;
-  }
-
-  body.short-pdf [class*="bg-surface"] span[class*="text-xs"] {
-    font-size: 7pt !important;
   }
 
   /* ── Compact tables ────────────────────────────────────────────────── */
@@ -366,14 +378,19 @@
     font-size: 8.5pt !important;
   }
 
-  /* ── Smaller charts ────────────────────────────────────────────────── */
-  body.short-pdf .recharts-wrapper {
-    max-height: 140px !important;
+  /* ── Bold important numbers in tables ──────────────────────────────── */
+  body.short-pdf td[class*="font-mono"],
+  body.short-pdf td span[class*="font-mono"] {
+    font-weight: 700 !important;
   }
 
-  body.short-pdf .recharts-wrapper svg {
-    max-height: 140px !important;
+  /* Bold all numeric table cells (VWAP, flat price, volume, etc.) */
+  body.short-pdf td:nth-child(n+2) {
+    font-weight: 600 !important;
   }
+
+  /* ── Charts: keep normal size, no distortion ───────────────────────── */
+  /* (no max-height overrides — charts render at their natural size) */
 
   /* ── Compact headings ──────────────────────────────────────────────── */
   body.short-pdf h2 {
@@ -392,9 +409,27 @@
     line-height: 1.3 !important;
   }
 
-  /* ── Outlook cards: more compact ───────────────────────────────────── */
+  /* ── Outlook cards: compact with bold bias & key points ────────────── */
   body.short-pdf [class*="md:grid-cols-2"] {
     gap: 6pt !important;
+  }
+
+  /* Bold the bias badge and outlook summary */
+  body.short-pdf [class*="bg-positive"],
+  body.short-pdf [class*="bg-negative"],
+  body.short-pdf [class*="bg-accent"] {
+    font-weight: 800 !important;
+  }
+
+  /* ── Bold key values throughout ────────────────────────────────────── */
+  /* Flat prices table values */
+  body.short-pdf [class*="font-mono"] {
+    font-weight: 700 !important;
+  }
+
+  /* M1 settlement, change values in header area */
+  body.short-pdf [class*="font-bold"] {
+    font-weight: 800 !important;
   }
 
   /* ── Header: compact report branding ───────────────────────────────── */
