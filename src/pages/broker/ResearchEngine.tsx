@@ -334,6 +334,21 @@ export default function ResearchEngine() {
           await loadFullReport(id);
         } else if (data.status === 'failed') {
           stopPolling();
+          // Try loading the report — it may be a partial result with draft preserved
+          try {
+            const rRes = await fetch(`${API_BASE_URL}/research/${id}`, {
+              headers: { 'X-API-Key': API_KEY },
+            });
+            if (rRes.ok) {
+              const rData = (await rRes.json()) as FullResearchReport;
+              if (rData.report_body) {
+                setReport(rData);
+                setView('report');
+                showToast('error', 'Research partially complete — verification stage failed. Draft report shown.');
+                return;
+              }
+            }
+          } catch { /* fall through to error */ }
           const errMsg = data.error || 'Research failed. Please try again with a different brief.';
           setError(errMsg);
         }
