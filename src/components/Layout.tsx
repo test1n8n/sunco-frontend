@@ -20,6 +20,7 @@ const BROKER_NAV: NavItem[] = [
   { to: '/broker/blotter',   label: 'Trade Blotter', end: false },
   { to: '/broker/archive',   label: 'Archive',       end: false },
   { to: '/broker/ai',        label: 'Biofuels AI',   end: false },
+  { to: '/broker/research',  label: 'Research',      end: false },
 ];
 
 const CLIENT_NAV: NavItem[] = [
