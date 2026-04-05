@@ -14,6 +14,7 @@ interface ResearchStatus {
   research_id: string;
   status: string;
   progress_pct: number;
+  error?: string | null;
 }
 
 interface ResearchListItem {
@@ -333,7 +334,8 @@ export default function ResearchEngine() {
           await loadFullReport(id);
         } else if (data.status === 'failed') {
           stopPolling();
-          setError('Research failed. Please try again with a different brief.');
+          const errMsg = data.error || 'Research failed. Please try again with a different brief.';
+          setError(errMsg);
         }
       } catch {
         showToast('error', 'Connection lost. Retrying...');
