@@ -202,7 +202,7 @@ export default function ResearchEngine() {
   const fetchPastResearch = useCallback(async () => {
     setLoadingList(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/research/list`, {
+      const res = await fetch(`${API_BASE_URL}/research/list/all`, {
         headers: { 'X-API-Key': API_KEY },
       });
       if (res.ok) {
