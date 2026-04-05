@@ -331,7 +331,7 @@ export default function ResearchEngine() {
 
         if (data.status === 'done') {
           stopPolling();
-          await loadFullReport(id);
+          try { await loadFullReport(id); } catch { /* toast already shown */ }
         } else if (data.status === 'failed') {
           stopPolling();
           // Try loading the report — it may be a partial result with draft preserved
@@ -369,19 +369,18 @@ export default function ResearchEngine() {
   // ── Load full report ──────────────────────────────────────────────────────
 
   const loadFullReport = async (id: string) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/research/${id}`, {
-        headers: { 'X-API-Key': API_KEY },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as FullResearchReport;
-      setReport(data);
-      setResearchId(data.research_id);
-      setView('report');
-      void fetchPastResearch();
-    } catch {
+    const res = await fetch(`${API_BASE_URL}/research/${id}`, {
+      headers: { 'X-API-Key': API_KEY },
+    });
+    if (!res.ok) {
       showToast('error', 'Failed to load report');
+      throw new Error(`HTTP ${res.status}`);
     }
+    const data = (await res.json()) as FullResearchReport;
+    setReport(data);
+    setResearchId(data.research_id);
+    setView('report');
+    void fetchPastResearch();
   };
 
   // ── Back to form ──────────────────────────────────────────────────────────
@@ -410,11 +409,14 @@ export default function ResearchEngine() {
     } else if (item.status === 'failed') {
       showToast('error', 'This research failed. Start a new one.');
     } else {
-      // Still running — start polling
-      setResearchId(item.research_id);
-      setCurrentStatus(item.status);
-      setView('progress');
-      startPolling(item.research_id);
+      // Could be a stuck "planning" record with a saved draft — try loading it first
+      void loadFullReport(item.research_id).catch(() => {
+        // Not recoverable — start polling in case it's still running
+        setResearchId(item.research_id);
+        setCurrentStatus(item.status);
+        setView('progress');
+        startPolling(item.research_id);
+      });
     }
   };
 
