@@ -444,4 +444,100 @@
   body.short-pdf a[href^="http"]::after {
     content: none !important;
   }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     RESEARCH REPORT PRINT STYLES
+     Professional white-background layout for Research Engine reports.
+     Triggered when [data-research-report] is present on the page.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* ── Research report header branding ──────────────────────────────── */
+  [data-research-report]::before {
+    content: "SUNCO BROKERS  ·  Research Intelligence Report";
+    display: block;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: #92400e !important;
+    border-bottom: 2px solid #d97706;
+    padding-bottom: 8pt;
+    margin-bottom: 12pt;
+  }
+
+  /* ── Hide confidence spans that may be in report HTML ─────────────── */
+  [data-research-report] .confidence,
+  [data-research-report] [class*="confidence-"] {
+    display: none !important;
+  }
+
+  /* ── Research report body styling ─────────────────────────────────── */
+  [data-research-report] h2 {
+    font-size: 13pt !important;
+    font-weight: 700 !important;
+    color: #111 !important;
+    margin-top: 14pt !important;
+    margin-bottom: 6pt !important;
+    break-after: avoid;
+  }
+
+  [data-research-report] h3 {
+    font-size: 11pt !important;
+    font-weight: 600 !important;
+    color: #111 !important;
+  }
+
+  [data-research-report] sup {
+    color: #b45309 !important;
+    font-weight: 600 !important;
+    font-size: 7pt !important;
+  }
+
+  /* ── Research report tables — fit to A4 width ─────────────────────── */
+  [data-research-report] table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    font-size: 8pt !important;
+    break-inside: auto !important;
+  }
+
+  [data-research-report] th {
+    font-size: 6.5pt !important;
+    padding: 4pt 4pt !important;
+    letter-spacing: 0.3pt !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  [data-research-report] td {
+    font-size: 8pt !important;
+    padding: 3pt 4pt !important;
+    overflow: hidden !important;
+    word-wrap: break-word !important;
+  }
+
+  /* For very wide tables (6+ columns), shrink further */
+  [data-research-report] table:has(th:nth-child(6)) {
+    font-size: 7pt !important;
+  }
+
+  [data-research-report] table:has(th:nth-child(6)) th {
+    font-size: 5.5pt !important;
+    padding: 3pt 3pt !important;
+  }
+
+  [data-research-report] table:has(th:nth-child(6)) td {
+    font-size: 7pt !important;
+    padding: 2pt 3pt !important;
+  }
+
+  /* ── Footnote tier badges for print ───────────────────────────────── */
+  [data-research-report] [data-section="footnotes"] span[class*="border"] {
+    border: 1px solid #ccc !important;
+    padding: 1pt 4pt !important;
+    font-size: 7pt !important;
+    background: #f5f5f5 !important;
+  }
 }

@@ -74,22 +74,6 @@ const STAGES = [
   { key: 'done', label: 'Done', desc: 'Research complete' },
 ];
 
-const TIER_LABELS: Record<number, string> = {
-  1: 'Primary Authority',
-  2: 'Institutional Data',
-  3: 'Industry Bodies',
-  4: 'Trade Press',
-  5: 'Analyst Commentary',
-};
-
-const TIER_COLORS: Record<number, string> = {
-  1: 'text-positive',
-  2: 'text-accent',
-  3: 'text-text-primary',
-  4: 'text-text-secondary',
-  5: 'text-text-dim',
-};
-
 const MAX_FILES = 5;
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -115,33 +99,6 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${style}`}>
       {status}
-    </span>
-  );
-}
-
-function TierBadge({ tier }: { tier: number }) {
-  const color = TIER_COLORS[tier] ?? 'text-text-dim';
-  const label = TIER_LABELS[tier] ?? `Tier ${tier}`;
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold border border-border bg-surface ${color}`}>
-      T{tier} {label}
-    </span>
-  );
-}
-
-function ConfidenceDots({ level }: { level: string }) {
-  const normalized = level.toLowerCase();
-  const config: Record<string, { filled: number; color: string }> = {
-    high: { filled: 5, color: 'text-positive' },
-    good: { filled: 4, color: 'text-accent' },
-    moderate: { filled: 3, color: 'text-accent' },
-    low: { filled: 2, color: 'text-negative' },
-  };
-  const { filled, color } = config[normalized] ?? { filled: 3, color: 'text-text-dim' };
-  return (
-    <span className={`text-xs font-mono ${color}`} title={level.toUpperCase()}>
-      {'■'.repeat(filled)}{'□'.repeat(5 - filled)}{' '}
-      <span className="uppercase text-xs">{level}</span>
     </span>
   );
 }
@@ -502,18 +459,33 @@ export default function ResearchEngine() {
   // ── Report View ───────────────────────────────────────────────────────────
 
   if (view === 'report' && report) {
-    const vs = report.verification_summary;
-    const unverified = vs.total_claims - vs.verified - vs.removed;
-    const bibByTier = [1, 2, 3, 4, 5]
-      .map((t) => ({
-        tier: t,
-        label: TIER_LABELS[t],
-        sources: report.bibliography.filter((s) => s.tier === t),
+    // Strip confidence indicator spans and any trailing Sources/References section from the HTML
+    let cleanBody = report.report_body
+      .replace(/<span class="confidence[^"]*">[^<]*<\/span>/g, '')
+      .replace(/<h2[^>]*>\s*(Sources|References|Footnotes)\s*<\/h2>[\s\S]*$/i, '');
+
+    // Make <sup>N</sup> clickable — wrap in anchor links that jump to #source-N
+    cleanBody = cleanBody.replace(
+      /<sup>(\d+)<\/sup>/g,
+      '<a href="#source-$1" style="text-decoration:none"><sup>$1</sup></a>'
+    );
+
+    // Build unified source list from footnotes (each source once, by ID)
+    const sourceGroups = [
+      { key: 'regulations', label: 'Regulations & Government Sources', tiers: [1] },
+      { key: 'institutions', label: 'Institutional Data & Registries', tiers: [2, 3] },
+      { key: 'analysts', label: 'Market Analysis & Trade Press', tiers: [4, 5] },
+    ];
+
+    const groupedSources = sourceGroups
+      .map((group) => ({
+        ...group,
+        sources: report.footnotes.filter((fn) => group.tiers.includes(fn.source_tier)),
       }))
       .filter((g) => g.sources.length > 0);
 
     return (
-      <div className="max-w-4xl mx-auto space-y-6 print:space-y-4">
+      <div className="max-w-4xl mx-auto space-y-6 print:space-y-4" data-research-report>
         <ToastContainer toasts={toasts} dismissToast={dismissToast} />
 
         {/* Header */}
@@ -542,49 +514,8 @@ export default function ResearchEngine() {
           </div>
         </div>
 
-        {/* Verification Summary */}
-        <div className="bg-card border border-border rounded p-5">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-            Verification Summary
-          </h2>
-          <div className="flex flex-wrap gap-6">
-            <div>
-              <span className="text-2xl font-bold text-positive">{vs.verified}</span>
-              <span className="text-text-dim text-sm ml-1">claims verified</span>
-            </div>
-            <div>
-              <span className="text-2xl font-bold text-negative">{vs.removed}</span>
-              <span className="text-text-dim text-sm ml-1">claims removed</span>
-            </div>
-            <div>
-              <span className="text-2xl font-bold text-text-dim">{unverified}</span>
-              <span className="text-text-dim text-sm ml-1">unverified</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Source Quality */}
-        <div className="bg-card border border-border rounded p-5">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-            Source Quality
-          </h2>
-          <div className="flex flex-wrap gap-4">
-            {[1, 2, 3, 4, 5].map((tier) => {
-              const count = report.source_breakdown[String(tier)] ?? 0;
-              if (count === 0) return null;
-              const color = TIER_COLORS[tier];
-              return (
-                <div key={tier} className="flex items-center gap-2">
-                  <span className={`font-bold text-sm ${color}`}>Tier {tier}: {count}</span>
-                  <span className="text-text-dim text-xs">{TIER_LABELS[tier]}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Report body */}
-        <div className="bg-card border border-border rounded p-6">
+        <div className="bg-card border border-border rounded p-6" data-section="report-body">
           <div
             className="prose prose-sm max-w-none text-sm leading-relaxed text-text-primary
               [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-text-primary [&_h1]:mt-6 [&_h1]:mb-3
@@ -600,90 +531,51 @@ export default function ResearchEngine() {
               [&_th]:bg-surface [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-text-dim [&_th]:uppercase [&_th]:tracking-widest
               [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2
               [&_sup]:text-accent [&_sup]:font-semibold [&_sup]:cursor-pointer"
-            dangerouslySetInnerHTML={{ __html: report.report_body }}
+            dangerouslySetInnerHTML={{ __html: cleanBody }}
           />
         </div>
 
-        {/* Per-section confidence */}
-        {report.confidence_scores && Object.keys(report.confidence_scores).length > 0 && (
-          <div className="bg-card border border-border rounded p-5">
-            <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              Section Confidence
-            </h2>
-            <div className="space-y-2">
-              {Object.entries(report.confidence_scores).map(([section, level]) => (
-                <div key={section} className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-text-secondary">{section}</span>
-                  <ConfidenceDots level={level} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Footnotes */}
-        {report.footnotes.length > 0 && (
-          <div className="bg-card border border-border rounded p-5">
-            <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-              Footnotes
-            </h2>
-            <div className="space-y-3">
-              {report.footnotes.map((fn) => (
-                <div key={fn.id} className="flex items-start gap-3 text-sm">
-                  <span className="text-accent font-bold text-xs mt-0.5 shrink-0">
-                    [{fn.id}]
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-text-secondary">{fn.text}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <a
-                        href={fn.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-accent text-xs hover:underline truncate max-w-md"
-                      >
-                        {fn.source_url}
-                      </a>
-                      <TierBadge tier={fn.source_tier} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Bibliography */}
-        {bibByTier.length > 0 && (
-          <div className="bg-card border border-border rounded p-5">
+        {/* Sources — single section, grouped by category */}
+        {groupedSources.length > 0 && (
+          <div className="bg-card border border-border rounded p-5" data-section="sources">
             <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">
-              Bibliography
+              Sources
             </h2>
             <div className="space-y-5">
-              {bibByTier.map((group) => (
-                <div key={group.tier}>
-                  <h3 className={`text-sm font-semibold mb-2 ${TIER_COLORS[group.tier]}`}>
-                    Tier {group.tier}: {group.label}
+              {groupedSources.map((group) => (
+                <div key={group.key}>
+                  <h3 className="text-sm font-semibold text-text-primary mb-2">
+                    {group.label}
                   </h3>
-                  <ul className="space-y-2 pl-1">
-                    {group.sources.map((src, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm">
-                        <span className="text-text-dim mt-0.5 shrink-0">-</span>
-                        <div>
-                          <span className="text-text-primary">{src.title}</span>
-                          <br />
-                          <a
-                            href={src.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-accent text-xs hover:underline truncate"
-                          >
-                            {src.url}
-                          </a>
+                  <div className="space-y-2">
+                    {group.sources.map((fn) => (
+                      <div
+                        key={fn.id}
+                        id={`source-${fn.id}`}
+                        className="flex items-start gap-3 text-sm scroll-mt-4"
+                      >
+                        <span className="text-accent font-bold text-xs mt-0.5 shrink-0">
+                          [{fn.id}]
+                        </span>
+                        <div className="flex-1">
+                          <span className="text-text-primary">{fn.text}</span>
+                          {fn.source_url && (
+                            <>
+                              <br />
+                              <a
+                                href={fn.source_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent text-xs hover:underline break-all"
+                              >
+                                {fn.source_url}
+                              </a>
+                            </>
+                          )}
                         </div>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               ))}
             </div>
