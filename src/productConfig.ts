@@ -5,6 +5,7 @@ export interface ProductDef {
   iceTicker: string;
   color: string;
   dropZoneLabel: string;
+  isDiff: boolean;  // true = values are diffs vs LS Gasoil, false = outright/flat prices
 }
 
 export const PRODUCTS: ProductDef[] = [
@@ -15,6 +16,7 @@ export const PRODUCTS: ProductDef[] = [
     iceTicker: 'G',
     color: '#6366f1',
     dropZoneLabel: 'Drop ICE LS Gasoil PDF here, or click to select',
+    isDiff: false,
   },
   {
     code: 'BRI',
@@ -23,6 +25,7 @@ export const PRODUCTS: ProductDef[] = [
     iceTicker: 'BRI',
     color: '#f59e0b',
     dropZoneLabel: 'Drop ICE RME (BRI) PDF here, or click to select',
+    isDiff: true,
   },
   {
     code: 'BFZ',
@@ -31,6 +34,7 @@ export const PRODUCTS: ProductDef[] = [
     iceTicker: 'BFZ',
     color: '#10b981',
     dropZoneLabel: 'Drop ICE FAME (BFZ) PDF here, or click to select',
+    isDiff: true,
   },
   {
     code: 'UCR',
@@ -39,6 +43,7 @@ export const PRODUCTS: ProductDef[] = [
     iceTicker: 'UCR',
     color: '#ef4444',
     dropZoneLabel: 'Drop ICE UCOME (UCR) PDF here, or click to select',
+    isDiff: true,
   },
   {
     code: 'HVO',
@@ -47,6 +52,7 @@ export const PRODUCTS: ProductDef[] = [
     iceTicker: 'HVO',
     color: '#8b5cf6',
     dropZoneLabel: 'Drop ICE HVO PDF here, or click to select',
+    isDiff: true,
   },
   {
     code: 'ZAF',
@@ -55,6 +61,7 @@ export const PRODUCTS: ProductDef[] = [
     iceTicker: 'ZAF',
     color: '#06b6d4',
     dropZoneLabel: 'Drop ICE SAF (ZAF) PDF here, or click to select',
+    isDiff: false,
   },
 ];
 

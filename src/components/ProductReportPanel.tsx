@@ -125,6 +125,7 @@ interface ProductReportPanelProps {
   productName: string;
   accentColor: string;
   dropZoneLabel: string;
+  isDiff?: boolean;   // true = values are diffs vs LS Gasoil, false = outright prices
   readOnly?: boolean;
 }
 
@@ -133,6 +134,7 @@ export default function ProductReportPanel({
   productName,
   accentColor,
   dropZoneLabel,
+  isDiff = false,
   readOnly = false,
 }: ProductReportPanelProps) {
   const [report, setReport] = useState<GasoilReport | null>(null);
@@ -222,14 +224,16 @@ export default function ProductReportPanel({
       {report && (
         <>
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className={`grid grid-cols-2 ${isDiff ? 'md:grid-cols-4' : 'md:grid-cols-5'} gap-3`}>
+            {!isDiff && (
+              <MetricCard
+                label="VWAP"
+                value={report.vwap != null ? `${report.vwap.toLocaleString()} $/MT` : '—'}
+                sub="Vol-weighted avg settlement"
+              />
+            )}
             <MetricCard
-              label="VWAP"
-              value={report.vwap != null ? `${report.vwap.toLocaleString()} $/MT` : '—'}
-              sub="Vol-weighted avg settlement"
-            />
-            <MetricCard
-              label="M1 Settlement"
+              label={isDiff ? 'M1 Diff vs GO' : 'M1 Settlement'}
               value={
                 curveData[0]
                   ? `${curveData[0].settlement.toLocaleString()} $/MT`
@@ -257,7 +261,7 @@ export default function ProductReportPanel({
           {/* Forward Curve */}
           <div className="bg-card border border-border rounded p-5">
             <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-              Forward Curve — Settlement Price ($/MT)
+              {isDiff ? 'Forward Curve — Diff vs LS Gasoil ($/MT)' : 'Forward Curve — Settlement Price ($/MT)'}
             </h3>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={curveData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>

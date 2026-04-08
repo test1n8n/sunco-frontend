@@ -52,6 +52,7 @@ export default function ProductsData() {
             productName={`ICE ${product.name} (${product.code})`}
             accentColor={product.color}
             dropZoneLabel={product.dropZoneLabel}
+            isDiff={product.isDiff}
           />
         </div>
       ))}

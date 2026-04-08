@@ -750,6 +750,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           productName={`ICE ${product.name} (${product.code})`}
           accentColor={product.color}
           dropZoneLabel={product.dropZoneLabel}
+          isDiff={product.isDiff}
           readOnly
         />
       ))}
