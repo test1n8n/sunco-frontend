@@ -7,7 +7,9 @@ import Spinner from '../../components/Spinner';
 import ErrorBanner from '../../components/ErrorBanner';
 import { useToast, ToastContainer } from '../../components/Toast';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
+import ProductReportPanel from '../../components/ProductReportPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
+import { BIODIESEL_PRODUCTS } from '../../productConfig';
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
@@ -739,6 +741,18 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ── LS Gasoil Charts (read-only — data from Products Data tab) ───── */}
       <GasoilReportPanel readOnly reportDate={report.report_date} />
+
+      {/* ── Biodiesel Product Charts (read-only — data from Products Data tab) ── */}
+      {BIODIESEL_PRODUCTS.map((product) => (
+        <ProductReportPanel
+          key={product.code}
+          productCode={product.code}
+          productName={`ICE ${product.name} (${product.code})`}
+          accentColor={product.color}
+          dropZoneLabel={product.dropZoneLabel}
+          readOnly
+        />
+      ))}
 
       {/* ── Biodiesel Trades (read-only — data from Products Data tab) ────── */}
       <BiodieselTradesPanel readOnly />
