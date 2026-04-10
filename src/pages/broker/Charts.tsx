@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   LineChart, Line, BarChart, Bar, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -60,14 +61,12 @@ const COLOURS: Record<string, string> = {
   'EURUSD=X': '#a78bfa',   // EUR/USD       — violet
   'USDCNY=X': '#f472b6',   // USD/CNY       — pink
   'GNF=F':    '#22d3ee',   // Rapeseed      — cyan
-  'RS=F':     '#06b6d4',   // Canola        — dark cyan
-  'KPO=F':    '#fb923c',   // Palm Oil      — orange
 };
 
 // ─── Chart groups ─────────────────────────────────────────────────────────────
 
 const ENERGY_TICKERS    = ['BZ=F', 'CL=F', 'HO=F', 'NG=F'];
-const FEEDSTOCK_INDEX_TICKERS = ['ZL=F', 'KPO=F', 'GNF=F'];
+const FEEDSTOCK_INDEX_TICKERS = ['ZL=F', 'GNF=F'];
 const FX_TICKERS        = ['EURUSD=X', 'USDCNY=X'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -202,6 +201,62 @@ function DarkTooltip({ active, payload, label, normalised = false }: any) {
   );
 }
 
+// ─── Chart modal (click to expand) ────────────────────────────────────────────
+
+function ChartModal({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-6"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded shadow-2xl flex flex-col"
+        style={{ width: '92vw', height: '88vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 border-b border-border flex items-start justify-between shrink-0">
+          <div>
+            <h3 className="text-text-primary font-semibold text-base">{title}</h3>
+            {subtitle && <p className="text-text-dim text-xs mt-1">{subtitle}</p>}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-text-dim hover:text-text-primary text-2xl leading-none px-2 -mt-1"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div className="p-5 flex-1 min-h-0">
+          {children}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ─── Chart card wrapper ───────────────────────────────────────────────────────
 
 function ChartCard({
@@ -215,16 +270,30 @@ function ChartCard({
   children: React.ReactNode;
   height?: number;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="bg-card border border-border rounded">
-      <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-text-primary font-semibold text-sm">{title}</h3>
-        {subtitle && <p className="text-text-dim text-xs mt-0.5">{subtitle}</p>}
+    <>
+      <div
+        className="bg-card border border-border rounded cursor-pointer hover:border-text-dim transition-colors"
+        onClick={() => setOpen(true)}
+      >
+        <div className="px-4 py-3 border-b border-border flex items-start justify-between">
+          <div>
+            <h3 className="text-text-primary font-semibold text-sm">{title}</h3>
+            {subtitle && <p className="text-text-dim text-xs mt-0.5">{subtitle}</p>}
+          </div>
+          <span className="text-text-dim text-xs opacity-60" aria-hidden>⤢</span>
+        </div>
+        <div className="p-4" style={{ height }}>
+          {children}
+        </div>
       </div>
-      <div className="p-4" style={{ height }}>
-        {children}
-      </div>
-    </div>
+      {open && (
+        <ChartModal title={title} subtitle={subtitle} onClose={() => setOpen(false)}>
+          <div style={{ width: '100%', height: '100%' }}>{children}</div>
+        </ChartModal>
+      )}
+    </>
   );
 }
 
@@ -233,11 +302,9 @@ function ChartCard({
 function MultiLineChart({
   tickers,
   tickerMap,
-  height = 240,
 }: {
   tickers: string[];
   tickerMap: Record<string, TickerInfo>;
-  height?: number;
 }) {
   const data = buildChartData(tickers, tickerMap, true);
   const available = tickers.filter(t => tickerMap[t]?.data?.length > 0);
@@ -251,7 +318,7 @@ function MultiLineChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
         <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
         <XAxis
@@ -809,13 +876,13 @@ export default function Charts() {
               />
             </ChartCard>
             <ChartCard title="Energy Benchmarks" subtitle={`Brent · WTI · Gasoil · Nat Gas — base-100, ${days}-day`} height={260}>
-              <MultiLineChart tickers={ENERGY_TICKERS} tickerMap={tickerMap} height={220} />
+              <MultiLineChart tickers={ENERGY_TICKERS} tickerMap={tickerMap} />
             </ChartCard>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Feedstock Benchmarks" subtitle={`Soy Oil · Palm · Rapeseed — base-100, ${days}-day`} height={260}>
-              <MultiLineChart tickers={FEEDSTOCK_INDEX_TICKERS} tickerMap={tickerMap} height={220} />
+            <ChartCard title="Feedstock Benchmarks" subtitle={`Soy Oil · Rapeseed — base-100, ${days}-day`} height={260}>
+              <MultiLineChart tickers={FEEDSTOCK_INDEX_TICKERS} tickerMap={tickerMap} />
             </ChartCard>
             <ChartCard title="EUR/USD" subtitle={`Daily spot rate — ECB, ${days}-day`} height={260}>
               <EurUsdChart data={eurusd} />
@@ -880,7 +947,7 @@ export default function Charts() {
             subtitle={`Soybean Oil · Soybeans · Rapeseed — base-100 indexed, ${days}-day`}
             height={300}
           >
-            <MultiLineChart tickers={['ZL=F', 'ZS=F', 'GNF=F']} tickerMap={tickerMap} height={260} />
+            <MultiLineChart tickers={['ZL=F', 'ZS=F', 'GNF=F']} tickerMap={tickerMap} />
           </ChartCard>
 
           <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day — primary FAME0 feedstock`} height={280}>
@@ -895,10 +962,6 @@ export default function Charts() {
               <FeedstockUsdChart data={tickerMap['GNF=F']?.data?.length > 0 ? tickerMap['GNF=F'].data.map(p => ({ date: p.date, value: parseFloat((p.value * eurUsdRate).toFixed(2)) })) : []} color="#22d3ee" />
             </ChartCard>
           </div>
-
-          <ChartCard title="Canola (ICE Winnipeg)" subtitle={`USD/MT — ${days}-day — North American rapeseed proxy`} height={280}>
-            <FeedstockUsdChart data={tickerMap['RS=F']?.data?.length > 0 ? tickerMap['RS=F'].data : []} color="#06b6d4" />
-          </ChartCard>
 
           <ChartCard
             title="Biodiesel Feedstocks — Net Speculative Positioning"
@@ -918,12 +981,8 @@ export default function Charts() {
               ================================================================ */}
           <div className="pt-6 pb-1 border-b" style={{ borderColor: '#22d3ee33' }}>
             <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#22d3ee' }}>🛫 Advanced Biofuels (HVO, SAF, Ethanol)</h2>
-            <p className="text-text-dim text-xs mt-0.5">Palm oil, corn, ethanol — drives HVO, SAF, EthanolT2 pricing</p>
+            <p className="text-text-dim text-xs mt-0.5">Corn and ethanol — drives HVO, SAF, EthanolT2 pricing</p>
           </div>
-
-          <ChartCard title="Palm Oil (FCPO Bursa Malaysia)" subtitle={`${days}-day — primary HVO and SAF feedstock`} height={280}>
-            <FeedstockUsdChart data={tickerMap['KPO=F']?.data?.length > 0 ? tickerMap['KPO=F'].data : []} color="#fb923c" />
-          </ChartCard>
 
           <div className="grid gap-5 md:grid-cols-2">
             <ChartCard title="Corn (CBOT)" subtitle={`USD/MT — ${days}-day — ethanol feedstock`} height={280}>
@@ -993,7 +1052,7 @@ export default function Charts() {
 
           <div className="grid gap-5 md:grid-cols-2">
             <ChartCard title="FX Impact" subtitle={`EUR/USD · USD/CNY — base-100 indexed, ${days}-day`} height={260}>
-              <MultiLineChart tickers={FX_TICKERS} tickerMap={tickerMap} height={220} />
+              <MultiLineChart tickers={FX_TICKERS} tickerMap={tickerMap} />
             </ChartCard>
             <ChartCard title="US Dollar Index" subtitle="Trade-weighted broad dollar — FRED" height={260}>
               {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.dollar_index ?? []} unit="" color="#a78bfa" />}
