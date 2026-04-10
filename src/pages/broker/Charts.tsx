@@ -16,6 +16,9 @@ interface BiasPoint    { date: string; bias: 'bullish' | 'bearish' | 'neutral' }
 interface EurUsdPoint  { date: string; rate: number }
 interface PetroleumData {
   inventories: { date: string; value: number }[];
+  distillate_stocks: { date: string; value: number }[];
+  gasoline_stocks: { date: string; value: number }[];
+  jet_fuel_stocks: { date: string; value: number }[];
   refinery_runs: { date: string; value: number }[];
   imports: { date: string; value: number }[];
   source: string;
@@ -34,11 +37,14 @@ interface WeatherPoint { date: string; temp_max: number; temp_min: number | null
 interface WeatherRegion { label: string; data: WeatherPoint[] }
 interface WeatherData {
   us_midwest: WeatherRegion; eu_france: WeatherRegion; malaysia: WeatherRegion;
+  brazil: WeatherRegion; argentina: WeatherRegion;
+  indonesia: WeatherRegion; canada: WeatherRegion;
   source: string;
 }
 interface FredSeries { date: string; value: number }
 interface FredData {
   fed_funds_rate: FredSeries[]; dollar_index: FredSeries[]; yield_curve: FredSeries[];
+  ecb_deposit_rate: FredSeries[];
   source: string;
 }
 // ─── Colour palette (visible on dark bg) ─────────────────────────────────────
@@ -48,16 +54,20 @@ const COLOURS: Record<string, string> = {
   'ZS=F':     '#34d399',   // Soybeans      — emerald
   'ZC=F':     '#f87171',   // Corn          — red
   'BZ=F':     '#60a5fa',   // Brent         — blue
+  'CL=F':     '#38bdf8',   // WTI Crude     — light blue
   'HO=F':     '#fbbf24',   // Heating Oil   — yellow (gasoil proxy)
   'NG=F':     '#f87171',   // Natural Gas   — red
   'EURUSD=X': '#a78bfa',   // EUR/USD       — violet
   'USDCNY=X': '#f472b6',   // USD/CNY       — pink
   'GNF=F':    '#22d3ee',   // Rapeseed      — cyan
+  'RS=F':     '#06b6d4',   // Canola        — dark cyan
+  'KPO=F':    '#fb923c',   // Palm Oil      — orange
 };
 
 // ─── Chart groups ─────────────────────────────────────────────────────────────
 
-const ENERGY_TICKERS    = ['BZ=F', 'HO=F', 'NG=F'];
+const ENERGY_TICKERS    = ['BZ=F', 'CL=F', 'HO=F', 'NG=F'];
+const FEEDSTOCK_INDEX_TICKERS = ['ZL=F', 'KPO=F', 'GNF=F'];
 const FX_TICKERS        = ['EURUSD=X', 'USDCNY=X'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -133,6 +143,28 @@ const USD_MT_FACTORS: Record<string, number> = {
   'ZS=F': 0.36744,   // USc/bu → USD/MT  (1 MT = 36.744 bu ÷ 100)
   'ZC=F': 0.39368,   // USc/bu → USD/MT  (1 MT = 39.368 bu ÷ 100)
 };
+
+/** Compute the Gasoil–Brent crack spread in USD/MT.
+ *  Heating Oil (USc/gal) × 7.45 → $/MT minus Brent (USD/bbl) × 7.5 → $/MT.
+ *  (HO 1 gal ≈ 3.05 kg; 1 MT HO ≈ 305 gal; Brent 1 bbl ≈ 0.136 MT) */
+function computeCrackSpread(
+  heatingOil: PricePoint[],
+  brent: PricePoint[],
+): PricePoint[] {
+  if (!heatingOil.length || !brent.length) return [];
+  const brentMap = new Map(brent.map((p) => [p.date, p.value]));
+  const out: PricePoint[] = [];
+  for (const ho of heatingOil) {
+    const b = brentMap.get(ho.date);
+    if (b == null) continue;
+    // HO is USc/gal → USD/MT: × 7.45
+    // Brent is USD/bbl → USD/MT: × 7.45 (approx 7.45 bbl/MT for distillates)
+    const hoUsdMt = ho.value * 7.45;
+    const brentUsdMt = b * 7.45;
+    out.push({ date: ho.date, value: parseFloat((hoUsdMt - brentUsdMt).toFixed(2)) });
+  }
+  return out;
+}
 
 /** Convert a price series to USD/MT using the conversion factor. */
 function toUsdPerMt(data: PricePoint[], factor: number): PricePoint[] {
@@ -762,35 +794,65 @@ export default function Charts() {
       ) : (
         <>
           {/* ================================================================
-              SECTION 1 — GASOIL & ENERGY
-              Impacts: LS Gasoil, Heating Oil, fossil fuel blending economics
+              🔥 DAILY SNAPSHOT — the absolute essentials, 4 compact cards
               ================================================================ */}
-          <div className="pt-3 pb-1 border-b border-accent/30">
-            <h2 className="text-accent font-bold text-sm uppercase tracking-widest">Gasoil & Energy</h2>
-            <p className="text-text-dim text-xs mt-0.5">Crude oil, gasoil, and refinery fundamentals — drives LS Gasoil pricing</p>
+          <div className="pt-3 pb-1 border-b" style={{ borderColor: '#ef444455' }}>
+            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#f87171' }}>🔥 Daily Snapshot</h2>
+            <p className="text-text-dim text-xs mt-0.5">The essentials — check these first every morning</p>
           </div>
 
-          <ChartCard
-            title="Energy & Blending Economics"
-            subtitle={`Brent Crude · Heating Oil (gasoil proxy) · Natural Gas — base-100 indexed, ${days}-day`}
-            height={300}
-          >
-            <MultiLineChart tickers={ENERGY_TICKERS} tickerMap={tickerMap} height={260} />
-          </ChartCard>
-
-          <ChartCard
-            title="Crude Oil Inventories"
-            subtitle="US commercial stocks excl. SPR — thousand barrels (weekly)"
-            height={280}
-          >
-            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.inventories ?? []} unit="k bbl" color="#60a5fa" />}
-          </ChartCard>
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Gasoil–Brent Crack Spread" subtitle={`Diesel refinery margin — USD/MT, ${days}-day`} height={260}>
+              <FeedstockUsdChart
+                data={computeCrackSpread(tickerMap['HO=F']?.data ?? [], tickerMap['BZ=F']?.data ?? [])}
+                color="#f87171"
+              />
+            </ChartCard>
+            <ChartCard title="Energy Benchmarks" subtitle={`Brent · WTI · Gasoil · Nat Gas — base-100, ${days}-day`} height={260}>
+              <MultiLineChart tickers={ENERGY_TICKERS} tickerMap={tickerMap} height={220} />
+            </ChartCard>
+          </div>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Refinery Crude Oil Runs" subtitle="US refiner net input — thousand bbl/day (weekly)" height={280}>
+            <ChartCard title="Feedstock Benchmarks" subtitle={`Soy Oil · Palm · Rapeseed — base-100, ${days}-day`} height={260}>
+              <MultiLineChart tickers={FEEDSTOCK_INDEX_TICKERS} tickerMap={tickerMap} height={220} />
+            </ChartCard>
+            <ChartCard title="EUR/USD" subtitle={`Daily spot rate — ECB, ${days}-day`} height={260}>
+              <EurUsdChart data={eurusd} />
+            </ChartCard>
+          </div>
+
+          {/* ================================================================
+              SECTION 1 — GASOIL & PETROLEUM FUNDAMENTALS
+              ================================================================ */}
+          <div className="pt-6 pb-1 border-b border-accent/30">
+            <h2 className="text-accent font-bold text-sm uppercase tracking-widest">⛽ Gasoil & Petroleum Fundamentals</h2>
+            <p className="text-text-dim text-xs mt-0.5">Crude, distillates, refinery dynamics — drives LS Gasoil pricing</p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Distillate Fuel Oil Stocks" subtitle="US commercial distillate stocks — thousand bbl (weekly)" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.distillate_stocks ?? []} unit="k bbl" color="#fbbf24" />}
+            </ChartCard>
+            <ChartCard title="Crude Oil Inventories" subtitle="US commercial stocks excl. SPR — k bbl (weekly)" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.inventories ?? []} unit="k bbl" color="#60a5fa" />}
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Gasoline Stocks" subtitle="US commercial gasoline stocks — k bbl (weekly)" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.gasoline_stocks ?? []} unit="k bbl" color="#34d399" />}
+            </ChartCard>
+            <ChartCard title="Jet Fuel Stocks" subtitle="US commercial jet fuel stocks — k bbl (weekly) — SAF signal" height={280}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.jet_fuel_stocks ?? []} unit="k bbl" color="#06b6d4" />}
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Refinery Crude Oil Runs" subtitle="US refiner net input — k bbl/day (weekly)" height={280}>
               {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.refinery_runs ?? []} unit="k bbl/d" color="#f59e0b" />}
             </ChartCard>
-            <ChartCard title="Crude Oil Imports" subtitle="US weekly imports — thousand bbl/day" height={280}>
+            <ChartCard title="Crude Oil Imports" subtitle="US weekly imports — k bbl/day" height={280}>
               {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={petroleum?.imports ?? []} unit="k bbl/d" color="#f87171" />}
             </ChartCard>
           </div>
@@ -806,12 +868,11 @@ export default function Charts() {
           </ChartCard>
 
           {/* ================================================================
-              SECTION 2 — BIODIESEL
-              Impacts: FAME0, RME, SME, UCOME (soybean oil, rapeseed, soybeans)
+              SECTION 2 — BIODIESEL FEEDSTOCKS
               ================================================================ */}
           <div className="pt-6 pb-1 border-b border-positive/30">
-            <h2 className="text-positive font-bold text-sm uppercase tracking-widest">Biodiesel</h2>
-            <p className="text-text-dim text-xs mt-0.5">Feedstock costs and positioning — drives FAME0, RME, SME, UCOME pricing</p>
+            <h2 className="text-positive font-bold text-sm uppercase tracking-widest">🌾 Biodiesel Feedstocks</h2>
+            <p className="text-text-dim text-xs mt-0.5">Soy oil, rapeseed, canola — drives FAME0, RME, SME, UCOME pricing</p>
           </div>
 
           <ChartCard
@@ -822,17 +883,21 @@ export default function Charts() {
             <MultiLineChart tickers={['ZL=F', 'ZS=F', 'GNF=F']} tickerMap={tickerMap} height={260} />
           </ChartCard>
 
+          <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day — primary FAME0 feedstock`} height={280}>
+            <FeedstockUsdChart data={tickerMap['ZL=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZL=F'].data, USD_MT_FACTORS['ZL=F']) : []} color="#e879f9" />
+          </ChartCard>
+
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Rapeseed (Euronext)" subtitle={`USD/MT — ${days}-day — RME feedstock`} height={280}>
-              <FeedstockUsdChart data={tickerMap['GNF=F']?.data?.length > 0 ? tickerMap['GNF=F'].data.map(p => ({ date: p.date, value: parseFloat((p.value * eurUsdRate).toFixed(2)) })) : []} color="#22d3ee" />
-            </ChartCard>
             <ChartCard title="Soybeans (CBOT)" subtitle={`USD/MT — ${days}-day — SME/FAME0 feedstock`} height={280}>
               <FeedstockUsdChart data={tickerMap['ZS=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZS=F'].data, USD_MT_FACTORS['ZS=F']) : []} color="#34d399" />
             </ChartCard>
+            <ChartCard title="Rapeseed (Euronext)" subtitle={`USD/MT — ${days}-day — European RME feedstock`} height={280}>
+              <FeedstockUsdChart data={tickerMap['GNF=F']?.data?.length > 0 ? tickerMap['GNF=F'].data.map(p => ({ date: p.date, value: parseFloat((p.value * eurUsdRate).toFixed(2)) })) : []} color="#22d3ee" />
+            </ChartCard>
           </div>
 
-          <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day — primary FAME0 feedstock`} height={280}>
-            <FeedstockUsdChart data={tickerMap['ZL=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZL=F'].data, USD_MT_FACTORS['ZL=F']) : []} color="#e879f9" />
+          <ChartCard title="Canola (ICE Winnipeg)" subtitle={`USD/MT — ${days}-day — North American rapeseed proxy`} height={280}>
+            <FeedstockUsdChart data={tickerMap['RS=F']?.data?.length > 0 ? tickerMap['RS=F'].data : []} color="#06b6d4" />
           </ChartCard>
 
           <ChartCard
@@ -848,29 +913,23 @@ export default function Charts() {
             )}
           </ChartCard>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Northern France" subtitle="Rapeseed growing region — temperature + precipitation" height={280}>
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.eu_france} />}
-            </ChartCard>
-            <ChartCard title="US Midwest (Iowa)" subtitle="Soybean belt — temperature + precipitation" height={280}>
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.us_midwest} />}
-            </ChartCard>
+          {/* ================================================================
+              SECTION 3 — ADVANCED BIOFUELS (HVO, SAF, Ethanol)
+              ================================================================ */}
+          <div className="pt-6 pb-1 border-b" style={{ borderColor: '#22d3ee33' }}>
+            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#22d3ee' }}>🛫 Advanced Biofuels (HVO, SAF, Ethanol)</h2>
+            <p className="text-text-dim text-xs mt-0.5">Palm oil, corn, ethanol — drives HVO, SAF, EthanolT2 pricing</p>
           </div>
 
-          {/* ================================================================
-              SECTION 3 — ADVANCED BIOFUELS
-              Impacts: HVO, SAF, Ethanol, UCO, Tallow
-              ================================================================ */}
-          <div className="pt-6 pb-1 border-b border-accent/30" style={{ borderColor: '#22d3ee33' }}>
-            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#22d3ee' }}>Advanced Biofuels</h2>
-            <p className="text-text-dim text-xs mt-0.5">Ethanol, palm oil (HVO), and corn — drives HVO, SAF, EthanolT2 pricing</p>
-          </div>
+          <ChartCard title="Palm Oil (FCPO Bursa Malaysia)" subtitle={`${days}-day — primary HVO and SAF feedstock`} height={280}>
+            <FeedstockUsdChart data={tickerMap['KPO=F']?.data?.length > 0 ? tickerMap['KPO=F'].data : []} color="#fb923c" />
+          </ChartCard>
 
           <div className="grid gap-5 md:grid-cols-2">
             <ChartCard title="Corn (CBOT)" subtitle={`USD/MT — ${days}-day — ethanol feedstock`} height={280}>
               <FeedstockUsdChart data={tickerMap['ZC=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZC=F'].data, USD_MT_FACTORS['ZC=F']) : []} color="#f87171" />
             </ChartCard>
-            <ChartCard title="US Ethanol Production" subtitle="Weekly output (thousand barrels/day) — EIA" height={280}>
+            <ChartCard title="US Ethanol Production" subtitle="Weekly output (k bbl/day) — EIA" height={280}>
               {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <EthanolChart data={ethanol} />}
             </ChartCard>
           </div>
@@ -885,46 +944,83 @@ export default function Charts() {
             )}
           </ChartCard>
 
-          <ChartCard title="Malaysia" subtitle="Palm oil growing region (HVO/SAF feedstock) — temperature + precipitation" height={280}>
+          {/* ================================================================
+              SECTION 4 — GROWING REGION WEATHER (all weather unified)
+              ================================================================ */}
+          <div className="pt-6 pb-1 border-b" style={{ borderColor: '#10b98155' }}>
+            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#10b981' }}>🌾 Growing Region Weather</h2>
+            <p className="text-text-dim text-xs mt-0.5">Temperature and precipitation in key feedstock regions — forward supply signal</p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Brazil (Mato Grosso) — Soybean #1" subtitle="World's largest soybean producer" height={260}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.brazil} />}
+            </ChartCard>
+            <ChartCard title="US Midwest (Iowa) — Soybean #2" subtitle="Main US soybean belt" height={260}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.us_midwest} />}
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Argentina (Pampas) — Soy / Corn" subtitle="Major soybean and corn producer" height={260}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.argentina} />}
+            </ChartCard>
+            <ChartCard title="Northern France — Rapeseed" subtitle="Key EU rapeseed region" height={260}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.eu_france} />}
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ChartCard title="Canada (Saskatchewan) — Canola" subtitle="World's largest canola exporter" height={260}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.canada} />}
+            </ChartCard>
+            <ChartCard title="Indonesia (Sumatra) — Palm #1" subtitle="World's largest palm oil producer" height={260}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.indonesia} />}
+            </ChartCard>
+          </div>
+
+          <ChartCard title="Malaysia — Palm Oil #2" subtitle="Second-largest palm oil producer" height={260}>
             {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <WeatherChart region={weather?.malaysia} />}
           </ChartCard>
 
           {/* ================================================================
-              SECTION 4 — FX, RATES & MACRO
-              Impacts: All biofuels (pricing, financing, demand outlook)
+              SECTION 5 — FX, RATES & MACRO
               ================================================================ */}
           <div className="pt-6 pb-1 border-b border-[#a78bfa]/30">
-            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#a78bfa' }}>FX, Rates & Macro</h2>
-            <p className="text-text-dim text-xs mt-0.5">Currency, interest rates, and economic indicators — affects all commodity pricing</p>
+            <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: '#a78bfa' }}>💱 FX, Rates & Macro</h2>
+            <p className="text-text-dim text-xs mt-0.5">Currency, interest rates, economic indicators — background context</p>
           </div>
 
-          <ChartCard
-            title="EUR/USD Exchange Rate"
-            subtitle={`Daily spot rate from ECB — ${days}-day`}
-            height={300}
-          >
-            <EurUsdChart data={eurusd} />
-          </ChartCard>
-
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="FX Impact" subtitle={`EUR/USD · USD/CNY — base-100 indexed, ${days}-day`} height={280}>
-              <MultiLineChart tickers={FX_TICKERS} tickerMap={tickerMap} height={230} />
+            <ChartCard title="FX Impact" subtitle={`EUR/USD · USD/CNY — base-100 indexed, ${days}-day`} height={260}>
+              <MultiLineChart tickers={FX_TICKERS} tickerMap={tickerMap} height={220} />
             </ChartCard>
-            <ChartCard title="US Dollar Index" subtitle="Trade-weighted broad dollar — FRED" height={280}>
+            <ChartCard title="US Dollar Index" subtitle="Trade-weighted broad dollar — FRED" height={260}>
               {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.dollar_index ?? []} unit="" color="#a78bfa" />}
             </ChartCard>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Federal Funds Rate" subtitle="Effective rate (%) — commodity financing costs" height={280}>
+            <ChartCard title="Federal Funds Rate" subtitle="US effective rate (%) — commodity financing" height={260}>
               {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.fed_funds_rate ?? []} unit="%" color="#60a5fa" />}
             </ChartCard>
-            <ChartCard title="Yield Curve (10Y-2Y)" subtitle="Treasury spread — recession signal" height={280}>
-              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.yield_curve ?? []} unit="%" color="#f87171" />}
+            <ChartCard title="ECB Deposit Facility Rate" subtitle="ECB rate (%) — EUR financing cost" height={260}>
+              {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.ecb_deposit_rate ?? []} unit="%" color="#a78bfa" />}
             </ChartCard>
           </div>
 
-          {/* ── Market Outlook & Mandates ──────────────────────────── */}
+          <ChartCard title="Yield Curve (10Y-2Y)" subtitle="US Treasury spread — recession signal" height={260}>
+            {loadingOther ? <div className="flex items-center justify-center h-full"><Spinner /></div> : <PetroleumChart data={fred?.yield_curve ?? []} unit="%" color="#f87171" />}
+          </ChartCard>
+
+          {/* ================================================================
+              SECTION 6 — MARKET BIAS & MANDATES (strategic context)
+              ================================================================ */}
+          <div className="pt-6 pb-1 border-b border-border">
+            <h2 className="text-text-dim font-bold text-sm uppercase tracking-widest">📅 Market Bias & Mandates</h2>
+            <p className="text-text-dim text-xs mt-0.5">Strategic context — checked weekly, not daily</p>
+          </div>
+
           <div className="grid gap-5 md:grid-cols-2">
             <div className="bg-card border border-border rounded p-5">
               <h3 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">
