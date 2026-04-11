@@ -53,6 +53,7 @@ const BROKER_GROUPS: NavGroup[] = [
     label: 'Intelligence',
     items: [
       { to: '/broker/research', label: 'Research',    end: false },
+      { to: '/broker/quant',    label: 'Quant Research', end: false },
       { to: '/broker/ai',       label: 'Biofuels AI', end: false },
       { to: '/broker/archive',  label: 'Archive',     end: false },
       { to: '/broker/mandates', label: 'Mandates',    end: false },

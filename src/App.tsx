@@ -15,6 +15,7 @@ import Charts from './pages/broker/Charts';
 import BiofuelsAI from './pages/broker/BiofuelsAI';
 import ProductsData from './pages/broker/ProductsData';
 import ResearchEngine from './pages/broker/ResearchEngine';
+import QuantResearch from './pages/broker/QuantResearch';
 import Layout, { CLIENT_NAV } from './components/Layout';
 
 interface ProtectedRouteProps {
@@ -183,6 +184,16 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Research Engine">
                 <ResearchEngine />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/quant"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Quantitative Research">
+                <QuantResearch />
               </Layout>
             </ProtectedRoute>
           }
