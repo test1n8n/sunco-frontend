@@ -541,3 +541,48 @@
     background: #f5f5f5 !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   LIGHT THEME OVERRIDES
+   Activated when <html> has class "light". Overrides the dark base palette
+   with a clean white/grey theme while preserving accent colors.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+html.light body {
+  background-color: #f5f6f8 !important;
+  color: #1a1f2c !important;
+}
+
+html.light .bg-surface       { background-color: #f5f6f8 !important; }
+html.light .bg-panel         { background-color: #ffffff !important; }
+html.light .bg-card          { background-color: #ffffff !important; }
+html.light .bg-surface\/30   { background-color: rgba(245, 246, 248, 0.6) !important; }
+html.light .bg-surface\/40   { background-color: rgba(235, 237, 240, 0.6) !important; }
+html.light .bg-surface\/50   { background-color: rgba(235, 237, 240, 0.7) !important; }
+html.light .bg-surface\/60   { background-color: rgba(225, 228, 232, 0.7) !important; }
+html.light .bg-panel\/60     { background-color: rgba(255, 255, 255, 0.9) !important; }
+
+html.light .text-text-primary   { color: #1a1f2c !important; }
+html.light .text-text-secondary { color: #4b5563 !important; }
+html.light .text-text-dim       { color: #9ca3af !important; }
+
+html.light .border-border    { border-color: #e3e6eb !important; }
+html.light .border-border\/50{ border-color: rgba(227, 230, 235, 0.6) !important; }
+
+html.light .placeholder-text-dim::placeholder { color: #9ca3af !important; }
+
+/* Inputs, kbd */
+html.light kbd {
+  background-color: #f0f2f5 !important;
+  border-color: #d1d5db !important;
+  color: #4b5563 !important;
+}
+
+/* Scrollbar */
+html.light ::-webkit-scrollbar-track { background: #f0f2f5; }
+html.light ::-webkit-scrollbar-thumb { background: #cbd0d9; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Recharts grid in light mode */
+html.light .recharts-cartesian-grid line { stroke: #e3e6eb !important; }
+html.light .recharts-text { fill: #4b5563 !important; }

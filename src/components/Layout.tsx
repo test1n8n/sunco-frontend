@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import GlobalSearch, { type GlobalSearchHandle } from './GlobalSearch';
+import BookmarksBar from './BookmarksBar';
+import ThemeToggle from './ThemeToggle';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 interface NavItem {
   to: string;
@@ -43,8 +47,11 @@ export { BROKER_NAV, CLIENT_NAV };
 export default function Layout({ children, pageTitle, navLinks }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const searchRef = useRef<GlobalSearchHandle>(null);
 
   const links = navLinks ?? BROKER_NAV;
+
+  useKeyboardShortcuts(undefined, () => searchRef.current?.focus());
 
   const handleLogout = () => {
     localStorage.clear();
@@ -120,13 +127,20 @@ export default function Layout({ children, pageTitle, navLinks }: LayoutProps) {
             </button>
             <h1 className="text-text-primary font-semibold text-sm tracking-wide uppercase">{pageTitle}</h1>
           </div>
+          <div className="flex items-center gap-3">
+            <GlobalSearch ref={searchRef} />
+            <ThemeToggle />
           <button
             onClick={handleLogout}
             className="text-xs text-text-secondary hover:text-text-primary border border-border hover:border-accent/50 px-3 py-1.5 rounded transition-colors tracking-wide"
           >
             LOGOUT
           </button>
+          </div>
         </header>
+
+        {/* Bookmarks bar */}
+        <BookmarksBar pageTitle={pageTitle} />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
