@@ -15,7 +15,7 @@ import Charts from './pages/broker/Charts';
 import BiofuelsAI from './pages/broker/BiofuelsAI';
 import ProductsData from './pages/broker/ProductsData';
 import ResearchEngine from './pages/broker/ResearchEngine';
-import Layout, { BROKER_NAV, CLIENT_NAV } from './components/Layout';
+import Layout, { CLIENT_NAV } from './components/Layout';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -41,7 +41,7 @@ export default function App() {
           path="/broker"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Market Overview" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Market Overview">
                 <Overview />
               </Layout>
             </ProtectedRoute>
@@ -51,7 +51,7 @@ export default function App() {
           path="/broker/daily"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Daily Report" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Daily Report">
                 <DailyReport role="broker" />
               </Layout>
             </ProtectedRoute>
@@ -61,7 +61,7 @@ export default function App() {
           path="/broker/mandates"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Mandates" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Mandates">
                 <Mandates />
               </Layout>
             </ProtectedRoute>
@@ -71,7 +71,7 @@ export default function App() {
           path="/broker/blotter"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Trade Blotter" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Trade Blotter">
                 <TradeBlotter />
               </Layout>
             </ProtectedRoute>
@@ -81,7 +81,7 @@ export default function App() {
           path="/broker/pnl"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Positions & P&L" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Positions & P&L">
                 <PositionsPnL />
               </Layout>
             </ProtectedRoute>
@@ -91,7 +91,7 @@ export default function App() {
           path="/broker/counterparties"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Counterparties" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Counterparties">
                 <Counterparties />
               </Layout>
             </ProtectedRoute>
@@ -101,7 +101,7 @@ export default function App() {
           path="/broker/alerts"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Alerts" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Alerts">
                 <Alerts />
               </Layout>
             </ProtectedRoute>
@@ -111,7 +111,7 @@ export default function App() {
           path="/broker/spreads"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Spreads" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Spreads">
                 <Spreads />
               </Layout>
             </ProtectedRoute>
@@ -121,7 +121,7 @@ export default function App() {
           path="/broker/history"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="History" navLinks={BROKER_NAV}>
+              <Layout pageTitle="History">
                 <History />
               </Layout>
             </ProtectedRoute>
@@ -131,7 +131,7 @@ export default function App() {
           path="/broker/subscriptions"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Subscriptions" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Subscriptions">
                 <Subscriptions />
               </Layout>
             </ProtectedRoute>
@@ -141,7 +141,7 @@ export default function App() {
           path="/broker/archive"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Report Archive" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Report Archive">
                 <ReportArchive />
               </Layout>
             </ProtectedRoute>
@@ -151,7 +151,7 @@ export default function App() {
           path="/broker/products"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Products Data" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Products Data">
                 <ProductsData />
               </Layout>
             </ProtectedRoute>
@@ -161,7 +161,7 @@ export default function App() {
           path="/broker/charts"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Market Charts" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Market Charts">
                 <Charts />
               </Layout>
             </ProtectedRoute>
@@ -171,7 +171,7 @@ export default function App() {
           path="/broker/ai"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Biofuels AI" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Biofuels AI">
                 <BiofuelsAI />
               </Layout>
             </ProtectedRoute>
@@ -181,7 +181,7 @@ export default function App() {
           path="/broker/research"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Research Engine" navLinks={BROKER_NAV}>
+              <Layout pageTitle="Research Engine">
                 <ResearchEngine />
               </Layout>
             </ProtectedRoute>
