@@ -4,6 +4,7 @@ import { MOCK_TRADES } from '../../mockData';
 import { API_BASE_URL, API_KEY } from '../../config';
 import Spinner from '../../components/Spinner';
 import { useToast, ToastContainer } from '../../components/Toast';
+import { exportToCSV } from '../../utils/csvExport';
 
 const COMMODITIES = ['FAME0', 'RME', 'SME', 'HVO', 'EthanolT2', 'UCO', 'Tallow', 'SAF'];
 
@@ -401,6 +402,41 @@ export default function TradeBlotter() {
             onChange={(e) => setFilterMonth(e.target.value)}
             className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
           />
+          <button
+            onClick={() => exportToCSV(
+              `trades_${new Date().toISOString().slice(0, 10)}`,
+              filteredTrades.map((t) => ({
+                trade_date: t.trade_date ?? '',
+                broker: t.broker_name ?? '',
+                commodity: t.commodity ?? '',
+                direction: t.direction ?? '',
+                volume_mt: t.volume_mt ?? '',
+                price_eur_mt: t.price_eur_mt ?? '',
+                counterparty: t.counterparty ?? '',
+                delivery_month: t.delivery_month ?? '',
+                delivery_location: t.delivery_location ?? '',
+                brokerage_fee_usd_mt: t.brokerage_fee_usd_mt ?? '',
+                notes: t.notes ?? '',
+              })),
+              [
+                { key: 'trade_date',           label: 'Trade Date' },
+                { key: 'broker',               label: 'Broker' },
+                { key: 'commodity',            label: 'Commodity' },
+                { key: 'direction',            label: 'Direction' },
+                { key: 'volume_mt',            label: 'Volume (MT)' },
+                { key: 'price_eur_mt',         label: 'Price (EUR/MT)' },
+                { key: 'counterparty',         label: 'Counterparty' },
+                { key: 'delivery_month',       label: 'Delivery Month' },
+                { key: 'delivery_location',    label: 'Delivery Location' },
+                { key: 'brokerage_fee_usd_mt', label: 'Brokerage Fee (USD/MT)' },
+                { key: 'notes',                label: 'Notes' },
+              ]
+            )}
+            disabled={filteredTrades.length === 0}
+            className="px-3 py-1.5 rounded text-xs font-semibold border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ↓ CSV
+          </button>
         </div>
 
         {loading ? (

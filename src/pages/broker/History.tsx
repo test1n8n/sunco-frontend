@@ -6,6 +6,7 @@ import {
 import { API_BASE_URL, API_KEY } from '../../config';
 import Spinner from '../../components/Spinner';
 import { PRODUCTS } from '../../productConfig';
+import { exportToCSV } from '../../utils/csvExport';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,25 +46,30 @@ function fmtNumber(n: number | null, decimals = 2): string {
 }
 
 function exportCsv(productCode: string, history: HistoryPoint[]): void {
-  const headers = ['Report Date', 'M1 Contract', 'M1 Settlement', 'M1 Change', 'VWAP', 'Total Volume', 'Total OI', 'Spread Volume'];
-  const rows = history.map((h) => [
-    h.report_date,
-    h.m1_contract,
-    h.m1_settlement,
-    h.m1_change,
-    h.vwap ?? '',
-    h.total_volume,
-    h.total_oi,
-    h.total_spread_volume,
-  ]);
-  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${productCode}_history_${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  const filename = `${productCode}_history_${new Date().toISOString().slice(0, 10)}`;
+  exportToCSV(
+    filename,
+    history.map((h) => ({
+      report_date: h.report_date,
+      m1_contract: h.m1_contract,
+      m1_settlement: h.m1_settlement,
+      m1_change: h.m1_change,
+      vwap: h.vwap ?? '',
+      total_volume: h.total_volume,
+      total_oi: h.total_oi,
+      total_spread_volume: h.total_spread_volume,
+    })),
+    [
+      { key: 'report_date',         label: 'Report Date' },
+      { key: 'm1_contract',         label: 'M1 Contract' },
+      { key: 'm1_settlement',       label: 'M1 Settlement' },
+      { key: 'm1_change',           label: 'M1 Change' },
+      { key: 'vwap',                label: 'VWAP' },
+      { key: 'total_volume',        label: 'Total Volume' },
+      { key: 'total_oi',            label: 'Total OI' },
+      { key: 'total_spread_volume', label: 'Spread Volume' },
+    ]
+  );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────

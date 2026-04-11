@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { API_BASE_URL, API_KEY } from '../../config';
 import Spinner from '../../components/Spinner';
+import { exportToCSV } from '../../utils/csvExport';
 
 interface TopProduct {
   product: string;
@@ -169,6 +170,43 @@ export default function Counterparties() {
             </button>
           ))}
         </div>
+        <button
+          onClick={() => exportToCSV(
+            `counterparties_${new Date().toISOString().slice(0, 10)}`,
+            filtered.map((c) => ({
+              counterparty: c.counterparty,
+              freshness: c.freshness,
+              total_volume_mt: c.total_volume_mt,
+              buy_volume_mt: c.buy_volume_mt,
+              sell_volume_mt: c.sell_volume_mt,
+              trade_count: c.trade_count,
+              brokerage_earned_usd: c.brokerage_earned_usd,
+              first_trade_date: c.first_trade_date,
+              last_trade_date: c.last_trade_date,
+              days_since_last_trade: c.days_since_last_trade,
+              top_products: c.top_products.map((p) => `${p.product}:${p.volume_mt}`).join('; '),
+              brokers: c.brokers.join('; '),
+            })),
+            [
+              { key: 'counterparty',          label: 'Counterparty' },
+              { key: 'freshness',             label: 'Status' },
+              { key: 'total_volume_mt',       label: 'Total Volume (MT)' },
+              { key: 'buy_volume_mt',         label: 'Buy Volume (MT)' },
+              { key: 'sell_volume_mt',        label: 'Sell Volume (MT)' },
+              { key: 'trade_count',           label: 'Trades' },
+              { key: 'brokerage_earned_usd',  label: 'Brokerage (USD)' },
+              { key: 'first_trade_date',      label: 'First Trade' },
+              { key: 'last_trade_date',       label: 'Last Trade' },
+              { key: 'days_since_last_trade', label: 'Days Since Last' },
+              { key: 'top_products',          label: 'Top Products' },
+              { key: 'brokers',               label: 'Brokers' },
+            ]
+          )}
+          disabled={filtered.length === 0}
+          className="px-3 py-2 rounded text-xs font-semibold border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          ↓ CSV
+        </button>
       </div>
 
       {/* Counterparty table */}

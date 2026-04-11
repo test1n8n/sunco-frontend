@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { API_BASE_URL, API_KEY } from '../../config';
 import Spinner from '../../components/Spinner';
+import { exportToCSV } from '../../utils/csvExport';
 
 interface PnLRow {
   commodity: string;
@@ -199,9 +200,42 @@ export default function PositionsPnL() {
 
       {/* Full P&L Breakdown Table */}
       <div className="bg-card border border-border rounded">
-        <div className="px-4 py-3 border-b border-border">
-          <h2 className="text-text-primary font-semibold text-sm">Full Position Breakdown</h2>
-          <p className="text-text-dim text-xs mt-0.5">All positions sorted by commodity and delivery month</p>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-text-primary font-semibold text-sm">Full Position Breakdown</h2>
+            <p className="text-text-dim text-xs mt-0.5">All positions sorted by commodity and delivery month</p>
+          </div>
+          <button
+            onClick={() => exportToCSV(
+              `pnl_${new Date().toISOString().slice(0, 10)}`,
+              pnl_breakdown.map((p) => ({
+                commodity: p.commodity,
+                delivery_month: p.delivery_month,
+                direction: p.direction,
+                net_volume_mt: p.net_volume_mt,
+                avg_price_eur_mt: p.avg_price_eur_mt,
+                current_price_eur_mt: p.current_price_eur_mt ?? '',
+                unrealised_pnl_eur: p.unrealised_pnl_eur ?? '',
+                price_source: p.price_source,
+                trade_count: p.trade_count,
+              })),
+              [
+                { key: 'commodity',            label: 'Product' },
+                { key: 'delivery_month',       label: 'Delivery Month' },
+                { key: 'direction',            label: 'Direction' },
+                { key: 'net_volume_mt',        label: 'Net Volume (MT)' },
+                { key: 'avg_price_eur_mt',     label: 'Avg Entry (EUR/MT)' },
+                { key: 'current_price_eur_mt', label: 'Current (EUR/MT)' },
+                { key: 'unrealised_pnl_eur',   label: 'Unrealised P&L (EUR)' },
+                { key: 'price_source',         label: 'Price Source' },
+                { key: 'trade_count',          label: 'Trade Count' },
+              ]
+            )}
+            disabled={pnl_breakdown.length === 0}
+            className="px-3 py-1.5 rounded text-xs font-semibold border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            ↓ CSV
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
