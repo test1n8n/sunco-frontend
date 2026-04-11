@@ -127,7 +127,7 @@ interface OverviewResponse {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const TABS = ['Overview', 'Spreads', 'Correlations', 'Volatility', 'Seasonality', 'Anomalies', 'Event Study'] as const;
+const TABS = ['Overview', 'Spreads', 'Fair Value', 'Correlations', 'Volatility', 'Seasonality', 'Anomalies', 'Event Study', 'Mandate Elasticity'] as const;
 type Tab = (typeof TABS)[number];
 
 function fmt(n: number | null | undefined, d = 2): string {
@@ -1144,6 +1144,437 @@ function EventStudyTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// FAIR VALUE TAB (Tier 2 regression)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface FairValueCoef {
+  feature: string;
+  coefficient: number | null;
+  std_error: number | null;
+  t_stat: number | null;
+  p_value: number | null;
+}
+
+interface FairValueResult {
+  leg_a: string;
+  leg_b: string;
+  n_observations: number;
+  carbon_used: boolean;
+  r_squared: number | null;
+  coefficients: FairValueCoef[];
+  last_date: string;
+  last_actual: number;
+  last_predicted: number;
+  last_residual: number;
+  residual_std: number;
+  residual_z: number;
+  verdict: string;
+  series: Array<{ date: string; actual: number | null; predicted: number | null; residual: number | null }>;
+}
+
+interface FairValueResponse {
+  leg_a: string;
+  leg_b: string;
+  result: Result<FairValueResult>;
+}
+
+const FAIR_VALUE_PAIRS = [
+  { label: 'UCOME - FAME0',  a: 'UCR', b: 'BFZ' },
+  { label: 'RME - FAME0',    a: 'BRI', b: 'BFZ' },
+  { label: 'HVO - Gasoil',   a: 'HVO', b: 'G' },
+  { label: 'SAF - Gasoil',   a: 'ZAF', b: 'G' },
+];
+
+function FairValueTab() {
+  const [legA, setLegA] = useState('UCR');
+  const [legB, setLegB] = useState('BFZ');
+  const [useCarbon, setUseCarbon] = useState(true);
+  const [data, setData] = useState<FairValueResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const json = await apiGet<FairValueResponse>(
+          `/quant/fair-value?leg_a=${legA}&leg_b=${legB}&days=540&use_carbon=${useCarbon}`
+        );
+        setData(json);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load fair value');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [legA, legB, useCarbon]);
+
+  const result = data?.result.ok ? data.result : null;
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded p-3 text-blue-400 text-xs">
+        <span className="font-semibold">Fair Value Regression.</span> Fits{' '}
+        <span className="font-mono">premium = β₀ + β₁·carbon + β₂·time</span> using EU ETS from the Alt Data table.
+        Residuals ≥ 2σ flag rich/cheap conditions vs the fitted model.
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {FAIR_VALUE_PAIRS.map((p) => {
+          const active = legA === p.a && legB === p.b;
+          return (
+            <button
+              key={p.label}
+              onClick={() => { setLegA(p.a); setLegB(p.b); }}
+              className={`px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                active
+                  ? 'bg-accent/10 border-accent text-accent'
+                  : 'bg-card border-border text-text-secondary hover:border-accent/40'
+              }`}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setUseCarbon(!useCarbon)}
+          className={`ml-auto px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${
+            useCarbon
+              ? 'bg-accent/10 border-accent text-accent'
+              : 'bg-card border-border text-text-secondary hover:border-accent/40'
+          }`}
+        >
+          Carbon: {useCarbon ? 'ON' : 'OFF'}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Spinner /></div>
+      ) : error ? (
+        <ErrorBox reason={error} />
+      ) : !data ? null : data.result.ok === false ? (
+        <InsufficientData reason={data.result.reason} />
+      ) : result ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatCard label="Actual" value={fmt(result.last_actual)} sub={fmtDate(result.last_date)} />
+            <StatCard label="Fair Value" value={fmt(result.last_predicted)} sub="Model fitted" />
+            <StatCard
+              label="Residual"
+              value={fmt(result.last_residual)}
+              color={result.last_residual > 0 ? 'text-positive' : 'text-negative'}
+            />
+            <StatCard label="Residual Z" value={fmt(result.residual_z)} color={zColor(result.residual_z)} />
+            <StatCard
+              label="R²"
+              value={result.r_squared != null ? fmtPct(result.r_squared * 100) : '—'}
+              sub={`${result.n_observations} obs`}
+            />
+          </div>
+
+          <div className={`rounded p-3 text-sm border ${
+            result.residual_z >= 2
+              ? 'bg-negative/10 border-negative/30 text-negative'
+              : result.residual_z <= -2
+              ? 'bg-positive/10 border-positive/30 text-positive'
+              : 'bg-card border-border text-text-secondary'
+          }`}>
+            <span className="font-semibold">Verdict:</span> {result.verdict}
+            {!result.carbon_used && (
+              <span className="ml-3 text-text-dim">(carbon regressor dropped — no CARBON_EUA data in DB yet)</span>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded p-4">
+            <h3 className="text-text-primary font-semibold text-sm mb-3">
+              Actual vs Fair Value — {result.leg_a} minus {result.leg_b}
+            </h3>
+            <div style={{ width: '100%', height: 280 }}>
+              <ResponsiveContainer>
+                <LineChart data={result.series} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmtDate} interval="preserveStartEnd" minTickGap={40} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
+                  <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1c2333', borderRadius: 4, fontSize: 11 }} labelFormatter={(d) => fmtDate(d as string)} />
+                  <Line type="monotone" dataKey="actual" stroke="#60a5fa" strokeWidth={2} dot={false} name="Actual premium" />
+                  <Line type="monotone" dataKey="predicted" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Fair value" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded p-4">
+            <h3 className="text-text-primary font-semibold text-sm mb-3">Residuals Over Time</h3>
+            <div style={{ width: '100%', height: 180 }}>
+              <ResponsiveContainer>
+                <LineChart data={result.series} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmtDate} interval="preserveStartEnd" minTickGap={40} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
+                  <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1c2333', borderRadius: 4, fontSize: 11 }} labelFormatter={(d) => fmtDate(d as string)} />
+                  <ReferenceLine y={0} stroke="#64748b" strokeDasharray="2 4" />
+                  <ReferenceLine y={result.residual_std * 2} stroke="#ef4444" strokeDasharray="2 4" label={{ value: '+2σ', fill: '#ef4444', fontSize: 10 }} />
+                  <ReferenceLine y={-result.residual_std * 2} stroke="#ef4444" strokeDasharray="2 4" label={{ value: '-2σ', fill: '#ef4444', fontSize: 10 }} />
+                  <Line type="monotone" dataKey="residual" stroke="#ef4444" strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-text-primary font-semibold text-sm">Coefficient Table</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-surface border-b border-border">
+                    <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Feature</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">β</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell">Std Err</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">t-stat</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">p-value</th>
+                    <th className="px-3 py-2 text-center text-text-dim text-[10px] font-semibold uppercase tracking-widest">Sig.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.coefficients.map((c) => {
+                    const sig = c.p_value == null ? '' : c.p_value < 0.01 ? '***' : c.p_value < 0.05 ? '**' : c.p_value < 0.1 ? '*' : '';
+                    return (
+                      <tr key={c.feature} className="border-b border-border/50">
+                        <td className="px-3 py-2 text-text-primary font-mono">{c.feature}</td>
+                        <td className="px-3 py-2 text-right font-mono text-text-primary">{fmt(c.coefficient, 6)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-text-secondary hidden md:table-cell">{fmt(c.std_error, 6)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-text-secondary">{fmt(c.t_stat, 3)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-text-secondary">{fmt(c.p_value, 4)}</td>
+                        <td className="px-3 py-2 text-center text-accent font-bold">{sig}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-2 border-t border-border text-text-dim text-[10px]">
+              *** p&lt;0.01 · ** p&lt;0.05 · * p&lt;0.10
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MANDATE ELASTICITY TAB (Tier 2 event study)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ElasticityImpact {
+  event_price: number;
+  post_price: number;
+  cumulative_return_pct: number;
+  z_score: number;
+  days_used: number;
+}
+
+interface ElasticityEvent {
+  event_id: string;
+  country: string;
+  event_date: string;
+  delta_pp: number;
+  old_target_pct: number;
+  new_target_pct: number;
+  year_affected: number;
+  category: string;
+  headline: string;
+  source: string;
+  impact_by_product: Record<string, ElasticityImpact>;
+}
+
+interface ElasticityAggregate {
+  n: number;
+  mean_return_pct: number | null;
+  weighted_return_pct: number | null;
+  avg_abs_delta_pp: number | null;
+  elasticity_pct_per_pp: number | null;
+}
+
+interface ElasticityReady {
+  ok: true;
+  events_registered: number;
+  events_used: number;
+  events_skipped: Array<{ event_id: string; date: string; reason: string }>;
+  aggregate_by_product: Record<string, ElasticityAggregate>;
+  events: ElasticityEvent[];
+}
+
+interface ElasticityNotReady {
+  ok: false;
+  reason: string;
+  events_registered?: number;
+  events_skipped?: Array<{ event_id: string; date: string; reason: string }>;
+}
+
+interface ElasticityResponse {
+  result: ElasticityReady | ElasticityNotReady;
+}
+
+function MandateElasticityTab() {
+  const [data, setData] = useState<ElasticityResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const json = await apiGet<ElasticityResponse>('/quant/mandate-elasticity');
+        setData(json);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to run study');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const ready = data?.result.ok ? data.result : null;
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded p-3 text-blue-400 text-xs">
+        <span className="font-semibold">Mandate Elasticity Study.</span> Event study around curated EU mandate announcements.
+        Measures biofuel product reaction in the 10 days after each event, normalizes by the change in percentage points,
+        and reports aggregate elasticity per product.
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Spinner /></div>
+      ) : error ? (
+        <ErrorBox reason={error} />
+      ) : !data ? null : data.result.ok === false ? (
+        <>
+          <InsufficientData reason={data.result.reason} />
+          {data.result.events_skipped && data.result.events_skipped.length > 0 && (
+            <div className="bg-card border border-border rounded p-4">
+              <h3 className="text-text-primary font-semibold text-sm mb-2">Skipped Events ({data.result.events_skipped.length})</h3>
+              <div className="text-text-dim text-xs space-y-1">
+                {data.result.events_skipped.slice(0, 10).map((s) => (
+                  <div key={s.event_id} className="flex justify-between">
+                    <span className="font-mono">{fmtDate(s.date)} — {s.event_id}</span>
+                    <span>{s.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : ready ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard label="Events in registry" value={ready.events_registered.toString()} />
+            <StatCard label="Usable events" value={ready.events_used.toString()} color={ready.events_used >= 5 ? 'text-positive' : 'text-accent'} />
+            <StatCard label="Skipped" value={ready.events_skipped.length.toString()} sub="No overlapping prices" />
+            <StatCard label="Products measured" value={Object.keys(ready.aggregate_by_product).length.toString()} />
+          </div>
+
+          <div className="bg-card border border-border rounded overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-text-primary font-semibold text-sm">Aggregate Elasticity</h3>
+              <p className="text-text-dim text-xs mt-0.5">
+                Average price reaction per 1 percentage point of mandate change.
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-surface border-b border-border">
+                    <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Product</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">Events</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">Mean Return</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell">Weighted</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell">Avg Δpp</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">Elasticity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(ready.aggregate_by_product).map(([code, agg]) => (
+                    <tr key={code} className="border-b border-border/50">
+                      <td className="px-3 py-2 text-text-primary font-semibold">{code}</td>
+                      <td className="px-3 py-2 text-right font-mono text-text-secondary">{agg.n}</td>
+                      <td className={`px-3 py-2 text-right font-mono ${
+                        agg.mean_return_pct == null ? 'text-text-dim' : agg.mean_return_pct > 0 ? 'text-positive' : 'text-negative'
+                      }`}>
+                        {agg.mean_return_pct == null ? '—' : `${agg.mean_return_pct >= 0 ? '+' : ''}${agg.mean_return_pct.toFixed(2)}%`}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-text-secondary hidden md:table-cell">
+                        {agg.weighted_return_pct == null ? '—' : `${agg.weighted_return_pct >= 0 ? '+' : ''}${agg.weighted_return_pct.toFixed(2)}%`}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-text-secondary hidden md:table-cell">
+                        {agg.avg_abs_delta_pp == null ? '—' : `${agg.avg_abs_delta_pp.toFixed(2)}pp`}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono font-bold ${
+                        agg.elasticity_pct_per_pp == null ? 'text-text-dim' : agg.elasticity_pct_per_pp > 0 ? 'text-positive' : 'text-negative'
+                      }`}>
+                        {agg.elasticity_pct_per_pp == null ? '—' : `${agg.elasticity_pct_per_pp >= 0 ? '+' : ''}${agg.elasticity_pct_per_pp.toFixed(2)}%/pp`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-text-primary font-semibold text-sm">Event Detail</h3>
+            </div>
+            <div className="overflow-x-auto max-h-[30rem]">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-surface z-10">
+                  <tr className="border-b border-border">
+                    <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Date</th>
+                    <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Country</th>
+                    <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">Δpp</th>
+                    <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest hidden lg:table-cell">Headline</th>
+                    {Object.keys(ready.aggregate_by_product).map((code) => (
+                      <th key={code} className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest">{code}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ready.events.map((ev) => (
+                    <tr key={ev.event_id} className="border-b border-border/50 hover:bg-surface/40">
+                      <td className="px-3 py-2 text-text-primary font-mono">{fmtDate(ev.event_date)}</td>
+                      <td className="px-3 py-2 text-text-secondary">{ev.country}</td>
+                      <td className={`px-3 py-2 text-right font-mono ${ev.delta_pp > 0 ? 'text-positive' : 'text-negative'}`}>
+                        {ev.delta_pp >= 0 ? '+' : ''}{ev.delta_pp.toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2 text-text-dim text-[10px] hidden lg:table-cell max-w-xs truncate" title={ev.headline}>{ev.headline}</td>
+                      {Object.keys(ready.aggregate_by_product).map((code) => {
+                        const impact = ev.impact_by_product[code];
+                        if (!impact) return <td key={code} className="px-3 py-2 text-right text-text-dim">—</td>;
+                        const v = impact.cumulative_return_pct;
+                        return (
+                          <td key={code} className={`px-3 py-2 text-right font-mono ${v > 0 ? 'text-positive' : 'text-negative'}`}>
+                            {v >= 0 ? '+' : ''}{v.toFixed(2)}%
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1182,11 +1613,13 @@ export default function QuantResearch() {
       <div>
         {tab === 'Overview' && <OverviewTab />}
         {tab === 'Spreads' && <SpreadsTab />}
+        {tab === 'Fair Value' && <FairValueTab />}
         {tab === 'Correlations' && <CorrelationsTab />}
         {tab === 'Volatility' && <VolatilityTab />}
         {tab === 'Seasonality' && <SeasonalityTab />}
         {tab === 'Anomalies' && <AnomaliesTab />}
         {tab === 'Event Study' && <EventStudyTab />}
+        {tab === 'Mandate Elasticity' && <MandateElasticityTab />}
       </div>
     </div>
   );
