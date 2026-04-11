@@ -10,6 +10,7 @@ import Spinner from '../../components/Spinner';
 import {
   MANDATES, COUNTRY_ORDER, RED_III_BASELINE,
   computeMandateProgress, getTrajectoryForYear,
+  TRANSPORT_ENERGY_PJ, DOMESTIC_PRODUCTION_MT, AVG_BIOFUEL_GJ_PER_MT,
   type CountryCode, type Mandate,
 } from '../../data/mandates';
 
@@ -546,6 +547,165 @@ function SafMandatePanel({ mandate }: { mandate: Mandate }) {
   );
 }
 
+// ─── Mandate-to-Physical Quantity Calculator ─────────────────────────────────
+
+function MandateCalculator({ mandate }: { mandate: Mandate }) {
+  const currentYear = new Date().getFullYear();
+  const defaultTransportPJ = TRANSPORT_ENERGY_PJ[mandate.country_code];
+  const defaultCapacityMT = DOMESTIC_PRODUCTION_MT[mandate.country_code];
+
+  const [transportPJ, setTransportPJ] = useState<string>(String(defaultTransportPJ));
+  const [capacityMT, setCapacityMT] = useState<string>(String(defaultCapacityMT));
+  const [year, setYear] = useState<number>(currentYear);
+
+  // Recompute when inputs change or country switches
+  useEffect(() => {
+    setTransportPJ(String(TRANSPORT_ENERGY_PJ[mandate.country_code]));
+    setCapacityMT(String(DOMESTIC_PRODUCTION_MT[mandate.country_code]));
+  }, [mandate.country_code]);
+
+  const pjInput = parseFloat(transportPJ) || 0;
+  const capInput = parseFloat(capacityMT) || 0;
+  const trajectory = getTrajectoryForYear(mandate, year);
+  const targetPct = trajectory?.overall ?? 0;
+  const advancedPct = trajectory?.advanced ?? 0;
+
+  // Simple calculation: obligated energy = transport × target %
+  const obligatedEnergyPJ = pjInput * (targetPct / 100);
+  const advancedEnergyPJ = pjInput * (advancedPct / 100);
+
+  // Convert to physical tonnes (1 PJ = 1000 TJ ≈ 1e6 GJ)
+  const obligatedVolumeMT = (obligatedEnergyPJ * 1e6) / AVG_BIOFUEL_GJ_PER_MT / 1e6; // → million MT
+  const advancedVolumeMT = (advancedEnergyPJ * 1e6) / AVG_BIOFUEL_GJ_PER_MT / 1e6;
+
+  const gapMT = obligatedVolumeMT - capInput;
+  const surplus = gapMT < 0;
+
+  const yearOptions = [2024, 2025, 2026, 2027, 2028, 2030, 2035];
+
+  return (
+    <div className="bg-card border border-border rounded p-5">
+      <div className="mb-4">
+        <h3 className="text-text-primary font-semibold text-sm">🧮 Mandate-to-Physical Calculator</h3>
+        <p className="text-text-dim text-xs mt-0.5">
+          Estimate physical biofuel volumes required to meet {mandate.country_name}'s obligation.
+          Pre-filled with reference values — edit to model your own scenarios.
+        </p>
+      </div>
+
+      {/* Inputs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div>
+          <label className="text-text-dim text-[10px] uppercase tracking-widest block mb-1">
+            Transport Energy (PJ/year)
+          </label>
+          <input
+            type="number"
+            value={transportPJ}
+            onChange={(e) => setTransportPJ(e.target.value)}
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-sm font-mono text-text-primary focus:outline-none focus:border-accent/50"
+          />
+          <p className="text-text-dim text-[10px] mt-1">Default: {defaultTransportPJ} PJ (Eurostat)</p>
+        </div>
+        <div>
+          <label className="text-text-dim text-[10px] uppercase tracking-widest block mb-1">
+            Domestic Capacity (Mt/yr)
+          </label>
+          <input
+            type="number"
+            step="0.1"
+            value={capacityMT}
+            onChange={(e) => setCapacityMT(e.target.value)}
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-sm font-mono text-text-primary focus:outline-none focus:border-accent/50"
+          />
+          <p className="text-text-dim text-[10px] mt-1">Default: {defaultCapacityMT} Mt (nameplate)</p>
+        </div>
+        <div>
+          <label className="text-text-dim text-[10px] uppercase tracking-widest block mb-1">
+            Target Year
+          </label>
+          <select
+            value={year}
+            onChange={(e) => setYear(parseInt(e.target.value))}
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent/50"
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <p className="text-text-dim text-[10px] mt-1">
+            Target: {targetPct.toFixed(2)}% · Advanced: {advancedPct.toFixed(2)}%
+          </p>
+        </div>
+      </div>
+
+      {/* Results */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div className="bg-surface border border-border rounded px-3 py-2">
+          <div className="text-text-dim text-[10px] uppercase tracking-widest mb-1">Obligated Energy</div>
+          <div className="font-mono font-bold text-base text-text-primary">{obligatedEnergyPJ.toFixed(1)} PJ</div>
+          <div className="text-text-dim text-[10px]">{(obligatedEnergyPJ / pjInput * 100).toFixed(2)}% of transport</div>
+        </div>
+        <div className="bg-surface border border-border rounded px-3 py-2">
+          <div className="text-text-dim text-[10px] uppercase tracking-widest mb-1">Physical Volume Required</div>
+          <div className="font-mono font-bold text-base text-text-primary">
+            {obligatedVolumeMT.toFixed(2)} Mt
+          </div>
+          <div className="text-text-dim text-[10px]">@ ~{AVG_BIOFUEL_GJ_PER_MT} GJ/t avg</div>
+        </div>
+        <div className="bg-surface border border-border rounded px-3 py-2">
+          <div className="text-text-dim text-[10px] uppercase tracking-widest mb-1">Advanced Sub-Target</div>
+          <div className="font-mono font-bold text-base text-text-primary">
+            {advancedVolumeMT.toFixed(2)} Mt
+          </div>
+          <div className="text-text-dim text-[10px]">UCO, tallow, cellulosic</div>
+        </div>
+        <div className={`border rounded px-3 py-2 ${
+          surplus
+            ? 'bg-positive/10 border-positive/30'
+            : gapMT > 0.5
+            ? 'bg-negative/10 border-negative/30'
+            : 'bg-accent/10 border-accent/30'
+        }`}>
+          <div className="text-text-dim text-[10px] uppercase tracking-widest mb-1">
+            {surplus ? 'Surplus' : 'Supply Gap'}
+          </div>
+          <div className={`font-mono font-bold text-base ${
+            surplus ? 'text-positive' : gapMT > 0.5 ? 'text-negative' : 'text-accent'
+          }`}>
+            {surplus ? '+' : '−'}{Math.abs(gapMT).toFixed(2)} Mt
+          </div>
+          <div className="text-text-dim text-[10px]">
+            {surplus ? 'Exports possible' : 'Import dependency'}
+          </div>
+        </div>
+      </div>
+
+      {/* Interpretation */}
+      <div className="bg-surface/40 border border-border/50 rounded p-3 mt-3">
+        <p className="text-text-secondary text-xs leading-relaxed">
+          📊 <strong className="text-text-primary">Interpretation:</strong>{' '}
+          {mandate.country_name} needs approximately <strong className="text-text-primary font-mono">{obligatedVolumeMT.toFixed(2)} million tonnes</strong>{' '}
+          of physical biofuel in {year} to meet its {targetPct.toFixed(2)}% target.{' '}
+          {surplus ? (
+            <>Domestic capacity ({capInput.toFixed(1)} Mt) exceeds this — surplus available for export or compliance carry-over.</>
+          ) : (
+            <>Domestic capacity ({capInput.toFixed(1)} Mt) is{' '}
+            <strong className="text-negative font-mono">{gapMT.toFixed(2)} Mt short</strong> —
+            this gap must be closed via imports, higher utilisation, or new builds.</>
+          )}{' '}
+          Of the total, ~<strong className="text-text-primary font-mono">{advancedVolumeMT.toFixed(2)} Mt</strong> must come from advanced feedstocks
+          (Annex IX).
+        </p>
+        <p className="text-text-dim text-[11px] italic mt-2">
+          ⚠️ This is a rough estimate using an average energy density of {AVG_BIOFUEL_GJ_PER_MT} GJ/MT.
+          Actual requirements depend on the feedstock mix (HVO ~44 GJ/MT, biodiesel ~37, ethanol ~27).
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ComplianceRulesSection({ mandate }: { mandate: Mandate }) {
   return (
     <div className="space-y-3">
@@ -958,6 +1118,9 @@ export default function Mandates() {
 
           {/* Compliance Rules — multipliers, caps, GHG, Annex IX, SAF */}
           <ComplianceRulesSection mandate={mandate} />
+
+          {/* Mandate-to-Physical Calculator */}
+          <MandateCalculator mandate={mandate} />
 
           {/* News + Deadlines */}
           <div className="grid gap-5 md:grid-cols-2">

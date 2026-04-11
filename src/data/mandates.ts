@@ -613,3 +613,37 @@ export function getTrajectoryForYear(mandate: Mandate, year: number): MandateTra
 
 /** Array of all country codes in display order. */
 export const COUNTRY_ORDER: CountryCode[] = ['UK', 'DE', 'FR', 'NL', 'ES', 'IT'];
+
+/**
+ * Reference transport energy consumption per country (PJ/year).
+ * Sources: Eurostat Transport Energy Balance, national statistics offices, ~2024 figures.
+ * Used by the Mandate Calculator as default input; user can override.
+ */
+export const TRANSPORT_ENERGY_PJ: Record<CountryCode, number> = {
+  UK: 2050,   // ~2,050 PJ road transport + aviation (Dept for Transport)
+  DE: 2450,   // ~2,450 PJ (BMWK energy statistics)
+  FR: 1720,   // ~1,720 PJ (SDES Ministère Transition Écologique)
+  NL: 480,    // ~480 PJ (CBS)
+  ES: 1280,   // ~1,280 PJ (MITECO)
+  IT: 1430,   // ~1,430 PJ (GSE)
+};
+
+/**
+ * Reference domestic biofuel production capacity per country (million tonnes/year).
+ * Approximate nameplate capacity covering biodiesel + HVO + ethanol.
+ */
+export const DOMESTIC_PRODUCTION_MT: Record<CountryCode, number> = {
+  UK: 0.5,    // Limited domestic capacity, heavy importer
+  DE: 4.5,    // Largest EU biodiesel producer
+  FR: 2.8,    // 2nd largest, strong HVO (TotalEnergies La Mède)
+  NL: 3.0,    // Neste Rotterdam (HVO) + biodiesel
+  ES: 2.2,    // Growing HVO capacity (Cepsa, Repsol)
+  IT: 1.8,    // Eni Venice/Gela HVO, traditional biodiesel
+};
+
+/**
+ * Energy density conversion: approximate GJ per metric tonne
+ * averaged across biodiesel (37.2), HVO (44), ethanol (26.8).
+ * Used as a rough shortcut in the Mandate Calculator.
+ */
+export const AVG_BIOFUEL_GJ_PER_MT = 37; // conservative weighted average

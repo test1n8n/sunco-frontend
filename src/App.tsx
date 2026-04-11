@@ -7,6 +7,9 @@ import TradeBlotter from './pages/broker/TradeBlotter';
 import PositionsPnL from './pages/broker/PositionsPnL';
 import Counterparties from './pages/broker/Counterparties';
 import Alerts from './pages/broker/Alerts';
+import Spreads from './pages/broker/Spreads';
+import History from './pages/broker/History';
+import Subscriptions from './pages/broker/Subscriptions';
 import ReportArchive from './pages/broker/ReportArchive';
 import Charts from './pages/broker/Charts';
 import BiofuelsAI from './pages/broker/BiofuelsAI';
@@ -100,6 +103,36 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Alerts" navLinks={BROKER_NAV}>
                 <Alerts />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/spreads"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Spreads" navLinks={BROKER_NAV}>
+                <Spreads />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/history"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="History" navLinks={BROKER_NAV}>
+                <History />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/subscriptions"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Subscriptions" navLinks={BROKER_NAV}>
+                <Subscriptions />
               </Layout>
             </ProtectedRoute>
           }

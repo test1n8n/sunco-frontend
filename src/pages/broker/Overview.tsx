@@ -7,6 +7,7 @@ import type { Report, NewsItem, Outlook, KeyDate, GasoilReport } from '../../typ
 import { API_BASE_URL, API_KEY } from '../../config';
 import Spinner from '../../components/Spinner';
 import { BIODIESEL_PRODUCTS } from '../../productConfig';
+import { scoreNews, sentimentDistribution, sentimentBadgeColor, sentimentArrow } from '../../utils/newsSentiment';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -308,6 +309,7 @@ function NewsColumn({ news }: { news: NewsItem[] }) {
   }, [news]);
 
   const topNews = sorted.slice(0, 6);
+  const distribution = useMemo(() => sentimentDistribution(news), [news]);
 
   const categoryColors: Record<string, string> = {
     SAF: 'bg-accent/10 text-accent border-accent/30',
@@ -328,36 +330,53 @@ function NewsColumn({ news }: { news: NewsItem[] }) {
         <h3 className="text-text-primary font-semibold text-sm">Key News</h3>
         <Link to="/broker/daily" className="text-accent text-xs hover:underline">View all →</Link>
       </div>
+      {news.length > 0 && (
+        <div className="px-4 py-2 border-b border-border/50 bg-surface/20 flex items-center gap-3 text-[10px]">
+          <span className="text-text-dim uppercase tracking-widest">Tone:</span>
+          <span className="text-positive font-semibold">⬆ {distribution.bullish} bullish</span>
+          <span className="text-negative font-semibold">⬇ {distribution.bearish} bearish</span>
+          <span className="text-text-dim font-semibold">↔ {distribution.neutral} neutral</span>
+        </div>
+      )}
       <div className="flex-1 p-3 space-y-2 overflow-y-auto">
         {topNews.length === 0 ? (
           <p className="text-text-dim text-xs italic text-center py-4">No news available</p>
         ) : (
-          topNews.map((item, idx) => (
-            <a
-              key={idx}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block border border-border rounded p-3 hover:border-accent/50 transition-colors bg-surface/30"
-            >
-              <div className="flex items-start gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${relevanceDot[item.relevance] ?? 'bg-border'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-text-primary text-xs font-semibold leading-snug mb-1.5">
-                    {item.headline}
-                  </p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-text-dim text-[10px]">{item.source}</span>
-                    {item.product_category && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wide ${categoryColors[item.product_category] ?? categoryColors.general}`}>
-                        {item.product_category.replace('_', ' ')}
-                      </span>
-                    )}
+          topNews.map((item, idx) => {
+            const sentiment = scoreNews(item);
+            const sentimentColor = sentimentBadgeColor(sentiment);
+            return (
+              <a
+                key={idx}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block border border-border rounded p-3 hover:border-accent/50 transition-colors bg-surface/30"
+              >
+                <div className="flex items-start gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${relevanceDot[item.relevance] ?? 'bg-border'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-text-primary text-xs font-semibold leading-snug mb-1.5">
+                      {item.headline}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-text-dim text-[10px]">{item.source}</span>
+                      {item.product_category && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wide ${categoryColors[item.product_category] ?? categoryColors.general}`}>
+                          {item.product_category.replace('_', ' ')}
+                        </span>
+                      )}
+                      {sentiment !== 'neutral' && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wide font-bold ${sentimentColor}`}>
+                          {sentimentArrow(sentiment)} {sentiment}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </a>
-          ))
+              </a>
+            );
+          })
         )}
       </div>
     </div>

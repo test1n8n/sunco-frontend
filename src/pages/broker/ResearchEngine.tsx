@@ -78,6 +78,88 @@ const MAX_FILES = 5;
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
+// ─── Research Templates ──────────────────────────────────────────────────────
+// Pre-written briefs that brokers can run with one click. Each template is
+// parameterized by country where relevant.
+
+interface ResearchTemplate {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: 'mandate' | 'product' | 'macro' | 'country';
+  brief: string;
+  suggested_country?: string;
+}
+
+const RESEARCH_TEMPLATES: ResearchTemplate[] = [
+  {
+    id: 'weekly_mandate',
+    title: 'Weekly Mandate Update',
+    description: 'Latest regulatory changes, pending consultations, and compliance news for a specific country',
+    icon: '📋',
+    category: 'mandate',
+    brief: 'Provide a comprehensive update on biofuel mandate developments in {COUNTRY} over the last 7 days. Cover: (1) any new regulatory announcements, (2) pending consultations and their deadlines, (3) changes to blending targets or multipliers, (4) compliance enforcement actions, (5) cross-border policy interactions with RED III. Focus on actionable intelligence for a broker desk.',
+  },
+  {
+    id: 'quarterly_hvo',
+    title: 'Quarterly HVO Market Update',
+    description: 'Supply-demand balance, price trends, feedstock availability for renewable diesel',
+    icon: '🛫',
+    category: 'product',
+    brief: 'Produce a quarterly market update on renewable diesel (HVO) covering: (1) global production capacity and utilisation rates, (2) primary feedstock availability (palm oil, soybean oil, UCO, tallow), (3) current price levels and spreads vs fossil diesel, (4) demand drivers (SAF mandates, EU obligation growth, California LCFS), (5) upcoming capacity additions, (6) regulatory tailwinds or headwinds. Aim to identify 2-3 actionable trading angles.',
+  },
+  {
+    id: 'ucome_deepdive',
+    title: 'UCOME Deep Dive',
+    description: 'Used cooking oil supply chain, diffs pricing, import dynamics, EU vs UK vs Asia',
+    icon: '♻️',
+    category: 'product',
+    brief: 'Conduct a deep-dive on UCOME (Used Cooking Oil Methyl Ester) markets covering: (1) UCO feedstock supply by origin (China, Indonesia, Europe, USA) and recent import flow changes, (2) certification and traceability concerns (ISCC EU, fraud investigations), (3) country-level UCO caps and double-counting treatment, (4) current UCOME diff pricing vs FAME0 and RME, (5) key risk events on the 3-6 month horizon. Focus on practical trading implications.',
+  },
+  {
+    id: 'saf_outlook',
+    title: 'SAF Mandate & Supply Outlook',
+    description: 'ReFuelEU compliance, HEFA production, SAF ticket pricing, aviation demand',
+    icon: '✈️',
+    category: 'product',
+    brief: 'Analyse the Sustainable Aviation Fuel (SAF) market covering: (1) ReFuelEU Aviation 2025 and 2030 mandate status across EU member states, (2) UK SAF Mandate trajectory and buy-out mechanism, (3) current HEFA pathway production capacity vs targets, (4) feedstock competition between HVO and SAF, (5) SAF ticket / certificate pricing where available, (6) new capacity additions by major producers (Neste, TotalEnergies, Eni, Shell). Identify trade ideas for the coming quarter.',
+  },
+  {
+    id: 'country_profile',
+    title: 'Full Country Profile',
+    description: 'Complete regulatory, compliance, pricing, and supply-demand overview for one country',
+    icon: '🌍',
+    category: 'country',
+    brief: 'Produce a complete country profile for the {COUNTRY} biofuels market covering: (1) current mandate framework and blending obligations through 2035, (2) regulatory multipliers and feedstock caps, (3) domestic production capacity by product type, (4) import dependency and trade flows, (5) current compliance certificate pricing, (6) upcoming regulatory changes and risks, (7) key market participants. Structure as a broker desk briefing document.',
+    suggested_country: 'DE',
+  },
+  {
+    id: 'ets2_impact',
+    title: 'ETS2 Road Transport Impact',
+    description: 'How the 2027 ETS2 extension affects biofuel demand, pricing, and compliance',
+    icon: '🌡️',
+    category: 'macro',
+    brief: 'Analyse the impact of the EU ETS2 extension to road transport (starting 2027) on biofuel markets. Cover: (1) expected carbon price trajectory, (2) how ETS2 interacts with existing national mandates (TIRUERT, THG-Quote, HBE, RTFO), (3) additional compliance cost for fossil fuel suppliers and implied biofuel premium uplift, (4) member state transposition status, (5) exemptions and phase-in provisions, (6) expected impact on diff pricing across FAME/RME/UCOME/HVO. Quantify the expected price impact where possible.',
+  },
+  {
+    id: 'crop_vs_waste',
+    title: 'Crop vs Waste Feedstock Balance',
+    description: 'Food/feed crop caps, waste feedstock availability, substitution dynamics',
+    icon: '🌾',
+    category: 'product',
+    brief: 'Analyse the crop-vs-waste feedstock balance across EU biofuel markets. Cover: (1) how food/feed crop caps are binding in each country (France 7%, NL 1.4%, UK declining to 2%), (2) waste feedstock (UCO, tallow, POME) availability and pricing, (3) Annex IX Part A vs Part B constraints, (4) substitution dynamics when crop caps tighten, (5) double-counting abolition impact on physical volume demand, (6) specific trade angles exploiting the tightening crop-cap trajectory.',
+  },
+  {
+    id: 'biomethane_saf',
+    title: 'Biomethane & Gas-Based Biofuels',
+    description: 'Biomethane Guarantees of Origin, cross-border trading, transport fuel integration',
+    icon: '⛽',
+    category: 'product',
+    brief: 'Provide a market update on biomethane and gas-based biofuels covering: (1) biomethane Guarantees of Origin (GO) pricing across major EU markets (France EEX, Germany, Netherlands, Denmark), (2) cross-border GO trading frameworks (ERGaR, AIB), (3) how biomethane counts toward transport obligations (TIRUERT, HBE, THG-Quote), (4) Bio-CNG and Bio-LNG compliance pathways, (5) upcoming harmonisation efforts and regulatory risks, (6) arbitrage opportunities between EU jurisdictions. Focus on actionable intelligence for a commodities desk.',
+  },
+];
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
@@ -601,6 +683,47 @@ export default function ResearchEngine() {
 
       {/* Input form */}
       <div className="bg-card border border-border rounded p-6 space-y-5">
+        {/* Research Templates */}
+        <div>
+          <label className="block text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">
+            Start from a Template (optional)
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {RESEARCH_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => {
+                  let briefText = template.brief;
+                  // Replace {COUNTRY} with selected country name, or placeholder
+                  const countryName = countries.find((c) => c.code === countryCode)?.name_en;
+                  if (countryName) {
+                    briefText = briefText.replace(/\{COUNTRY\}/g, countryName);
+                  } else if (template.suggested_country) {
+                    setCountryCode(template.suggested_country);
+                    const suggestedName = countries.find((c) => c.code === template.suggested_country)?.name_en ?? 'Germany';
+                    briefText = briefText.replace(/\{COUNTRY\}/g, suggestedName);
+                  } else {
+                    briefText = briefText.replace(/\{COUNTRY\}/g, '[pick a country below]');
+                  }
+                  setBrief(briefText);
+                }}
+                className="text-left border border-border rounded p-3 hover:border-accent/50 bg-surface/30 hover:bg-surface/50 transition-colors"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-base shrink-0">{template.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-text-primary text-xs font-semibold">{template.title}</div>
+                    <div className="text-text-dim text-[11px] mt-0.5 leading-snug">{template.description}</div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <p className="text-text-dim text-[10px] mt-2 italic">
+            💡 Click any template to pre-fill the brief, then customize before submitting. Templates with {'{COUNTRY}'} will auto-fill based on your country selection below.
+          </p>
+        </div>
+
         {/* Brief */}
         <div>
           <label className="block text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">
