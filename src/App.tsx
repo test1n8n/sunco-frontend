@@ -4,6 +4,9 @@ import Overview from './pages/broker/Overview';
 import DailyReport from './pages/broker/DailyReport';
 import Mandates from './pages/broker/Mandates';
 import TradeBlotter from './pages/broker/TradeBlotter';
+import PositionsPnL from './pages/broker/PositionsPnL';
+import Counterparties from './pages/broker/Counterparties';
+import Alerts from './pages/broker/Alerts';
 import ReportArchive from './pages/broker/ReportArchive';
 import Charts from './pages/broker/Charts';
 import BiofuelsAI from './pages/broker/BiofuelsAI';
@@ -67,6 +70,36 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Trade Blotter" navLinks={BROKER_NAV}>
                 <TradeBlotter />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/pnl"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Positions & P&L" navLinks={BROKER_NAV}>
+                <PositionsPnL />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/counterparties"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Counterparties" navLinks={BROKER_NAV}>
+                <Counterparties />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/alerts"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Alerts" navLinks={BROKER_NAV}>
+                <Alerts />
               </Layout>
             </ProtectedRoute>
           }

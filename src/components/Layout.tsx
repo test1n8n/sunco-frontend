@@ -14,15 +14,18 @@ interface LayoutProps {
 }
 
 const BROKER_NAV: NavItem[] = [
-  { to: '/broker',           label: 'Overview',      end: true  },
-  { to: '/broker/daily',     label: 'Daily Report',  end: false },
-  { to: '/broker/mandates',  label: 'Mandates',      end: false },
-  { to: '/broker/products',  label: 'Products Data', end: false },
-  { to: '/broker/charts',    label: 'Charts',        end: false },
-  { to: '/broker/blotter',   label: 'Trade Blotter', end: false },
-  { to: '/broker/archive',   label: 'Archive',       end: false },
-  { to: '/broker/ai',        label: 'Biofuels AI',   end: false },
-  { to: '/broker/research',  label: 'Research',      end: false },
+  { to: '/broker',               label: 'Overview',         end: true  },
+  { to: '/broker/daily',         label: 'Daily Report',     end: false },
+  { to: '/broker/mandates',      label: 'Mandates',         end: false },
+  { to: '/broker/products',      label: 'Products Data',    end: false },
+  { to: '/broker/charts',        label: 'Charts',           end: false },
+  { to: '/broker/blotter',       label: 'Trade Blotter',    end: false },
+  { to: '/broker/pnl',           label: 'Positions & P&L',  end: false },
+  { to: '/broker/counterparties', label: 'Counterparties',  end: false },
+  { to: '/broker/alerts',        label: 'Alerts',           end: false },
+  { to: '/broker/archive',       label: 'Archive',          end: false },
+  { to: '/broker/ai',            label: 'Biofuels AI',      end: false },
+  { to: '/broker/research',      label: 'Research',         end: false },
 ];
 
 const CLIENT_NAV: NavItem[] = [

@@ -523,6 +523,169 @@ function MiniChart({
   );
 }
 
+// ─── Trade Ideas Card (AI-generated) ──────────────────────────────────────────
+
+interface TradeIdea {
+  title: string;
+  direction: 'long' | 'short' | 'spread';
+  products: string[];
+  tenor: string;
+  rationale: string;
+  catalyst: string;
+  confidence: 'high' | 'medium' | 'low';
+  risk: string;
+}
+
+interface TradeIdeasResponse {
+  ideas: TradeIdea[];
+  generated_at: string;
+  based_on_report_date?: string;
+}
+
+function TradeIdeasCard() {
+  const [ideas, setIdeas] = useState<TradeIdea[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+
+  const loadIdeas = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/trade-ideas`, {
+        headers: { 'X-API-Key': API_KEY },
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(body || `HTTP ${res.status}`);
+      }
+      const data = (await res.json()) as TradeIdeasResponse;
+      setIdeas(data.ideas ?? []);
+      setGeneratedAt(data.generated_at);
+      setLoaded(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate trade ideas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confColor: Record<string, string> = {
+    high: 'text-positive bg-positive/10 border-positive/30',
+    medium: 'text-accent bg-accent/10 border-accent/30',
+    low: 'text-text-dim bg-surface border-border',
+  };
+  const dirColor: Record<string, string> = {
+    long: 'text-positive bg-positive/10 border-positive/30',
+    short: 'text-negative bg-negative/10 border-negative/30',
+    spread: 'text-accent bg-accent/10 border-accent/30',
+  };
+
+  return (
+    <div className="bg-card border border-border rounded p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-text-primary font-semibold text-sm">💡 AI Trade Ideas</h3>
+          <p className="text-text-dim text-xs mt-0.5">
+            AI-generated from the latest daily report, product settlements, and market context
+          </p>
+        </div>
+        <button
+          onClick={loadIdeas}
+          disabled={loading}
+          className="px-3 py-2 text-xs font-semibold bg-accent/10 border border-accent/30 text-accent rounded hover:bg-accent/20 transition-colors disabled:opacity-40"
+        >
+          {loading ? '⟳ Generating...' : loaded ? '↻ Regenerate' : '✨ Generate Ideas'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-negative/10 border border-negative/30 rounded px-3 py-2 text-negative text-xs mb-3">
+          {error}
+        </div>
+      )}
+
+      {!loaded && !loading && !error && (
+        <div className="text-center py-8 border border-dashed border-border rounded">
+          <p className="text-text-dim text-xs">
+            Click "Generate Ideas" to get AI-powered trade suggestions based on today's market data.
+          </p>
+          <p className="text-text-dim text-[10px] mt-1 italic">
+            Uses Claude Opus · ~$0.50 per generation · cached for 30 minutes
+          </p>
+        </div>
+      )}
+
+      {loading && (
+        <div className="text-center py-8">
+          <div className="inline-block w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin mb-2" />
+          <p className="text-text-dim text-xs">Analysing market context and generating ideas...</p>
+          <p className="text-text-dim text-[10px] mt-1">This takes 20-40 seconds</p>
+        </div>
+      )}
+
+      {loaded && ideas.length > 0 && (
+        <div className="space-y-3">
+          {ideas.map((idea, i) => (
+            <div key={i} className="border border-border rounded p-4 bg-surface/30 hover:bg-surface/50 transition-colors">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h4 className="text-text-primary font-semibold text-sm flex-1">
+                  #{i + 1} · {idea.title}
+                </h4>
+                <div className="flex gap-1 shrink-0">
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${dirColor[idea.direction] ?? dirColor.long}`}>
+                    {idea.direction}
+                  </span>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${confColor[idea.confidence] ?? confColor.medium}`}>
+                    {idea.confidence}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-text-dim mb-2">
+                <span>
+                  <span className="text-text-dim">Products:</span>{' '}
+                  <span className="text-text-secondary font-mono">{idea.products.join(' · ')}</span>
+                </span>
+                <span>
+                  <span className="text-text-dim">Tenor:</span>{' '}
+                  <span className="text-text-secondary font-mono">{idea.tenor}</span>
+                </span>
+              </div>
+
+              <p className="text-text-secondary text-xs leading-relaxed mb-2">{idea.rationale}</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] mt-3 pt-2 border-t border-border/50">
+                <div>
+                  <span className="text-accent font-semibold">⚡ Catalyst:</span>{' '}
+                  <span className="text-text-secondary">{idea.catalyst}</span>
+                </div>
+                <div>
+                  <span className="text-negative font-semibold">⚠ Risk:</span>{' '}
+                  <span className="text-text-secondary">{idea.risk}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {generatedAt && (
+            <p className="text-text-dim text-[10px] text-center mt-2 italic">
+              Generated {new Date(generatedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {' · '}Cached for 30 minutes
+            </p>
+          )}
+        </div>
+      )}
+
+      {loaded && ideas.length === 0 && !error && (
+        <p className="text-text-dim text-xs italic text-center py-4">
+          No ideas generated. Try again or check that daily report data is available.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Quick Access Bar ─────────────────────────────────────────────────────────
 
 function QuickAccessBar() {
@@ -1031,6 +1194,9 @@ export default function Overview() {
           keyDates={report?.upcoming_key_dates ?? []}
         />
       </div>
+
+      {/* ROW 3b — AI Trade Ideas (on-demand) */}
+      <TradeIdeasCard />
 
       {/* ROW 4 — Crude Oil & Refining Margins */}
       <CollapsibleSection
