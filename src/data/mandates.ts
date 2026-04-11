@@ -25,6 +25,43 @@ export interface MandatePenalty {
   note: string;
 }
 
+export interface Multiplier {
+  vector: string;         // "Renewable electricity (EV)", "Green hydrogen", etc.
+  multiplier: string;     // "4×" or "2× RTFCs" or "4.58 RTFCs/kg"
+  cap: string;            // "None", "20% of fishing fuel", "Target - 7%"
+  note?: string;
+}
+
+export interface FeedstockRule {
+  feedstock: string;
+  cap: string;            // "0% (total ban)", "1.1% (essences)", "3.17% → 2.00% (2032)"
+  status: 'banned' | 'capped' | 'allowed' | 'declining';
+  note?: string;
+}
+
+export interface GhgThresholds {
+  existing_plants: string;  // "65%" or "70% (tighter)"
+  new_plants: string;       // "80%"
+  grandfather_clause?: string; // "Pre-RED III until 31 Dec 2030"
+  note?: string;
+}
+
+export interface AnnexIx {
+  part_a_examples: string[];   // "Lignocellulosic", "Manure", "POME"
+  part_b_examples: string[];   // "UCO", "Animal fats Cat 1/2/3"
+  exclusions: string[];        // Country-specific exclusions
+  notes: string;
+}
+
+export interface SafMandate {
+  covered: boolean;            // Is SAF inside the main mandate or separate?
+  track: string;               // "ReFuelEU Aviation (separate)" or "Included in THG-Quote from 2026"
+  target_2025?: string;
+  target_2030?: string;
+  target_2035?: string;
+  note?: string;
+}
+
 export interface Mandate {
   country_code: CountryCode;
   country_name: string;
@@ -44,6 +81,13 @@ export interface Mandate {
   cross_border_accepted: boolean;
   key_notes: string[];
   last_updated: string;           // ISO date
+  // Tier 1 — compliance rules
+  multipliers: Multiplier[];
+  feedstock_caps: FeedstockRule[];
+  ghg_thresholds: GhgThresholds;
+  // Tier 2 — extended context
+  annex_ix: AnnexIx;
+  saf_mandate: SafMandate;
 }
 
 // EU RED III baseline (reference line for trajectory charts)
@@ -104,6 +148,38 @@ export const MANDATES: Record<CountryCode, Mandate> = {
       'Post-Brexit: entirely separate from EU systems, no cross-border certificate recognition',
     ],
     last_updated: '2026-04-01',
+    multipliers: [
+      { vector: 'Waste biofuels (UCO, tallow, Annex IX-B)', multiplier: '2× RTFCs', cap: 'None', note: 'Double-counting maintained post-2025, diverging from EU approach' },
+      { vector: 'Development fuel (cellulosic, novel feedstocks)', multiplier: '2× Development RTFCs', cap: 'Dev sub-target', note: 'Separate sub-target above the main obligation' },
+      { vector: 'Green hydrogen (transport)', multiplier: '4.58 RTFCs/kg H₂', cap: 'None', note: '9.16 RTFCs/kg if also double-counted' },
+      { vector: 'Renewable electricity (EV)', multiplier: 'Separate RTFC track', cap: 'None', note: 'Not eligible as double-counted waste' },
+    ],
+    feedstock_caps: [
+      { feedstock: 'Crop cap (food/feed)', cap: '3.17% (2025) → 2.00% (2032)', status: 'declining', note: 'Declining trajectory through 2032' },
+      { feedstock: 'Used Cooking Oil (UCO)', cap: 'No cap — double-counted', status: 'allowed', note: 'Excluded from development fuel category despite 2× crediting' },
+      { feedstock: 'Tallow (animal fats)', cap: 'No cap — double-counted', status: 'allowed' },
+      { feedstock: 'Palm oil', cap: 'Allowed (subject to ILUC rules)', status: 'capped', note: 'High-ILUC feedstocks limited but not banned outright' },
+    ],
+    ghg_thresholds: {
+      existing_plants: '65%',
+      new_plants: '80%',
+      grandfather_clause: 'Plants operating pre-Oct 2015 use older thresholds until decommissioning',
+      note: 'Aligned with RED II baseline; RED III transposition pending post-Brexit',
+    },
+    annex_ix: {
+      part_a_examples: ['Lignocellulosic', 'Non-food cellulosic', 'POME', 'Straw', 'Husks', 'Cobs', 'Nut shells', 'Manure', 'Sewage sludge', 'Algae'],
+      part_b_examples: ['Used Cooking Oil (UCO)', 'Animal fats Cat 1/2/3 (tallow)'],
+      exclusions: ['Palm-based residues (POME) allowed but scrutinised'],
+      notes: 'UK accepts both Part A and Part B feedstocks with double-counting. Development fuel sub-target specifically targets Part A (cellulosic) feedstocks, which receive additional credit.',
+    },
+    saf_mandate: {
+      covered: false,
+      track: 'Separate UK SAF Mandate (from 2025)',
+      target_2025: '2% SAF',
+      target_2030: '10% SAF',
+      target_2035: '22% SAF',
+      note: 'Jet Zero Strategy target: 10% SAF by 2030. Separate buy-out mechanism distinct from RTFO.',
+    },
   },
 
   DE: {
@@ -149,6 +225,38 @@ export const MANDATES: Record<CountryCode, Mandate> = {
       'No explicit crop cap (GHG-based system naturally limits crop fuels via savings thresholds)',
     ],
     last_updated: '2026-02-11',
+    multipliers: [
+      { vector: 'Advanced biofuels (Annex IX-A)', multiplier: '2× (abolished from 2026)', cap: 'None', note: 'Double-counting being abolished under 2026 reform' },
+      { vector: 'Waste biofuels (Annex IX-B)', multiplier: '2× (abolished from 2026)', cap: 'None', note: 'Double-counting being abolished under 2026 reform' },
+      { vector: 'Renewable electricity (EV)', multiplier: 'Via UBA certification', cap: 'None', note: 'EV owners generate annual THG credits certified by Umweltbundesamt' },
+      { vector: 'Green hydrogen / RFNBO', multiplier: 'New dedicated quota from 2026', cap: '0.2% (2026) → 3.0% (2040)', note: 'Separate RFNBO sub-quota introduced under THG-Quote reform' },
+    ],
+    feedstock_caps: [
+      { feedstock: 'Food/feed crops', cap: 'No explicit cap', status: 'allowed', note: 'GHG-based system naturally limits crop fuels via savings thresholds' },
+      { feedstock: 'Palm oil residues', cap: 'Excluded from 2026', status: 'banned', note: '2026 reform bans crediting of palm oil residue-based biofuels' },
+      { feedstock: 'Used Cooking Oil (UCO)', cap: 'Exceeds EU 1.7% Part B cap', status: 'capped', note: 'Market reports suggest UCO volumes exceed EU-mandated 1.7% Annex IX Part B cap' },
+      { feedstock: 'Tallow (animal fats)', cap: 'Allowed', status: 'allowed' },
+    ],
+    ghg_thresholds: {
+      existing_plants: '50% (pre-2015 plants)',
+      new_plants: '65% (2015+) / 70% (2021+)',
+      grandfather_clause: 'Tiered by plant commissioning date',
+      note: 'Pre-October 2015 plants use lower 50% threshold. Plants commissioned 2021+ must meet 70% savings.',
+    },
+    annex_ix: {
+      part_a_examples: ['Lignocellulosic', 'Straw', 'Husks', 'Cobs', 'Manure', 'Algae', 'POME'],
+      part_b_examples: ['Used Cooking Oil (UCO)', 'Animal fats Cat 1/2/3 (tallow)'],
+      exclusions: ['Palm oil residues (excluded from 2026)'],
+      notes: 'Germany accepts Annex IX-A and IX-B, but 2026 reform removes double-counting benefit. SAF separately credited from 2026.',
+    },
+    saf_mandate: {
+      covered: true,
+      track: 'Integrated into THG-Quote from 2026 + ReFuelEU Aviation',
+      target_2025: '2% SAF (ReFuelEU)',
+      target_2030: '6% SAF (ReFuelEU)',
+      target_2035: '20% SAF (ReFuelEU)',
+      note: '2026 reform adds SAF to THG-Quote obligation. Parallel compliance via ReFuelEU Aviation 2% baseline.',
+    },
   },
 
   FR: {
@@ -197,6 +305,40 @@ export const MANDATES: Record<CountryCode, Mandate> = {
       'Double-counting abolition proposed from 2026 (pending final PPE3 adoption)',
     ],
     last_updated: '2026-02-19',
+    multipliers: [
+      { vector: 'Renewable electricity (EV charging)', multiplier: '4×', cap: 'None', note: 'Strongest multiplier in EU — creates major arbitrage vs standalone electricity GOs' },
+      { vector: 'Renewable hydrogen', multiplier: '2×', cap: 'None', note: 'Direct link between H₂ production and transport compliance' },
+      { vector: 'Cat 3 animal fat HVO (gazole only)', multiplier: '2×', cap: '20% of fishing fuel volumes', note: 'Narrow eligible pool' },
+      { vector: 'Annex IX Part A advanced biofuels', multiplier: '2×', cap: 'Target − 7%', note: 'Advanced sub-target capped at overall target minus crop cap' },
+    ],
+    feedstock_caps: [
+      { feedstock: 'Palm oil', cap: '0% — total ban', status: 'banned', note: 'Banned since 2019 Finance Law — strictest in EU' },
+      { feedstock: 'Soy oil', cap: '0% — total ban', status: 'banned', note: 'Banned since 2019 Finance Law — strictest in EU' },
+      { feedstock: 'Food/feed crops (overall)', cap: '7% (essences & gazoles)', status: 'capped' },
+      { feedstock: 'Used Cooking Oil (UCO)', cap: '1.1% essences / 1.2% gazoles', status: 'capped', note: 'Strictest UCO cap in EU' },
+      { feedstock: 'Tall oil', cap: '0.1%', status: 'capped' },
+      { feedstock: 'Cat 3 animal fat HVO', cap: '20% of fishing fuel (gazole only)', status: 'capped' },
+    ],
+    ghg_thresholds: {
+      existing_plants: '70% (tightening under RED III)',
+      new_plants: '80%',
+      grandfather_clause: 'Pre-RED III certified biofuels maintain compliance until 31 Dec 2030',
+      note: 'France tightening thresholds beyond EU minimum as part of RED III transposition',
+    },
+    annex_ix: {
+      part_a_examples: ['Lignocellulosic', 'Straw', 'Husks', 'Cobs', 'Manure', 'POME', 'Algae'],
+      part_b_examples: ['Used Cooking Oil (UCO)', 'Animal fats Cat 1/2/3 (tallow)'],
+      exclusions: ['Palm oil', 'Soy oil', 'Palm residues implicitly via palm ban'],
+      notes: 'France accepts Annex IX feedstocks but uniquely bans all palm and soy derivatives regardless of pathway. UCO cap is the strictest in EU.',
+    },
+    saf_mandate: {
+      covered: false,
+      track: 'Removed from TIRUERT in 2025 → ReFuelEU Aviation',
+      target_2025: '2% SAF (ReFuelEU)',
+      target_2030: '6% SAF (ReFuelEU)',
+      target_2035: '20% SAF (ReFuelEU)',
+      note: 'Aviation (kerosene/JET A1) removed from TIRUERT scope under 2025 Finance Law, transferred to ReFuelEU Aviation framework.',
+    },
   },
 
   NL: {
@@ -238,6 +380,38 @@ export const MANDATES: Record<CountryCode, Mandate> = {
       'NEa has stated fraudulent HBEs in supply chain will NOT be retroactively cancelled',
     ],
     last_updated: '2026-03-15',
+    multipliers: [
+      { vector: 'Advanced biofuels (HBE-G)', multiplier: '2× (phasing out)', cap: 'None', note: 'Multipliers being phased out under ERE transition' },
+      { vector: 'Renewable electricity (EV)', multiplier: 'HBE-E generation', cap: 'None', note: 'Electricity supplied to EV charging generates HBE-E certificates' },
+      { vector: 'Green hydrogen', multiplier: 'HBE-E via electrolysis', cap: 'None', note: 'Hydrogen from verified renewable electricity pathway' },
+      { vector: 'All categories (post-2025)', multiplier: 'Phasing to ERE (GHG-based)', cap: 'N/A', note: 'System shifting from energy-share to GHG-reduction accounting' },
+    ],
+    feedstock_caps: [
+      { feedstock: 'Conventional biofuels (HBE-C)', cap: '1.4% maximum', status: 'capped', note: 'Hard ceiling on crop-based feedstocks' },
+      { feedstock: 'Food/feed crops', cap: '1.4% (via HBE-C limit)', status: 'capped' },
+      { feedstock: 'Used Cooking Oil (UCO)', cap: 'Via HBE-B sub-limit', status: 'capped', note: 'Annex IX-B feedstocks tracked separately' },
+      { feedstock: 'Palm oil', cap: 'Allowed with ILUC certification', status: 'capped' },
+    ],
+    ghg_thresholds: {
+      existing_plants: '65%',
+      new_plants: '80%',
+      grandfather_clause: 'Pre-RED III certified until 31 Dec 2030',
+      note: 'Standard RED III thresholds; ERE transition will shift compliance to GHG-reduction basis',
+    },
+    annex_ix: {
+      part_a_examples: ['Lignocellulosic', 'Straw', 'POME', 'Manure', 'Algae', 'Husks'],
+      part_b_examples: ['Used Cooking Oil (UCO)', 'Animal fats Cat 1/2/3'],
+      exclusions: [],
+      notes: 'Netherlands accepts full Annex IX list. HBE-G tracks advanced biofuels; HBE-IXB specifically for Annex IX Part B. HBE-O catches residual categories.',
+    },
+    saf_mandate: {
+      covered: false,
+      track: 'ReFuelEU Aviation (separate)',
+      target_2025: '2% SAF',
+      target_2030: '6% SAF',
+      target_2035: '20% SAF',
+      note: 'SAF compliance handled separately via ReFuelEU Aviation, not through HBE/ERE.',
+    },
   },
 
   ES: {
@@ -279,6 +453,38 @@ export const MANDATES: Record<CountryCode, Mandate> = {
       'Double-counting maintained for waste-based feedstocks (UCO, tallow, POME)',
     ],
     last_updated: '2026-01-20',
+    multipliers: [
+      { vector: 'Annex IX-A advanced biofuels', multiplier: '2×', cap: 'None', note: 'Standard EU double-counting for advanced feedstocks' },
+      { vector: 'Annex IX-B waste biofuels', multiplier: '2×', cap: 'EU 1.7% Part B cap', note: 'UCO, tallow, POME count double toward mandate' },
+      { vector: 'Renewable electricity (EV)', multiplier: 'Under implementation', cap: 'TBD', note: 'Framework being finalised under RED III transposition' },
+      { vector: 'Renewable hydrogen / RFNBO', multiplier: 'RED III baseline', cap: 'EU framework', note: 'Will apply EU RFNBO framework once fully transposed' },
+    ],
+    feedstock_caps: [
+      { feedstock: 'Food/feed crops', cap: '7% (EU standard)', status: 'capped', note: 'Aligned with RED III crop cap' },
+      { feedstock: 'Palm oil', cap: 'Allowed (ILUC rules apply)', status: 'capped', note: 'Subject to high-ILUC classification, no outright ban' },
+      { feedstock: 'Used Cooking Oil (UCO)', cap: 'Subject to EU 1.7% Part B cap', status: 'capped' },
+      { feedstock: 'Tallow', cap: 'Subject to EU 1.7% Part B cap', status: 'capped' },
+    ],
+    ghg_thresholds: {
+      existing_plants: '65%',
+      new_plants: '80%',
+      grandfather_clause: 'Pre-RED III certified until 31 Dec 2030',
+      note: 'Standard RED III thresholds under transposition',
+    },
+    annex_ix: {
+      part_a_examples: ['Lignocellulosic', 'Straw', 'POME', 'Manure', 'Algae', 'Nut shells'],
+      part_b_examples: ['Used Cooking Oil (UCO)', 'Animal fats Cat 1/2/3'],
+      exclusions: [],
+      notes: 'Spain accepts full Annex IX list with standard EU rules. Final transposition details expected Q4 2026.',
+    },
+    saf_mandate: {
+      covered: false,
+      track: 'ReFuelEU Aviation (separate)',
+      target_2025: '2% SAF',
+      target_2030: '6% SAF',
+      target_2035: '20% SAF',
+      note: 'SAF compliance via ReFuelEU Aviation. Spain well-positioned for HEFA pathway given Mediterranean refining capacity.',
+    },
   },
 
   IT: {
@@ -320,6 +526,38 @@ export const MANDATES: Record<CountryCode, Mandate> = {
       'Separate SAF mandate under implementation for ReFuelEU Aviation compliance',
     ],
     last_updated: '2026-02-05',
+    multipliers: [
+      { vector: 'Annex IX-A advanced biofuels', multiplier: '2×', cap: 'None', note: 'Double-counting maintained for advanced feedstocks' },
+      { vector: 'Annex IX-B waste biofuels (UCO, tallow)', multiplier: '2×', cap: 'EU 1.7% Part B cap', note: 'Strong domestic UCOME/HVO industry benefits' },
+      { vector: 'Renewable electricity (EV)', multiplier: 'CIC generation for charging', cap: 'None', note: 'EV operators can generate CICs for public charging' },
+      { vector: 'Renewable hydrogen', multiplier: 'Per RED III framework', cap: 'EU framework', note: 'RFNBO framework implementation in progress' },
+    ],
+    feedstock_caps: [
+      { feedstock: 'Food/feed crops', cap: '7% (EU standard)', status: 'capped' },
+      { feedstock: 'Palm oil', cap: 'Allowed (ILUC rules)', status: 'capped' },
+      { feedstock: 'Used Cooking Oil (UCO)', cap: 'Subject to EU 1.7% Part B cap', status: 'capped', note: 'Italy is a major UCO importer and UCOME producer' },
+      { feedstock: 'Tallow', cap: 'Subject to EU 1.7% Part B cap', status: 'capped' },
+    ],
+    ghg_thresholds: {
+      existing_plants: '65%',
+      new_plants: '80%',
+      grandfather_clause: 'Pre-RED III certified until 31 Dec 2030',
+      note: 'Standard RED III thresholds',
+    },
+    annex_ix: {
+      part_a_examples: ['Lignocellulosic', 'Straw', 'POME', 'Manure', 'Algae', 'Husks', 'Cobs'],
+      part_b_examples: ['Used Cooking Oil (UCO)', 'Animal fats Cat 1/2/3 (tallow)'],
+      exclusions: [],
+      notes: 'Italy accepts full Annex IX list. Eni Venice refinery is a major HVO producer using Annex IX feedstocks.',
+    },
+    saf_mandate: {
+      covered: false,
+      track: 'ReFuelEU Aviation (separate) — implementation under way',
+      target_2025: '2% SAF',
+      target_2030: '6% SAF',
+      target_2035: '20% SAF',
+      note: 'SAF mandate under implementation for ReFuelEU compliance. Eni is investing in SAF production capacity.',
+    },
   },
 };
 

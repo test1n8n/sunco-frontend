@@ -342,6 +342,232 @@ function KeyNotesCard({ mandate }: { mandate: Mandate }) {
   );
 }
 
+// ─── Compliance Rules Section (Tier 1 + Tier 2 details) ──────────────────────
+
+function CollapsibleCard({
+  title,
+  icon,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  icon: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-card border border-border rounded">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface/30 transition-colors text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-base">{icon}</span>
+          <h3 className="text-text-primary font-semibold text-sm">{title}</h3>
+        </div>
+        <span className={`text-text-dim text-xs transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
+      </button>
+      {open && <div className="px-4 pb-4 border-t border-border pt-3">{children}</div>}
+    </div>
+  );
+}
+
+function MultipliersPanel({ mandate }: { mandate: Mandate }) {
+  return (
+    <CollapsibleCard title="Multipliers & Crediting Rules" icon="🔢">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border/50">
+              <th className="text-left py-2 text-text-dim text-[10px] font-semibold uppercase tracking-widest">Energy Vector</th>
+              <th className="text-left py-2 text-text-dim text-[10px] font-semibold uppercase tracking-widest">Multiplier</th>
+              <th className="text-left py-2 text-text-dim text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell">Cap</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mandate.multipliers.map((m, i) => (
+              <tr key={i} className="border-b border-border/30 last:border-0">
+                <td className="py-2 pr-3 text-text-primary font-semibold">{m.vector}</td>
+                <td className="py-2 pr-3 font-mono text-accent font-bold">{m.multiplier}</td>
+                <td className="py-2 text-text-secondary hidden md:table-cell">{m.cap}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {mandate.multipliers.some((m) => m.note) && (
+        <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
+          {mandate.multipliers.filter((m) => m.note).map((m, i) => (
+            <p key={i} className="text-text-dim text-[11px] leading-relaxed">
+              <span className="text-accent font-semibold">{m.vector}:</span> {m.note}
+            </p>
+          ))}
+        </div>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function FeedstockCapsPanel({ mandate }: { mandate: Mandate }) {
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    banned: { label: 'BANNED', color: 'text-negative bg-negative/10 border-negative/30' },
+    capped: { label: 'CAPPED', color: 'text-accent bg-accent/10 border-accent/30' },
+    allowed: { label: 'ALLOWED', color: 'text-positive bg-positive/10 border-positive/30' },
+    declining: { label: 'DECLINING', color: 'text-accent bg-accent/10 border-accent/30' },
+  };
+  return (
+    <CollapsibleCard title="Feedstock Caps & Bans" icon="🚫">
+      <div className="space-y-2">
+        {mandate.feedstock_caps.map((f, i) => {
+          const cfg = statusConfig[f.status];
+          return (
+            <div key={i} className="flex items-start justify-between gap-3 py-2 border-b border-border/30 last:border-0">
+              <div className="min-w-0 flex-1">
+                <p className="text-text-primary text-xs font-semibold">{f.feedstock}</p>
+                <p className="text-text-secondary text-xs font-mono mt-0.5">{f.cap}</p>
+                {f.note && <p className="text-text-dim text-[11px] mt-1 leading-relaxed">{f.note}</p>}
+              </div>
+              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border shrink-0 ${cfg.color}`}>
+                {cfg.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </CollapsibleCard>
+  );
+}
+
+function GhgThresholdsPanel({ mandate }: { mandate: Mandate }) {
+  const g = mandate.ghg_thresholds;
+  return (
+    <CollapsibleCard title="GHG Savings Thresholds" icon="🌱">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div className="bg-surface border border-border rounded px-3 py-2">
+          <p className="text-text-dim text-[10px] uppercase tracking-widest mb-1">Existing Plants</p>
+          <p className="text-text-primary font-mono font-bold text-base">{g.existing_plants}</p>
+        </div>
+        <div className="bg-surface border border-border rounded px-3 py-2">
+          <p className="text-text-dim text-[10px] uppercase tracking-widest mb-1">New Plants</p>
+          <p className="text-text-primary font-mono font-bold text-base">{g.new_plants}</p>
+        </div>
+      </div>
+      {g.grandfather_clause && (
+        <div className="mb-2">
+          <p className="text-text-dim text-[10px] uppercase tracking-widest font-semibold mb-1">Grandfather Clause</p>
+          <p className="text-text-secondary text-xs leading-relaxed">{g.grandfather_clause}</p>
+        </div>
+      )}
+      {g.note && (
+        <p className="text-text-dim text-[11px] italic mt-2">{g.note}</p>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function AnnexIxPanel({ mandate }: { mandate: Mandate }) {
+  const a = mandate.annex_ix;
+  return (
+    <CollapsibleCard title="Annex IX Eligible Feedstocks" icon="📋" defaultOpen={false}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div>
+          <p className="text-positive text-[10px] uppercase tracking-widest font-semibold mb-2">Part A — Advanced</p>
+          <div className="flex flex-wrap gap-1.5">
+            {a.part_a_examples.map((f, i) => (
+              <span key={i} className="text-[11px] bg-positive/10 text-positive border border-positive/30 px-2 py-0.5 rounded">
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-accent text-[10px] uppercase tracking-widest font-semibold mb-2">Part B — Waste</p>
+          <div className="flex flex-wrap gap-1.5">
+            {a.part_b_examples.map((f, i) => (
+              <span key={i} className="text-[11px] bg-accent/10 text-accent border border-accent/30 px-2 py-0.5 rounded">
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+      {a.exclusions.length > 0 && (
+        <div className="mb-2 pt-3 border-t border-border/50">
+          <p className="text-negative text-[10px] uppercase tracking-widest font-semibold mb-2">Country Exclusions</p>
+          <div className="flex flex-wrap gap-1.5">
+            {a.exclusions.map((f, i) => (
+              <span key={i} className="text-[11px] bg-negative/10 text-negative border border-negative/30 px-2 py-0.5 rounded line-through">
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="text-text-dim text-[11px] italic mt-2 leading-relaxed">{a.notes}</p>
+    </CollapsibleCard>
+  );
+}
+
+function SafMandatePanel({ mandate }: { mandate: Mandate }) {
+  const s = mandate.saf_mandate;
+  return (
+    <CollapsibleCard title="SAF Mandate Track" icon="✈️" defaultOpen={false}>
+      <div className="mb-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${
+            s.covered
+              ? 'text-positive bg-positive/10 border-positive/30'
+              : 'text-accent bg-accent/10 border-accent/30'
+          }`}>
+            {s.covered ? 'Integrated' : 'Separate Track'}
+          </span>
+          <span className="text-text-secondary text-xs">{s.track}</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="bg-surface border border-border rounded px-2 py-1.5 text-center">
+          <p className="text-text-dim text-[10px] uppercase tracking-widest">2025</p>
+          <p className="text-text-primary font-mono font-bold text-sm">{s.target_2025 ?? '—'}</p>
+        </div>
+        <div className="bg-surface border border-border rounded px-2 py-1.5 text-center">
+          <p className="text-text-dim text-[10px] uppercase tracking-widest">2030</p>
+          <p className="text-text-primary font-mono font-bold text-sm">{s.target_2030 ?? '—'}</p>
+        </div>
+        <div className="bg-surface border border-border rounded px-2 py-1.5 text-center">
+          <p className="text-text-dim text-[10px] uppercase tracking-widest">2035</p>
+          <p className="text-text-primary font-mono font-bold text-sm">{s.target_2035 ?? '—'}</p>
+        </div>
+      </div>
+      {s.note && (
+        <p className="text-text-dim text-[11px] italic leading-relaxed">{s.note}</p>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function ComplianceRulesSection({ mandate }: { mandate: Mandate }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="text-text-primary font-semibold text-sm">⚙️ Compliance Rules — {mandate.country_name}</h2>
+        <p className="text-text-dim text-xs mt-0.5">
+          Multipliers, feedstock caps, GHG thresholds, eligible feedstocks, and SAF track. Click any panel to expand/collapse.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <MultipliersPanel mandate={mandate} />
+        <FeedstockCapsPanel mandate={mandate} />
+      </div>
+      <GhgThresholdsPanel mandate={mandate} />
+      <div className="grid gap-3 md:grid-cols-2">
+        <AnnexIxPanel mandate={mandate} />
+        <SafMandatePanel mandate={mandate} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Comparison Table ─────────────────────────────────────────────────────────
 
 function ComparisonTable({
@@ -729,6 +955,9 @@ export default function Mandates() {
               <KeyNotesCard mandate={mandate} />
             </div>
           </div>
+
+          {/* Compliance Rules — multipliers, caps, GHG, Annex IX, SAF */}
+          <ComplianceRulesSection mandate={mandate} />
 
           {/* News + Deadlines */}
           <div className="grid gap-5 md:grid-cols-2">
