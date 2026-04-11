@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Overview from './pages/broker/Overview';
 import DailyReport from './pages/broker/DailyReport';
 import TradeBlotter from './pages/broker/TradeBlotter';
 import ReportArchive from './pages/broker/ReportArchive';
@@ -31,6 +32,16 @@ export default function App() {
         {/* ── Broker routes ─────────────────────────────────────────── */}
         <Route
           path="/broker"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Market Overview" navLinks={BROKER_NAV}>
+                <Overview />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/daily"
           element={
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Daily Report" navLinks={BROKER_NAV}>
