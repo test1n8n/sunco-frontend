@@ -16,6 +16,7 @@ interface LayoutProps {
 const BROKER_NAV: NavItem[] = [
   { to: '/broker',           label: 'Overview',      end: true  },
   { to: '/broker/daily',     label: 'Daily Report',  end: false },
+  { to: '/broker/mandates',  label: 'Mandates',      end: false },
   { to: '/broker/products',  label: 'Products Data', end: false },
   { to: '/broker/charts',    label: 'Charts',        end: false },
   { to: '/broker/blotter',   label: 'Trade Blotter', end: false },
