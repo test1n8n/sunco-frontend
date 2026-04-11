@@ -37,6 +37,7 @@ const BROKER_GROUPS: NavGroup[] = [
       { to: '/broker/charts',   label: 'Charts',        end: false },
       { to: '/broker/spreads',  label: 'Spreads',       end: false },
       { to: '/broker/history',  label: 'History',       end: false },
+      { to: '/broker/alt-data', label: 'Alt Data',      end: false },
     ],
   },
   {
@@ -52,11 +53,12 @@ const BROKER_GROUPS: NavGroup[] = [
     id: 'intelligence',
     label: 'Intelligence',
     items: [
-      { to: '/broker/research', label: 'Research',    end: false },
-      { to: '/broker/quant',    label: 'Quant Research', end: false },
-      { to: '/broker/ai',       label: 'Biofuels AI', end: false },
-      { to: '/broker/archive',  label: 'Archive',     end: false },
-      { to: '/broker/mandates', label: 'Mandates',    end: false },
+      { to: '/broker/research',    label: 'Research',       end: false },
+      { to: '/broker/quant',       label: 'Quant Research', end: false },
+      { to: '/broker/forecasting', label: 'Forecasting',    end: false },
+      { to: '/broker/ai',          label: 'Biofuels AI',    end: false },
+      { to: '/broker/archive',     label: 'Archive',        end: false },
+      { to: '/broker/mandates',    label: 'Mandates',       end: false },
     ],
   },
   {

@@ -127,7 +127,7 @@ interface OverviewResponse {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const TABS = ['Overview', 'Spreads', 'Correlations', 'Volatility', 'Anomalies'] as const;
+const TABS = ['Overview', 'Spreads', 'Correlations', 'Volatility', 'Seasonality', 'Anomalies', 'Event Study'] as const;
 type Tab = (typeof TABS)[number];
 
 function fmt(n: number | null | undefined, d = 2): string {
@@ -836,6 +836,314 @@ function AnomaliesTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SEASONALITY TAB
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface SeasonalityResult {
+  period: number;
+  n: number;
+  trend_strength_pct: number;
+  seasonal_strength_pct: number;
+  series: Array<{
+    date: string;
+    observed: number;
+    trend: number | null;
+    seasonal: number | null;
+    resid: number | null;
+  }>;
+}
+
+interface SeasonalityResponse {
+  product_code: string;
+  result: Result<SeasonalityResult>;
+}
+
+function SeasonalityTab() {
+  const [productCode, setProductCode] = useState('G');
+  const [period, setPeriod] = useState(21);
+  const [data, setData] = useState<SeasonalityResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const json = await apiGet<SeasonalityResponse>(
+          `/quant/seasonality/${productCode}?days=540&period=${period}`
+        );
+        setData(json);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load seasonality');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [productCode, period]);
+
+  const result = data?.result.ok ? data.result : null;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1 flex-wrap">
+          {PRODUCTS.map((p) => (
+            <button
+              key={p.code}
+              onClick={() => setProductCode(p.code)}
+              className={`px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                productCode === p.code
+                  ? 'bg-accent/10 border-accent text-accent'
+                  : 'bg-card border-border text-text-secondary hover:border-accent/40'
+              }`}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 ml-auto">
+          {[5, 21, 63].map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                period === p
+                  ? 'bg-accent/10 border-accent text-accent'
+                  : 'bg-card border-border text-text-secondary hover:border-accent/40'
+              }`}
+              title={p === 5 ? 'Weekly cycle' : p === 21 ? 'Monthly cycle' : 'Quarterly cycle'}
+            >
+              {p === 5 ? 'Week' : p === 21 ? 'Month' : 'Quarter'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Spinner /></div>
+      ) : error ? (
+        <ErrorBox reason={error} />
+      ) : !data ? null : data.result.ok === false ? (
+        <InsufficientData reason={data.result.reason} />
+      ) : result ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard label="Period" value={`${result.period} days`} sub={result.period === 5 ? 'Weekly' : result.period === 21 ? 'Monthly' : 'Quarterly'} />
+            <StatCard label="Observations" value={result.n.toString()} />
+            <StatCard label="Trend Strength" value={fmtPct(result.trend_strength_pct)} sub="% variance explained" />
+            <StatCard label="Seasonal Strength" value={fmtPct(result.seasonal_strength_pct)} sub="% variance explained" />
+          </div>
+
+          <div className="bg-card border border-border rounded p-4">
+            <h3 className="text-text-primary font-semibold text-sm mb-3">Trend Component</h3>
+            <div style={{ width: '100%', height: 220 }}>
+              <ResponsiveContainer>
+                <LineChart data={result.series} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmtDate} interval="preserveStartEnd" minTickGap={40} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
+                  <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1c2333', borderRadius: 4, fontSize: 11 }} labelFormatter={(d) => fmtDate(d as string)} />
+                  <Line type="monotone" dataKey="observed" stroke="#64748b" strokeWidth={1} dot={false} name="Observed" />
+                  <Line type="monotone" dataKey="trend" stroke="#f59e0b" strokeWidth={2.5} dot={false} name="Trend" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded p-4">
+            <h3 className="text-text-primary font-semibold text-sm mb-3">Seasonal Component</h3>
+            <div style={{ width: '100%', height: 180 }}>
+              <ResponsiveContainer>
+                <LineChart data={result.series} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmtDate} interval="preserveStartEnd" minTickGap={40} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
+                  <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1c2333', borderRadius: 4, fontSize: 11 }} labelFormatter={(d) => fmtDate(d as string)} />
+                  <ReferenceLine y={0} stroke="#64748b" strokeDasharray="2 4" />
+                  <Line type="monotone" dataKey="seasonal" stroke="#60a5fa" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded p-4">
+            <h3 className="text-text-primary font-semibold text-sm mb-3">Residual (unexplained noise)</h3>
+            <div style={{ width: '100%', height: 180 }}>
+              <ResponsiveContainer>
+                <LineChart data={result.series} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmtDate} interval="preserveStartEnd" minTickGap={40} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
+                  <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1c2333', borderRadius: 4, fontSize: 11 }} labelFormatter={(d) => fmtDate(d as string)} />
+                  <ReferenceLine y={0} stroke="#64748b" strokeDasharray="2 4" />
+                  <Line type="monotone" dataKey="resid" stroke="#ef4444" strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded p-4">
+            <h3 className="text-text-primary font-semibold text-sm mb-2">How to Read This</h3>
+            <ul className="text-text-secondary text-xs space-y-1 list-disc list-inside">
+              <li><span className="font-semibold text-text-primary">Observed = Trend + Seasonal + Residual</span> (additive STL)</li>
+              <li>High <span className="font-semibold text-text-primary">trend strength</span> = price movement is mostly directional</li>
+              <li>High <span className="font-semibold text-text-primary">seasonal strength</span> = there is a repeating pattern at the chosen period</li>
+              <li>Large residuals = unexplained by trend or seasonality — often news-driven</li>
+            </ul>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EVENT STUDY TAB
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface EventStudyRow {
+  product: string;
+  available: boolean;
+  returns_by_offset: Array<{ offset: number; return_pct: number | null }>;
+  cumulative_pct: number | null;
+}
+
+interface EventStudyResponse {
+  event_date: string;
+  window: number;
+  rows: EventStudyRow[];
+}
+
+function EventStudyTab() {
+  const [eventDate, setEventDate] = useState('');
+  const [window, setWindow] = useState(5);
+  const [data, setData] = useState<EventStudyResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = useCallback(async () => {
+    if (!eventDate) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const json = await apiGet<EventStudyResponse>(
+        `/quant/event-study?event_date=${eventDate}&window=${window}`
+      );
+      setData(json);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to run event study');
+    } finally {
+      setLoading(false);
+    }
+  }, [eventDate, window]);
+
+  const offsets = useMemo(() => {
+    const arr: number[] = [];
+    for (let i = -window; i <= window; i += 1) arr.push(i);
+    return arr;
+  }, [window]);
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-card border border-border rounded p-4">
+        <h3 className="text-text-primary font-semibold text-sm mb-1">Event Study Tool</h3>
+        <p className="text-text-dim text-xs mb-3">
+          Measures the cross-product return reaction around a specific event (e.g., a mandate announcement, policy release, or refinery outage).
+          Enter a date, choose a window, and see how each product moved in the days before and after.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="text-text-dim text-[10px] uppercase tracking-widest block mb-1">Event date</label>
+            <input
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent/50"
+            />
+          </div>
+          <div>
+            <label className="text-text-dim text-[10px] uppercase tracking-widest block mb-1">Window (days ±)</label>
+            <div className="flex gap-1">
+              {[3, 5, 10, 20].map((w) => (
+                <button
+                  key={w}
+                  onClick={() => setWindow(w)}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                    window === w
+                      ? 'bg-accent/10 border-accent text-accent'
+                      : 'bg-card border-border text-text-secondary hover:border-accent/40'
+                  }`}
+                >
+                  ±{w}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => void run()}
+            disabled={!eventDate || loading}
+            className="px-4 py-1.5 rounded text-xs font-semibold border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Running…' : 'Run Study'}
+          </button>
+        </div>
+      </div>
+
+      {error && <ErrorBox reason={error} />}
+
+      {data && (
+        <div className="bg-card border border-border rounded overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-text-primary font-semibold text-sm">Returns around {fmtDate(data.event_date)}</h3>
+            <p className="text-text-dim text-xs mt-0.5">
+              Daily % return for each product. Day 0 = event day. Negative = before, positive = after.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-surface border-b border-border">
+                  <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Product</th>
+                  {offsets.map((o) => (
+                    <th key={o} className={`px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-widest ${o === 0 ? 'text-accent' : 'text-text-dim'}`}>
+                      {o > 0 ? `+${o}` : o}
+                    </th>
+                  ))}
+                  <th className="px-3 py-2 text-right text-text-dim text-[10px] font-semibold uppercase tracking-widest border-l border-border">Cum.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map((r) => (
+                  <tr key={r.product} className="border-b border-border/50">
+                    <td className="px-3 py-2 text-text-primary font-semibold">{r.product}</td>
+                    {offsets.map((o) => {
+                      const row = r.returns_by_offset.find((x) => x.offset === o);
+                      const v = row?.return_pct ?? null;
+                      const color = v == null ? 'text-text-dim' : v > 0 ? 'text-positive' : v < 0 ? 'text-negative' : 'text-text-secondary';
+                      return (
+                        <td key={o} className={`px-2 py-2 text-right font-mono ${color} ${o === 0 ? 'bg-accent/5' : ''}`}>
+                          {v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}`}
+                        </td>
+                      );
+                    })}
+                    <td className={`px-3 py-2 text-right font-mono font-bold border-l border-border ${
+                      r.cumulative_pct == null ? 'text-text-dim' : r.cumulative_pct > 0 ? 'text-positive' : 'text-negative'
+                    }`}>
+                      {r.cumulative_pct == null ? '—' : `${r.cumulative_pct >= 0 ? '+' : ''}${r.cumulative_pct.toFixed(2)}%`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -849,7 +1157,7 @@ export default function QuantResearch() {
         <p className="text-text-dim text-xs tracking-widest uppercase mb-1">Research</p>
         <h1 className="text-text-primary font-semibold text-base">Quantitative Research Workbench</h1>
         <p className="text-text-dim text-xs mt-1">
-          Descriptive statistics and classical econometrics · Phase 1 · No ML yet
+          Descriptive statistics and classical econometrics · No ML in this view
         </p>
       </div>
 
@@ -859,7 +1167,7 @@ export default function QuantResearch() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors border-b-2 -mb-px whitespace-nowrap ${
               tab === t
                 ? 'text-accent border-accent'
                 : 'text-text-secondary border-transparent hover:text-text-primary'
@@ -876,7 +1184,9 @@ export default function QuantResearch() {
         {tab === 'Spreads' && <SpreadsTab />}
         {tab === 'Correlations' && <CorrelationsTab />}
         {tab === 'Volatility' && <VolatilityTab />}
+        {tab === 'Seasonality' && <SeasonalityTab />}
         {tab === 'Anomalies' && <AnomaliesTab />}
+        {tab === 'Event Study' && <EventStudyTab />}
       </div>
     </div>
   );
