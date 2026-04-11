@@ -18,6 +18,28 @@ interface ProductReport extends GasoilReport {
   product_code?: string;
 }
 
+interface PetroleumData {
+  inventories: { date: string; value: number }[];
+  distillate_stocks: { date: string; value: number }[];
+  gasoline_stocks: { date: string; value: number }[];
+  jet_fuel_stocks: { date: string; value: number }[];
+  refinery_runs: { date: string; value: number }[];
+  imports: { date: string; value: number }[];
+}
+
+interface EthanolPoint { date: string; production: number }
+
+interface CotEntry {
+  report_date: string;
+  net_spec: number;
+}
+interface CotData {
+  corn: CotEntry[];
+  soybeans: CotEntry[];
+  soybean_oil: CotEntry[];
+  heating_oil: CotEntry[];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
@@ -36,6 +58,50 @@ function formatChange(n: number | null | undefined): { text: string; color: stri
   const sign = n >= 0 ? '+' : '';
   const color = n > 0 ? 'text-positive' : n < 0 ? 'text-negative' : 'text-text-dim';
   return { text: `${sign}${n.toFixed(2)}`, color };
+}
+
+// USD/MT conversion factors for CBOT contracts
+const USD_MT_FACTORS: Record<string, number> = {
+  'ZL=F': 22.0462,   // USc/lb → USD/MT  (Soybean Oil)
+  'ZS=F': 0.36744,   // USc/bu → USD/MT  (Soybeans)
+  'ZC=F': 0.39368,   // USc/bu → USD/MT  (Corn)
+};
+
+function toUsdPerMt(data: PricePoint[], factor: number): PricePoint[] {
+  return data.map((p) => ({ date: p.date, value: parseFloat((p.value * factor).toFixed(2)) }));
+}
+
+/** Gasoil-Brent crack spread in USD/MT. */
+function computeCrackSpread(heatingOil: PricePoint[], brent: PricePoint[]): PricePoint[] {
+  if (!heatingOil.length || !brent.length) return [];
+  const brentMap = new Map(brent.map((p) => [p.date, p.value]));
+  const out: PricePoint[] = [];
+  for (const ho of heatingOil) {
+    const b = brentMap.get(ho.date);
+    if (b == null) continue;
+    const hoUsdMt = ho.value * 7.45;
+    const brentUsdMt = b * 7.45;
+    out.push({ date: ho.date, value: parseFloat((hoUsdMt - brentUsdMt).toFixed(2)) });
+  }
+  return out;
+}
+
+/** Week-over-week % change from weekly time series (latest vs previous point). */
+function wowChange(series: { date: string; value: number }[]): number | null {
+  if (!series || series.length < 2) return null;
+  const last = series[series.length - 1].value;
+  const prev = series[series.length - 2].value;
+  if (prev === 0) return null;
+  return ((last - prev) / prev) * 100;
+}
+
+/** Compute the overall trend (% change) over the full series. */
+function overallChange(series: PricePoint[]): number | null {
+  if (!series || series.length < 2) return null;
+  const first = series[0].value;
+  const last = series[series.length - 1].value;
+  if (first === 0) return null;
+  return ((last - first) / first) * 100;
 }
 
 // ─── Market Pulse Bar (hero) ──────────────────────────────────────────────────
@@ -484,6 +550,318 @@ function QuickAccessBar() {
   );
 }
 
+// ─── Collapsible Section wrapper ──────────────────────────────────────────────
+
+function CollapsibleSection({
+  title,
+  subtitle,
+  icon,
+  defaultOpen = true,
+  caption,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: string;
+  defaultOpen?: boolean;
+  caption?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-card border border-border rounded hover:border-accent/40 transition-colors text-left"
+      >
+        <div className="flex items-center gap-3">
+          {icon && <span className="text-lg">{icon}</span>}
+          <div>
+            <h2 className="text-text-primary font-semibold text-sm">{title}</h2>
+            {subtitle && <p className="text-text-dim text-xs mt-0.5">{subtitle}</p>}
+          </div>
+        </div>
+        <span className={`text-text-dim text-xs transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
+      </button>
+      {open && (
+        <div className="space-y-3">
+          {children}
+          {caption && (
+            <p className="text-text-dim text-xs italic px-1 leading-relaxed">
+              💡 {caption}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Fundamentals Mini Card (reusable for the 3 new sections) ────────────────
+
+function FundCard({
+  label,
+  data,
+  color,
+  unit = '',
+}: {
+  label: string;
+  data: PricePoint[];
+  color: string;
+  unit?: string;
+}) {
+  return (
+    <div className="bg-card border border-border rounded p-3 h-36 flex flex-col">
+      <p className="text-text-dim text-[10px] uppercase tracking-widest mb-1">{label}</p>
+      <div className="flex-1 min-h-0">
+        <MiniChart data={data} color={color} unit={unit} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Supply vs Demand Balance Panel ───────────────────────────────────────────
+
+interface SupplySignal {
+  label: string;
+  change: number | null;
+  // Direction of bullishness for biofuels: "tight" (supply down = tight = bullish)
+  //                                        "loose" (supply up = loose = bearish for biofuels)
+  interpretation: 'tight' | 'loose' | 'neutral' | 'unknown';
+}
+
+interface DemandSignal {
+  label: string;
+  change: number | null;
+  interpretation: 'strong' | 'weak' | 'neutral' | 'unknown';
+}
+
+function interpretSupplyStock(wow: number | null): SupplySignal['interpretation'] {
+  if (wow == null) return 'unknown';
+  if (wow <= -1) return 'tight';   // stocks falling >1% = tightening
+  if (wow >= 1) return 'loose';    // stocks rising >1% = loosening
+  return 'neutral';
+}
+
+function interpretSupplyPrice(pctChange: number | null): SupplySignal['interpretation'] {
+  if (pctChange == null) return 'unknown';
+  if (pctChange >= 2) return 'tight';   // feedstock rising = supply pressure
+  if (pctChange <= -2) return 'loose';
+  return 'neutral';
+}
+
+function interpretDemand(wow: number | null, risingIsStrong = true): DemandSignal['interpretation'] {
+  if (wow == null) return 'unknown';
+  const strong = risingIsStrong ? wow >= 1 : wow <= -1;
+  const weak = risingIsStrong ? wow <= -1 : wow >= 1;
+  if (strong) return 'strong';
+  if (weak) return 'weak';
+  return 'neutral';
+}
+
+function SupplyDemandPanel({
+  petroleum,
+  ethanol,
+  cot,
+  soyOilChange,
+  rapeseedChange,
+}: {
+  petroleum: PetroleumData | null;
+  ethanol: EthanolPoint[];
+  cot: CotData | null;
+  soyOilChange: number | null;
+  rapeseedChange: number | null;
+}) {
+  // Compute supply signals
+  const distillateWow = wowChange(petroleum?.distillate_stocks ?? []);
+  const crudeWow = wowChange(petroleum?.inventories ?? []);
+
+  const supplySignals: SupplySignal[] = [
+    {
+      label: 'Distillate stocks (WoW)',
+      change: distillateWow,
+      interpretation: interpretSupplyStock(distillateWow),
+    },
+    {
+      label: 'Crude inventories (WoW)',
+      change: crudeWow,
+      interpretation: interpretSupplyStock(crudeWow),
+    },
+    {
+      label: 'Soybean oil price (60d)',
+      change: soyOilChange,
+      interpretation: interpretSupplyPrice(soyOilChange),
+    },
+    {
+      label: 'Rapeseed price (60d)',
+      change: rapeseedChange,
+      interpretation: interpretSupplyPrice(rapeseedChange),
+    },
+  ];
+
+  // Compute demand signals
+  const refineryWow = wowChange(petroleum?.refinery_runs ?? []);
+  const ethanolSeries = ethanol.map((e) => ({ date: e.date, value: e.production }));
+  const ethanolWow = wowChange(ethanolSeries);
+  const jetFuelWow = wowChange(petroleum?.jet_fuel_stocks ?? []);
+  const heatingOilCot = cot?.heating_oil ?? [];
+  const cotLatest = heatingOilCot.length > 0 ? heatingOilCot[heatingOilCot.length - 1]?.net_spec : null;
+  const cotPrev = heatingOilCot.length > 1 ? heatingOilCot[heatingOilCot.length - 2]?.net_spec : null;
+  const cotChange = cotLatest != null && cotPrev != null && cotPrev !== 0
+    ? ((cotLatest - cotPrev) / Math.abs(cotPrev)) * 100
+    : null;
+
+  const demandSignals: DemandSignal[] = [
+    {
+      label: 'Refinery runs (WoW)',
+      change: refineryWow,
+      interpretation: interpretDemand(refineryWow, true),
+    },
+    {
+      label: 'Ethanol production (WoW)',
+      change: ethanolWow,
+      interpretation: interpretDemand(ethanolWow, true),
+    },
+    {
+      label: 'Jet fuel stocks (WoW)',
+      change: jetFuelWow,
+      // Jet fuel stocks FALLING = stronger SAF demand
+      interpretation: interpretDemand(jetFuelWow, false),
+    },
+    {
+      label: 'Heating Oil COT (WoW)',
+      change: cotChange,
+      interpretation: interpretDemand(cotChange, true),
+    },
+  ];
+
+  // Aggregate overall interpretation
+  const tightCount = supplySignals.filter((s) => s.interpretation === 'tight').length;
+  const looseCount = supplySignals.filter((s) => s.interpretation === 'loose').length;
+  const strongCount = demandSignals.filter((d) => d.interpretation === 'strong').length;
+  const weakCount = demandSignals.filter((d) => d.interpretation === 'weak').length;
+
+  const supplyVerdict =
+    tightCount > looseCount ? 'TIGHT' :
+    looseCount > tightCount ? 'AMPLE' :
+    'BALANCED';
+  const demandVerdict =
+    strongCount > weakCount ? 'STRONG' :
+    weakCount > strongCount ? 'WEAK' :
+    'STEADY';
+
+  let takeaway = '';
+  if (supplyVerdict === 'TIGHT' && demandVerdict === 'STRONG') {
+    takeaway = '⬆ BULLISH — Supply is tight while demand is strong. Expect diff compression and upward price pressure across biofuels.';
+  } else if (supplyVerdict === 'AMPLE' && demandVerdict === 'WEAK') {
+    takeaway = '⬇ BEARISH — Supply is ample and demand is weak. Expect wider diffs and downward price pressure.';
+  } else if (supplyVerdict === 'TIGHT' && demandVerdict === 'WEAK') {
+    takeaway = '↔ MIXED — Supply is tight but demand is weak. Prices may stabilize; watch for supply catalysts.';
+  } else if (supplyVerdict === 'AMPLE' && demandVerdict === 'STRONG') {
+    takeaway = '↔ MIXED — Supply is ample and demand is strong. Prices absorbing well; watch for demand acceleration.';
+  } else {
+    takeaway = `↔ NEUTRAL — Supply ${supplyVerdict.toLowerCase()}, demand ${demandVerdict.toLowerCase()}. No clear directional signal.`;
+  }
+
+  const takeawayColor =
+    takeaway.startsWith('⬆') ? 'text-positive border-positive/30 bg-positive/5' :
+    takeaway.startsWith('⬇') ? 'text-negative border-negative/30 bg-negative/5' :
+    'text-accent border-accent/30 bg-accent/5';
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        {/* SUPPLY column */}
+        <div className="bg-card border border-border rounded p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-text-primary font-semibold text-sm">📦 Supply Signals</h3>
+            <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${
+              supplyVerdict === 'TIGHT' ? 'text-negative border-negative/30 bg-negative/10' :
+              supplyVerdict === 'AMPLE' ? 'text-positive border-positive/30 bg-positive/10' :
+              'text-text-dim border-border bg-surface'
+            }`}>
+              {supplyVerdict}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {supplySignals.map((s, i) => (
+              <SignalRow key={i} label={s.label} change={s.change} interpretation={s.interpretation} />
+            ))}
+          </div>
+        </div>
+
+        {/* DEMAND column */}
+        <div className="bg-card border border-border rounded p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-text-primary font-semibold text-sm">🔥 Demand Signals</h3>
+            <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${
+              demandVerdict === 'STRONG' ? 'text-positive border-positive/30 bg-positive/10' :
+              demandVerdict === 'WEAK' ? 'text-negative border-negative/30 bg-negative/10' :
+              'text-text-dim border-border bg-surface'
+            }`}>
+              {demandVerdict}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {demandSignals.map((d, i) => (
+              <SignalRow key={i} label={d.label} change={d.change} interpretation={d.interpretation} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Overall takeaway */}
+      <div className={`border rounded px-4 py-3 ${takeawayColor}`}>
+        <p className="text-xs font-semibold leading-relaxed">{takeaway}</p>
+      </div>
+    </div>
+  );
+}
+
+function SignalRow({
+  label,
+  change,
+  interpretation,
+}: {
+  label: string;
+  change: number | null;
+  interpretation: 'tight' | 'loose' | 'strong' | 'weak' | 'neutral' | 'unknown';
+}) {
+  const changeText = change == null
+    ? '—'
+    : `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+
+  const labelColor: Record<string, string> = {
+    tight: 'text-negative',  // tight supply = bullish for biofuels prices
+    loose: 'text-positive',
+    strong: 'text-positive',
+    weak: 'text-negative',
+    neutral: 'text-text-dim',
+    unknown: 'text-text-dim',
+  };
+
+  const badges: Record<string, string> = {
+    tight: 'TIGHT',
+    loose: 'AMPLE',
+    strong: 'STRONG',
+    weak: 'WEAK',
+    neutral: '—',
+    unknown: 'N/A',
+  };
+
+  return (
+    <div className="flex items-center justify-between text-xs border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+      <span className="text-text-secondary truncate">{label}</span>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="font-mono text-text-primary">{changeText}</span>
+        <span className={`text-[10px] font-semibold uppercase tracking-wider ${labelColor[interpretation]}`}>
+          {badges[interpretation]}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Overview Page ───────────────────────────────────────────────────────
 
 export default function Overview() {
@@ -492,6 +870,9 @@ export default function Overview() {
   const [biodiesel, setBiodiesel] = useState<Record<string, ProductReport | null>>({});
   const [prices, setPrices] = useState<Record<string, TickerInfo>>({});
   const [eurusd, setEurusd] = useState<{ date: string; rate: number }[]>([]);
+  const [petroleum, setPetroleum] = useState<PetroleumData | null>(null);
+  const [ethanol, setEthanol] = useState<EthanolPoint[]>([]);
+  const [cot, setCot] = useState<CotData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -501,11 +882,18 @@ export default function Overview() {
         const headers = { 'X-API-Key': API_KEY };
 
         // Fetch all data in parallel
-        const [reportRes, gasoilRes, pricesRes, eurusdRes, ...productRes] = await Promise.all([
+        const [
+          reportRes, gasoilRes, pricesRes, eurusdRes,
+          petroleumRes, ethanolRes, cotRes,
+          ...productRes
+        ] = await Promise.all([
           fetch(`${API_BASE_URL}/report/latest`, { headers }),
           fetch(`${API_BASE_URL}/products/G/report/latest`, { headers }),
           fetch(`${API_BASE_URL}/charts/prices?days=60`, { headers }),
           fetch(`${API_BASE_URL}/charts/eurusd?days=60`, { headers }),
+          fetch(`${API_BASE_URL}/charts/petroleum`, { headers }),
+          fetch(`${API_BASE_URL}/charts/ethanol`, { headers }),
+          fetch(`${API_BASE_URL}/charts/cot`, { headers }),
           ...BIODIESEL_PRODUCTS.map((p) =>
             fetch(`${API_BASE_URL}/products/${p.code}/report/latest`, { headers })
           ),
@@ -529,6 +917,21 @@ export default function Overview() {
         if (eurusdRes.ok) {
           const ej = (await eurusdRes.json()) as { history: { date: string; rate: number }[] };
           setEurusd(ej.history ?? []);
+        }
+
+        if (petroleumRes.ok) {
+          const pj = (await petroleumRes.json()) as PetroleumData;
+          setPetroleum(pj);
+        }
+
+        if (ethanolRes.ok) {
+          const ej = (await ethanolRes.json()) as { history: EthanolPoint[] };
+          setEthanol(ej.history ?? []);
+        }
+
+        if (cotRes.ok) {
+          const cj = (await cotRes.json()) as CotData;
+          setCot(cj);
         }
 
         const bio: Record<string, ProductReport | null> = {};
@@ -562,11 +965,33 @@ export default function Overview() {
     ? ((eurusd[eurusd.length - 1].rate - eurusd[eurusd.length - 2].rate) / eurusd[eurusd.length - 2].rate) * 100
     : null;
 
-  // Feedstock indexed data for the mini charts
-  const soyOilData = prices['ZL=F']?.data ?? [];
-  const rapeseedData = prices['GNF=F']?.data ?? [];
-  const gasoilData = prices['HO=F']?.data ?? [];
-  const eurusdChartData: PricePoint[] = eurusd.map((p) => ({ date: p.date, value: p.rate }));
+  // Raw price series
+  const soyOilRaw = prices['ZL=F']?.data ?? [];
+  const soybeansRaw = prices['ZS=F']?.data ?? [];
+  const cornRaw = prices['ZC=F']?.data ?? [];
+  const rapeseedRaw = prices['GNF=F']?.data ?? [];
+  const wtiData = prices['CL=F']?.data ?? [];
+
+  // Converted to USD/MT
+  const soyOilData = toUsdPerMt(soyOilRaw, USD_MT_FACTORS['ZL=F']);
+  const soybeansData = toUsdPerMt(soybeansRaw, USD_MT_FACTORS['ZS=F']);
+  const cornData = toUsdPerMt(cornRaw, USD_MT_FACTORS['ZC=F']);
+  // Rapeseed is EUR → convert with latest EUR/USD
+  const eurUsdRate = eurusd.length > 0 ? eurusd[eurusd.length - 1].rate : 1.08;
+  const rapeseedData: PricePoint[] = rapeseedRaw.map((p) => ({
+    date: p.date,
+    value: parseFloat((p.value * eurUsdRate).toFixed(2)),
+  }));
+
+  // Crack spread
+  const crackSpreadData = computeCrackSpread(prices['HO=F']?.data ?? [], brentData);
+
+  // Ethanol production as PricePoint for mini chart
+  const ethanolData: PricePoint[] = ethanol.map((e) => ({ date: e.date, value: e.production }));
+
+  // Supply/demand signal inputs — overall % change across the window
+  const soyOilOverallChange = overallChange(soyOilData);
+  const rapeseedOverallChange = overallChange(rapeseedData);
 
   if (loading && !report) {
     return (
@@ -607,32 +1032,67 @@ export default function Overview() {
         />
       </div>
 
-      {/* ROW 4 — Fundamentals Snapshot */}
-      <div>
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-          Market Fundamentals — 60 Day Trend
-        </h2>
+      {/* ROW 4 — Crude Oil & Refining Margins */}
+      <CollapsibleSection
+        icon="🛢"
+        title="Crude Oil & Refining Margins"
+        subtitle="Base energy complex — drives gasoil and fossil diesel pricing"
+        caption="Crack spread widening = strong diesel demand → bullish for gasoil & biodiesel diffs. Distillate stocks falling = tight physical supply."
+      >
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <div className="bg-card border border-border rounded p-3 h-32">
-            <p className="text-text-dim text-[10px] uppercase tracking-widest mb-1">Gasoil Proxy (HO)</p>
-            <MiniChart data={gasoilData} color="#fbbf24" />
-          </div>
-          <div className="bg-card border border-border rounded p-3 h-32">
-            <p className="text-text-dim text-[10px] uppercase tracking-widest mb-1">Soybean Oil</p>
-            <MiniChart data={soyOilData} color="#e879f9" />
-          </div>
-          <div className="bg-card border border-border rounded p-3 h-32">
-            <p className="text-text-dim text-[10px] uppercase tracking-widest mb-1">Rapeseed (EUR)</p>
-            <MiniChart data={rapeseedData} color="#22d3ee" />
-          </div>
-          <div className="bg-card border border-border rounded p-3 h-32">
-            <p className="text-text-dim text-[10px] uppercase tracking-widest mb-1">EUR/USD</p>
-            <MiniChart data={eurusdChartData} color="#a78bfa" />
-          </div>
+          <FundCard label="Brent Crude ($/bbl)" data={brentData} color="#60a5fa" />
+          <FundCard label="WTI Crude ($/bbl)" data={wtiData} color="#38bdf8" />
+          <FundCard label="Gasoil-Brent Crack ($/MT)" data={crackSpreadData} color="#f87171" />
+          <FundCard label="Distillate Stocks (k bbl)" data={petroleum?.distillate_stocks ?? []} color="#fbbf24" />
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* ROW 5 — Quick Access */}
+      {/* ROW 5 — Biodiesel Feedstock Prices */}
+      <CollapsibleSection
+        icon="🌾"
+        title="Biodiesel Feedstock Prices"
+        subtitle="Drives FAME0, RME, SME, UCOME diffs — supply-side signal"
+        caption="Rising feedstocks = wider biodiesel diffs (more expensive to produce). If diffs widen but feedstocks are flat, demand is driving it."
+      >
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          <FundCard label="Soybean Oil ($/MT)" data={soyOilData} color="#e879f9" />
+          <FundCard label="Soybeans ($/MT)" data={soybeansData} color="#34d399" />
+          <FundCard label="Rapeseed ($/MT)" data={rapeseedData} color="#22d3ee" />
+          <FundCard label="EUR/USD" data={eurusd.map((p) => ({ date: p.date, value: p.rate }))} color="#a78bfa" />
+        </div>
+      </CollapsibleSection>
+
+      {/* ROW 6 — Advanced Biofuels Feedstocks */}
+      <CollapsibleSection
+        icon="🛫"
+        title="Advanced Biofuels Feedstocks"
+        subtitle="Drives HVO, SAF, Ethanol — supply + demand signal"
+        caption="Falling jet fuel stocks = strong SAF pull. Rising ethanol production = corn demand. Rising gasoline stocks = weaker ethanol blending demand."
+      >
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          <FundCard label="Corn ($/MT)" data={cornData} color="#fb923c" />
+          <FundCard label="US Ethanol Production" data={ethanolData} color="#10b981" unit=" kbd" />
+          <FundCard label="Jet Fuel Stocks (k bbl)" data={petroleum?.jet_fuel_stocks ?? []} color="#06b6d4" />
+          <FundCard label="Gasoline Stocks (k bbl)" data={petroleum?.gasoline_stocks ?? []} color="#8b5cf6" />
+        </div>
+      </CollapsibleSection>
+
+      {/* ROW 7 — Supply vs Demand Balance (interpretation panel) */}
+      <CollapsibleSection
+        icon="⚖️"
+        title="Supply vs Demand Balance"
+        subtitle="Quick read on whether diff moves are driven by supply or demand"
+      >
+        <SupplyDemandPanel
+          petroleum={petroleum}
+          ethanol={ethanol}
+          cot={cot}
+          soyOilChange={soyOilOverallChange}
+          rapeseedChange={rapeseedOverallChange}
+        />
+      </CollapsibleSection>
+
+      {/* ROW 8 — Quick Access */}
       <QuickAccessBar />
     </div>
   );
