@@ -59,6 +59,7 @@ const BROKER_GROUPS: NavGroup[] = [
       { to: '/broker/ai',          label: 'Biofuels AI',    end: false },
       { to: '/broker/archive',     label: 'Archive',        end: false },
       { to: '/broker/mandates',    label: 'Mandates',       end: false },
+      { to: '/broker/feedstock',   label: 'Feedstock & Trade', end: false },
     ],
   },
   {

@@ -18,6 +18,7 @@ import ResearchEngine from './pages/broker/ResearchEngine';
 import QuantResearch from './pages/broker/QuantResearch';
 import AltData from './pages/broker/AltData';
 import Forecasting from './pages/broker/Forecasting';
+import FeedstockSupply from './pages/broker/FeedstockSupply';
 import Layout, { CLIENT_NAV } from './components/Layout';
 
 interface ProtectedRouteProps {
@@ -216,6 +217,16 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Forecasting">
                 <Forecasting />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/feedstock"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Feedstock & Trade">
+                <FeedstockSupply />
               </Layout>
             </ProtectedRoute>
           }
