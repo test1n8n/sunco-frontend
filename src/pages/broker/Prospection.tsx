@@ -99,6 +99,79 @@ function fmtDate(iso: string | null): string {
 // COMPANIES SUB-VIEW
 // ═══════════════════════════════════════════════════════════════════════════
 
+const COMPANY_TYPES = ['producer', 'trader', 'blender', 'obligated_party', 'feedstock_supplier', 'collector'];
+
+function AddCompanyForm({ onAdded }: { onAdded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({ name: '', country: '', company_type: 'producer', products: '' as string, feedstocks: '', website: '', description: '' });
+
+  const save = async () => {
+    if (!form.name.trim()) { setError('Name is required'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/prospection/companies`, {
+        method: 'POST',
+        headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          country: form.country.trim().toUpperCase(),
+          company_type: form.company_type,
+          products: form.products.split(',').map(s => s.trim()).filter(Boolean),
+          feedstocks: form.feedstocks.split(',').map(s => s.trim()).filter(Boolean),
+          website: form.website.trim(),
+          description: form.description.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt);
+      }
+      setForm({ name: '', country: '', company_type: 'producer', products: '', feedstocks: '', website: '', description: '' });
+      setOpen(false);
+      onAdded();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="px-3 py-1 rounded text-[11px] font-semibold border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20">
+        + Add Company
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-accent/30 rounded p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-text-primary text-xs font-semibold uppercase tracking-widest">Add Company</h4>
+        <button onClick={() => setOpen(false)} className="text-text-dim hover:text-text-primary text-xs">Cancel</button>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <input placeholder="Company name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:border-accent/50" />
+        <input placeholder="Country (ISO, e.g. NL)" value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:border-accent/50" />
+        <select value={form.company_type} onChange={e => setForm({ ...form, company_type: e.target.value })} className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-secondary focus:outline-none focus:border-accent/50">
+          {COMPANY_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+        </select>
+        <input placeholder="Products (comma-sep: HVO, SAF)" value={form.products} onChange={e => setForm({ ...form, products: e.target.value })} className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:border-accent/50" />
+        <input placeholder="Feedstocks (comma-sep: UCO, tallow)" value={form.feedstocks} onChange={e => setForm({ ...form, feedstocks: e.target.value })} className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:border-accent/50" />
+        <input placeholder="Website" value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} className="bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:border-accent/50" />
+      </div>
+      <input placeholder="Short description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full bg-surface border border-border rounded px-3 py-1.5 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:border-accent/50" />
+      {error && <div className="text-negative text-xs">{error}</div>}
+      <button onClick={save} disabled={saving} className="px-4 py-1.5 rounded text-xs font-semibold bg-accent/10 border border-accent text-accent hover:bg-accent/20 disabled:opacity-40">
+        {saving ? 'Saving…' : 'Save Company'}
+      </button>
+    </div>
+  );
+}
+
 function CompaniesView() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,9 +220,9 @@ function CompaniesView() {
         <div className="bg-card border border-border rounded p-6 text-center">
           <p className="text-text-primary text-sm mb-3">No companies in the database yet.</p>
           <button onClick={seed} disabled={seeding} className="px-4 py-2 rounded text-sm font-semibold bg-accent/10 border border-accent text-accent hover:bg-accent/20 disabled:opacity-40">
-            {seeding ? 'Seeding ~150 companies…' : 'Seed Company Database'}
+            {seeding ? 'Seeding ~100 companies…' : 'Seed Company Database'}
           </button>
-          <p className="text-text-dim text-xs mt-2">Populates ~150 curated biofuel companies from public sources.</p>
+          <p className="text-text-dim text-xs mt-2">Populates ~100 curated biofuel companies from public sources.</p>
         </div>
       )}
 
@@ -170,12 +243,11 @@ function CompaniesView() {
             </div>
           </div>
 
+          <AddCompanyForm onAdded={load} />
+
           <div className="bg-card border border-border rounded overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-border">
               <h3 className="text-text-primary font-semibold text-sm">Companies ({filtered.length})</h3>
-              <button onClick={seed} disabled={seeding} className="px-3 py-1 rounded text-[11px] font-semibold border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-40">
-                {seeding ? 'Seeding…' : '+ Seed more'}
-              </button>
             </div>
             <div className="overflow-x-auto max-h-[35rem]">
               <table className="w-full text-xs">
