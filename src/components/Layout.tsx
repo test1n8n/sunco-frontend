@@ -63,6 +63,13 @@ const BROKER_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: 'business',
+    label: 'Business Dev',
+    items: [
+      { to: '/broker/prospection',   label: 'Prospection',   end: false },
+    ],
+  },
+  {
     id: 'workspace',
     label: 'Workspace',
     items: [
