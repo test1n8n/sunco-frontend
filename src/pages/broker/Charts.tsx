@@ -60,13 +60,15 @@ const COLOURS: Record<string, string> = {
   'NG=F':     '#f87171',   // Natural Gas   — red
   'EURUSD=X': '#a78bfa',   // EUR/USD       — violet
   'USDCNY=X': '#f472b6',   // USD/CNY       — pink
-  'GNF=F':    '#22d3ee',   // Rapeseed      — cyan
+  // GNF=F was labelled "Rapeseed (Euronext)" but is actually CME Nonfat
+  // Dry Milk — removed. Euronext rapeseed is not on yfinance. Import
+  // from CmdtyView via the Alt Data tab instead.
 };
 
 // ─── Chart groups ─────────────────────────────────────────────────────────────
 
 const ENERGY_TICKERS    = ['BZ=F', 'CL=F', 'HO=F', 'NG=F'];
-const FEEDSTOCK_INDEX_TICKERS = ['ZL=F', 'GNF=F'];
+const FEEDSTOCK_INDEX_TICKERS = ['ZL=F', 'ZS=F'];
 const FX_TICKERS        = ['EURUSD=X', 'USDCNY=X'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -758,7 +760,7 @@ export default function Charts() {
   const [loadingOther, setLoadingOther]   = useState(true);
   const [error, setError]             = useState('');
 
-  const eurUsdRate = eurusd.length > 0 ? eurusd[eurusd.length - 1].rate : 1.08;
+  // eurUsdRate was used for GNF=F rapeseed EUR→USD conversion (removed — GNF=F was milk)
 
   // Fetch price history whenever 'days' changes
   useEffect(() => {
@@ -883,7 +885,7 @@ export default function Charts() {
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <ChartCard title="Feedstock Benchmarks" subtitle={`Soy Oil · Rapeseed — base-100, ${days}-day`} height={260}>
+            <ChartCard title="Feedstock Benchmarks" subtitle={`Soy Oil · Soybeans — base-100, ${days}-day`} height={260}>
               <MultiLineChart tickers={FEEDSTOCK_INDEX_TICKERS} tickerMap={tickerMap} />
             </ChartCard>
             <ChartCard title="EUR/USD" subtitle={`Daily spot rate — ECB, ${days}-day`} height={260}>
@@ -946,10 +948,10 @@ export default function Charts() {
 
           <ChartCard
             title="Biodiesel Feedstock Comparison"
-            subtitle={`Soybean Oil · Soybeans · Rapeseed — base-100 indexed, ${days}-day`}
+            subtitle={`Soybean Oil · Soybeans · Corn — base-100 indexed, ${days}-day`}
             height={300}
           >
-            <MultiLineChart tickers={['ZL=F', 'ZS=F', 'GNF=F']} tickerMap={tickerMap} />
+            <MultiLineChart tickers={['ZL=F', 'ZS=F', 'ZC=F']} tickerMap={tickerMap} />
           </ChartCard>
 
           <ChartCard title="Soybean Oil (CBOT)" subtitle={`USD/MT — ${days}-day — primary FAME0 feedstock`} height={280}>
@@ -960,8 +962,10 @@ export default function Charts() {
             <ChartCard title="Soybeans (CBOT)" subtitle={`USD/MT — ${days}-day — SME/FAME0 feedstock`} height={280}>
               <FeedstockUsdChart data={tickerMap['ZS=F']?.data?.length > 0 ? toUsdPerMt(tickerMap['ZS=F'].data, USD_MT_FACTORS['ZS=F']) : []} color="#34d399" />
             </ChartCard>
-            <ChartCard title="Rapeseed (Euronext)" subtitle={`USD/MT — ${days}-day — European RME feedstock`} height={280}>
-              <FeedstockUsdChart data={tickerMap['GNF=F']?.data?.length > 0 ? tickerMap['GNF=F'].data.map(p => ({ date: p.date, value: parseFloat((p.value * eurUsdRate).toFixed(2)) })) : []} color="#22d3ee" />
+            <ChartCard title="Rapeseed (Euronext)" subtitle="Not available via free API — import from CmdtyView" height={280}>
+              <div className="flex items-center justify-center h-full text-text-dim text-xs italic px-8 text-center">
+                Euronext Rapeseed is not available on Yahoo Finance. Import rapeseed data via the Alt Data tab using a CmdtyView .xlsx export.
+              </div>
             </ChartCard>
           </div>
 

@@ -846,13 +846,11 @@ function SupplyDemandPanel({
   ethanol,
   cot,
   soyOilChange,
-  rapeseedChange,
 }: {
   petroleum: PetroleumData | null;
   ethanol: EthanolPoint[];
   cot: CotData | null;
   soyOilChange: number | null;
-  rapeseedChange: number | null;
 }) {
   // Compute supply signals
   const distillateWow = wowChange(petroleum?.distillate_stocks ?? []);
@@ -874,11 +872,8 @@ function SupplyDemandPanel({
       change: soyOilChange,
       interpretation: interpretSupplyPrice(soyOilChange),
     },
-    {
-      label: 'Rapeseed price (60d)',
-      change: rapeseedChange,
-      interpretation: interpretSupplyPrice(rapeseedChange),
-    },
+    // Rapeseed removed — GNF=F was actually milk, not rapeseed.
+    // Euronext rapeseed is not on yfinance. Import from CmdtyView.
   ];
 
   // Compute demand signals
@@ -1151,19 +1146,14 @@ export default function Overview() {
   const soyOilRaw = prices['ZL=F']?.data ?? [];
   const soybeansRaw = prices['ZS=F']?.data ?? [];
   const cornRaw = prices['ZC=F']?.data ?? [];
-  const rapeseedRaw = prices['GNF=F']?.data ?? [];
+  // GNF=F removed — it was CME Nonfat Dry Milk, not rapeseed.
+  // Euronext Rapeseed is not on yfinance. Import via CmdtyView Alt Data.
   const wtiData = prices['CL=F']?.data ?? [];
 
   // Converted to USD/MT
   const soyOilData = toUsdPerMt(soyOilRaw, USD_MT_FACTORS['ZL=F']);
   const soybeansData = toUsdPerMt(soybeansRaw, USD_MT_FACTORS['ZS=F']);
   const cornData = toUsdPerMt(cornRaw, USD_MT_FACTORS['ZC=F']);
-  // Rapeseed is EUR → convert with latest EUR/USD
-  const eurUsdRate = eurusd.length > 0 ? eurusd[eurusd.length - 1].rate : 1.08;
-  const rapeseedData: PricePoint[] = rapeseedRaw.map((p) => ({
-    date: p.date,
-    value: parseFloat((p.value * eurUsdRate).toFixed(2)),
-  }));
 
   // Crack spread
   const crackSpreadData = computeCrackSpread(prices['HO=F']?.data ?? [], brentData);
@@ -1173,7 +1163,6 @@ export default function Overview() {
 
   // Supply/demand signal inputs — overall % change across the window
   const soyOilOverallChange = overallChange(soyOilData);
-  const rapeseedOverallChange = overallChange(rapeseedData);
 
   if (loading && !report) {
     return (
@@ -1242,7 +1231,7 @@ export default function Overview() {
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
           <FundCard label="Soybean Oil ($/MT)" data={soyOilData} color="#e879f9" />
           <FundCard label="Soybeans ($/MT)" data={soybeansData} color="#34d399" />
-          <FundCard label="Rapeseed ($/MT)" data={rapeseedData} color="#22d3ee" />
+          <FundCard label="Wheat ($/MT)" data={toUsdPerMt(prices['ZW=F']?.data ?? [], 0.36744)} color="#22d3ee" />
           <FundCard label="EUR/USD" data={eurusd.map((p) => ({ date: p.date, value: p.rate }))} color="#a78bfa" />
         </div>
       </CollapsibleSection>
@@ -1273,7 +1262,6 @@ export default function Overview() {
           ethanol={ethanol}
           cot={cot}
           soyOilChange={soyOilOverallChange}
-          rapeseedChange={rapeseedOverallChange}
         />
       </CollapsibleSection>
 
