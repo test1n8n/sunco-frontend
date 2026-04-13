@@ -101,6 +101,37 @@ function fmtDate(iso: string | null): string {
 
 const COMPANY_TYPES = ['producer', 'trader', 'blender', 'obligated_party', 'feedstock_supplier', 'collector'];
 
+function ImportIsccButton({ onDone }: { onDone: () => void }) {
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const run = async (onlyValid: boolean) => {
+    setImporting(true);
+    setResult('Import started — this takes 3-5 minutes. Check Railway logs for progress.');
+    try {
+      await apiPost(`/prospection/import-iscc?only_valid=${onlyValid}`);
+      // The import runs in background — we just poll for new companies
+      setTimeout(() => { void onDone(); setResult('Import running in background. Refresh the page in a few minutes to see new companies.'); }, 3000);
+    } catch (err) {
+      setResult(`Error: ${err instanceof Error ? err.message : 'failed'}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button onClick={() => run(true)} disabled={importing} className="px-3 py-1 rounded text-[11px] font-semibold border border-positive/30 bg-positive/10 text-positive hover:bg-positive/20 disabled:opacity-40" title="Import only currently valid certificates (~20-30k)">
+        {importing ? 'Importing…' : 'Import ISCC (valid only)'}
+      </button>
+      <button onClick={() => run(false)} disabled={importing} className="px-3 py-1 rounded text-[11px] font-semibold border border-border bg-surface/50 text-text-secondary hover:border-accent/40 disabled:opacity-40" title="Import all ~87k certificates including expired">
+        {importing ? '…' : 'Import all 87k'}
+      </button>
+      {result && <span className="text-text-dim text-[10px]">{result}</span>}
+    </div>
+  );
+}
+
 function AddCompanyForm({ onAdded }: { onAdded: () => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -243,7 +274,10 @@ function CompaniesView() {
             </div>
           </div>
 
-          <AddCompanyForm onAdded={load} />
+          <div className="flex flex-wrap items-center gap-3">
+            <AddCompanyForm onAdded={load} />
+            <ImportIsccButton onDone={load} />
+          </div>
 
           <div className="bg-card border border-border rounded overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
