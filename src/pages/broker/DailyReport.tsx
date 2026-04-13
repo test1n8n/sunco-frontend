@@ -663,41 +663,110 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ── Biodiesel Flat Prices (read-only — enter in Products Data tab) ── */}
       <FlatPricesCard panel={panel} />
 
+      {/* ── SECTION 1: Headline Summary ──────────────────────────────────── */}
+      {report.headline_summary && (
+        <div className="bg-surface/60 border-l-4 border-accent rounded p-5">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">Headlines</h2>
+          <p className="text-text-primary text-sm leading-relaxed font-medium">{report.headline_summary}</p>
+        </div>
+      )}
+
       {/* ── Market Summary ────────────────────────────────────────────────── */}
       <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Summary</h2>
         <p className="text-text-primary text-sm leading-relaxed">{report.market_summary}</p>
       </div>
 
-      {/* ── What to Watch ─────────────────────────────────────────────────── */}
-      {report.what_to_watch && report.what_to_watch.length > 0 && (
-        <div data-section="what-to-watch">
-          <WhatToWatchCard items={report.what_to_watch} />
+      {/* ── SECTION 2: Market-Moving (score 8-10) ─────────────────────────── */}
+      {report.market_moving && report.market_moving.length > 0 && (
+        <div className="space-y-3" data-section="market-moving">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market-Moving</h2>
+          {report.market_moving.map((item, idx) => {
+            const evtColors: Record<string, string> = {
+              MANDATE_CHANGE: 'border-l-orange-500', SUPPLY_SHOCK: 'border-l-red-500',
+              CERTIFICATION_EVENT: 'border-l-violet-500', TRADE_MEASURE: 'border-l-blue-500',
+              FEEDSTOCK_PRICE: 'border-l-emerald-500', CAPACITY_CHANGE: 'border-l-cyan-500',
+            };
+            const borderClass = evtColors[item.event_type] ?? 'border-l-accent';
+            return (
+              <div key={idx} className={`bg-card border border-border ${borderClass} border-l-4 rounded p-4`}>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-surface/50 text-text-dim border border-border">
+                    {item.event_type.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-text-dim text-[10px] shrink-0">{item.source} · {item.published_date}</span>
+                </div>
+                <h3 className="text-text-primary font-semibold text-sm mb-1">{item.headline}</h3>
+                <p className="text-text-secondary text-xs leading-relaxed mb-2">{item.context}</p>
+                {item.affected_products?.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {item.affected_products.map((p: string) => (
+                      <span key={p} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface/50 text-text-dim border border-border">{p}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* ── News by Product Category ──────────────────────────────────────── */}
-      {hasAnyNews && (
+      {/* ── SECTION 3: News by Region ─────────────────────────────────────── */}
+      {report.news_by_region && Object.keys(report.news_by_region).length > 0 ? (
+        <div className="space-y-4" data-section="news">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">News by Region</h2>
+          {([
+            { key: 'eu_regulation', label: 'EU Regulation & Mandates' },
+            { key: 'feedstock_supply', label: 'Feedstock Supply' },
+            { key: 'asia_pacific', label: 'Asia-Pacific' },
+            { key: 'americas', label: 'Americas' },
+            { key: 'macro_energy', label: 'Macro & Energy' },
+          ]).map(({ key, label }) => {
+            const items = report.news_by_region?.[key] ?? [];
+            if (items.length === 0) return null;
+            return (
+              <div key={key} className="bg-card border border-border rounded overflow-hidden">
+                <div className="px-4 py-2 border-b border-border bg-surface/30">
+                  <h3 className="text-text-dim font-semibold text-[10px] uppercase tracking-widest">{label}</h3>
+                </div>
+                <div className="divide-y divide-border/50">
+                  {items.map((item: { headline: string; source: string; url: string; event_type: string; score: number; context: string }, i: number) => (
+                    <div key={i} className="px-4 py-3 hover:bg-surface/20">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-text-primary text-sm font-medium hover:text-accent transition-colors">
+                            {item.headline}
+                          </a>
+                          <p className="text-text-secondary text-xs mt-0.5">{item.context}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[9px] text-text-dim px-1.5 py-0.5 rounded border border-border">{item.event_type?.replace(/_/g, ' ')}</span>
+                          <span className="text-text-dim text-[10px]">{item.source}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* SAF note */}
+          {report.saf_note && (
+            <p className="text-text-dim text-xs italic border-l-2 border-border pl-3">
+              <span className="font-semibold text-text-dim uppercase tracking-wide text-xs">SAF pricing note:</span>{' '}
+              {report.saf_note}
+            </p>
+          )}
+        </div>
+      ) : hasAnyNews ? (
+        /* Fallback: old format (flat news by product category) */
         <div className="space-y-5" data-section="news">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market News</h2>
-
-          {/* SAF */}
-          <NewsSection
-            category="SAF"
-            items={safNews}
-            note={safNews.length === 0 ? report.saf_note : undefined}
-          />
-
-          {/* Advanced Biofuels */}
+          <NewsSection category="SAF" items={safNews} note={safNews.length === 0 ? report.saf_note : undefined} />
           <NewsSection category="advanced_biofuels" items={advancedNews} />
-
-          {/* Biodiesel */}
           <NewsSection category="biodiesel" items={biodieselNews} />
-
-          {/* General & Policy */}
           <NewsSection category="general" items={generalNews} />
-
-          {/* SAF note as footer if SAF news is present */}
           {safNews.length > 0 && report.saf_note && (
             <p className="text-text-dim text-xs italic border-l-2 border-border pl-3">
               <span className="font-semibold text-text-dim uppercase tracking-wide text-xs">SAF pricing note:</span>{' '}
@@ -705,38 +774,27 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
             </p>
           )}
         </div>
+      ) : null}
+
+      {/* ── SECTION 4: Upcoming Events ────────────────────────────────────── */}
+      {report.upcoming_events && report.upcoming_events.length > 0 && (
+        <div className="bg-card border border-border rounded p-4" data-section="upcoming-events">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Upcoming Events</h2>
+          <div className="divide-y divide-border/50">
+            {report.upcoming_events.map((ev, idx) => (
+              <div key={idx} className="py-2 flex items-baseline gap-3">
+                <span className="text-accent font-mono font-bold text-xs shrink-0 min-w-[90px]">{ev.date}</span>
+                <span className="text-text-primary text-sm">{ev.event}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* ── Compact News (short PDF only — hidden on screen & full PDF) ──── */}
-      {hasAnyNews && (
-        <div data-section="news-compact" className="hidden">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">Market News</h2>
-
-          {([
-            { label: 'SAF', items: safNews },
-            { label: 'Advanced Biofuels', items: advancedNews },
-            { label: 'Biodiesel', items: biodieselNews },
-            { label: 'General & Policy', items: generalNews },
-          ] as { label: string; items: NewsItem[] }[])
-            .filter(g => g.items.length > 0)
-            .map(g => (
-              <div key={g.label} className="mb-2">
-                <p className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-0.5">{g.label}</p>
-                {g.items.map((n, i) => (
-                  <p key={i} className="text-text-primary text-xs leading-snug ml-2">
-                    • {n.headline}{' '}
-                    <span className="text-text-dim">({n.source})</span>
-                    {n.url && (
-                      <>
-                        {' — '}
-                        <a href={n.url} className="text-accent underline">{n.url}</a>
-                      </>
-                    )}
-                  </p>
-                ))}
-              </div>
-            ))
-          }
+      {/* ── What to Watch (legacy fallback) ───────────────────────────────── */}
+      {!report.upcoming_events?.length && report.what_to_watch && report.what_to_watch.length > 0 && (
+        <div data-section="what-to-watch">
+          <WhatToWatchCard items={report.what_to_watch} />
         </div>
       )}
 
