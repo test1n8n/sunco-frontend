@@ -143,26 +143,7 @@ function FlatPricesCard({ panel }: { panel: PricePanel | null }) {
   );
 }
 
-// ─── What to Watch ───────────────────────────────────────────────────────────
-
-function WhatToWatchCard({ items }: { items: string[] }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <div className="bg-card border border-border rounded p-4">
-      <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-        ⏰ What to Watch Today
-      </h2>
-      <ul className="space-y-2">
-        {items.map((item, idx) => (
-          <li key={idx} className="flex items-start gap-2.5 text-sm text-text-secondary">
-            <span className="text-accent font-bold mt-0.5 text-xs shrink-0">{idx + 1}.</span>
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// (WhatToWatchCard removed — replaced by Upcoming Events section)
 
 // ─── News Card ───────────────────────────────────────────────────────────────
 
@@ -203,48 +184,7 @@ export function NewsCard({ item, compact = false }: { item: NewsItem; compact?: 
 
 // ─── News Section (titled subsection) ────────────────────────────────────────
 
-const SECTION_META: Record<string, { label: string; tag: string }> = {
-  SAF:               { label: 'SAF',                               tag: 'Sustainable Aviation Fuel' },
-  advanced_biofuels: { label: 'Advanced Biofuels',                 tag: 'HVO · UCO · Tallow · POME' },
-  biodiesel:         { label: 'Biodiesel',                         tag: 'FAME0 · RME · UCOME · SME' },
-  general:           { label: 'General & Policy',                   tag: 'Macro · Regulation · Cross-product' },
-};
-
-function NewsSection({
-  category,
-  items,
-  note,
-}: {
-  category: string;
-  items: NewsItem[];
-  note?: string;
-}) {
-  if (items.length === 0 && !note) return null;
-  const meta = SECTION_META[category] ?? { label: category, tag: '' };
-
-  return (
-    <div>
-      <div className="flex items-baseline gap-2 mb-3">
-        <h3 className="text-text-primary font-semibold text-sm uppercase tracking-wide">{meta.label}</h3>
-        {meta.tag && (
-          <span className="text-text-dim text-xs">{meta.tag}</span>
-        )}
-      </div>
-      {items.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {items.map((item, idx) => (
-            <NewsCard key={idx} item={item} compact={true} />
-          ))}
-        </div>
-      )}
-      {note && (
-        <p className="text-text-dim text-xs italic mt-2 pl-1 border-l border-border/50">
-          {note}
-        </p>
-      )}
-    </div>
-  );
-}
+// (NewsSection + SECTION_META removed — replaced by News by Region rendering)
 
 // ─── Macro Signals Table ──────────────────────────────────────────────────────
 
@@ -543,21 +483,12 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
   if (!report) return null;
 
-  // ── Categorise news ──────────────────────────────────────────────────────
-  const rawNews = Array.isArray(report.key_news) ? report.key_news : [];
-  const sortedNews = [...rawNews].sort((a, b) => {
-    const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
-    return (order[a.relevance] ?? 2) - (order[b.relevance] ?? 2);
-  });
+  // ── News data (new 4-section architecture — no old format fallback) ──────
+  const marketMoving = report.market_moving ?? [];
+  const newsByRegion = report.news_by_region ?? {};
+  const upcomingEvents = report.upcoming_events ?? [];
+  const hasAnyRegionalNews = Object.values(newsByRegion).some((items: unknown) => Array.isArray(items) && items.length > 0);
 
-  const safNews       = sortedNews.filter(n => n.product_category === 'SAF');
-  const advancedNews  = sortedNews.filter(n => n.product_category === 'advanced_biofuels');
-  const biodieselNews = sortedNews.filter(n => n.product_category === 'biodiesel');
-  const generalNews   = sortedNews.filter(n =>
-    !n.product_category || n.product_category === 'general'
-  );
-
-  const hasAnyNews = sortedNews.length > 0;
   const hasSDOutlook =
     report.supply_demand_outlook != null &&
     report.supply_demand_outlook.summary != null;
@@ -663,7 +594,10 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ── Biodiesel Flat Prices (read-only — enter in Products Data tab) ── */}
       <FlatPricesCard panel={panel} />
 
-      {/* ── SECTION 1: Headline Summary ──────────────────────────────────── */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 1 — HEADLINE SUMMARY
+          3-4 factual sentences. The 10-second scan.
+          ═══════════════════════════════════════════════════════════════════ */}
       {report.headline_summary && (
         <div className="bg-surface/60 border-l-4 border-accent rounded p-5">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">Headlines</h2>
@@ -671,17 +605,22 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         </div>
       )}
 
-      {/* ── Market Summary ────────────────────────────────────────────────── */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          MARKET SUMMARY (Opus Call 1 output)
+          ═══════════════════════════════════════════════════════════════════ */}
       <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Summary</h2>
         <p className="text-text-primary text-sm leading-relaxed">{report.market_summary}</p>
       </div>
 
-      {/* ── SECTION 2: Market-Moving (score 8-10) ─────────────────────────── */}
-      {report.market_moving && report.market_moving.length > 0 && (
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 2 — MARKET-MOVING (high-relevance articles)
+          Built by code from Haiku classification. Colored event-type cards.
+          ═══════════════════════════════════════════════════════════════════ */}
+      {marketMoving.length > 0 && (
         <div className="space-y-3" data-section="market-moving">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market-Moving</h2>
-          {report.market_moving.map((item, idx) => {
+          {marketMoving.map((item, idx) => {
             const evtColors: Record<string, string> = {
               MANDATE_CHANGE: 'border-l-orange-500', SUPPLY_SHOCK: 'border-l-red-500',
               CERTIFICATION_EVENT: 'border-l-violet-500', TRADE_MEASURE: 'border-l-blue-500',
@@ -692,12 +631,12 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
               <div key={idx} className={`bg-card border border-border ${borderClass} border-l-4 rounded p-4`}>
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-surface/50 text-text-dim border border-border">
-                    {item.event_type.replace(/_/g, ' ')}
+                    {(item.event_type || '').replace(/_/g, ' ')}
                   </span>
-                  <span className="text-text-dim text-[10px] shrink-0">{item.source} · {item.published_date}</span>
+                  <span className="text-text-dim text-[10px] shrink-0">{item.source}{item.published_date ? ` · ${item.published_date}` : ''}</span>
                 </div>
                 <h3 className="text-text-primary font-semibold text-sm mb-1">{item.headline}</h3>
-                <p className="text-text-secondary text-xs leading-relaxed mb-2">{item.context}</p>
+                {item.context && <p className="text-text-secondary text-xs leading-relaxed mb-2">{item.context}</p>}
                 {item.affected_products?.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
                     {item.affected_products.map((p: string) => (
@@ -711,8 +650,11 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         </div>
       )}
 
-      {/* ── SECTION 3: News by Region ─────────────────────────────────────── */}
-      {report.news_by_region && Object.keys(report.news_by_region).length > 0 ? (
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 3 — NEWS BY REGION
+          Built by code from Haiku classification. Grouped into 5 buckets.
+          ═══════════════════════════════════════════════════════════════════ */}
+      {hasAnyRegionalNews && (
         <div className="space-y-4" data-section="news">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">News by Region</h2>
           {([
@@ -721,8 +663,8 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
             { key: 'asia_pacific', label: 'Asia-Pacific' },
             { key: 'americas', label: 'Americas' },
             { key: 'macro_energy', label: 'Macro & Energy' },
-          ]).map(({ key, label }) => {
-            const items = report.news_by_region?.[key] ?? [];
+          ] as const).map(({ key, label }) => {
+            const items = (newsByRegion[key] ?? []) as Array<{ headline: string; source: string; url: string; event_type: string; score: number; context: string }>;
             if (items.length === 0) return null;
             return (
               <div key={key} className="bg-card border border-border rounded overflow-hidden">
@@ -730,18 +672,16 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                   <h3 className="text-text-dim font-semibold text-[10px] uppercase tracking-widest">{label}</h3>
                 </div>
                 <div className="divide-y divide-border/50">
-                  {items.map((item: { headline: string; source: string; url: string; event_type: string; score: number; context: string }, i: number) => (
+                  {items.map((item, i) => (
                     <div key={i} className="px-4 py-3 hover:bg-surface/20">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-text-primary text-sm font-medium hover:text-accent transition-colors">
-                            {item.headline}
-                          </a>
-                          <p className="text-text-secondary text-xs mt-0.5">{item.context}</p>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-text-primary text-sm font-medium">{item.headline}</h4>
+                          {item.context && <p className="text-text-secondary text-xs mt-0.5">{item.context}</p>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[9px] text-text-dim px-1.5 py-0.5 rounded border border-border">{item.event_type?.replace(/_/g, ' ')}</span>
-                          <span className="text-text-dim text-[10px]">{item.source}</span>
+                          <span className="text-[9px] text-text-dim px-1.5 py-0.5 rounded border border-border whitespace-nowrap">{(item.event_type || '').replace(/_/g, ' ')}</span>
+                          <span className="text-text-dim text-[10px] whitespace-nowrap">{item.source}</span>
                         </div>
                       </div>
                     </div>
@@ -750,51 +690,32 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
               </div>
             );
           })}
-
-          {/* SAF note */}
-          {report.saf_note && (
-            <p className="text-text-dim text-xs italic border-l-2 border-border pl-3">
-              <span className="font-semibold text-text-dim uppercase tracking-wide text-xs">SAF pricing note:</span>{' '}
-              {report.saf_note}
-            </p>
-          )}
         </div>
-      ) : hasAnyNews ? (
-        /* Fallback: old format (flat news by product category) */
-        <div className="space-y-5" data-section="news">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market News</h2>
-          <NewsSection category="SAF" items={safNews} note={safNews.length === 0 ? report.saf_note : undefined} />
-          <NewsSection category="advanced_biofuels" items={advancedNews} />
-          <NewsSection category="biodiesel" items={biodieselNews} />
-          <NewsSection category="general" items={generalNews} />
-          {safNews.length > 0 && report.saf_note && (
-            <p className="text-text-dim text-xs italic border-l-2 border-border pl-3">
-              <span className="font-semibold text-text-dim uppercase tracking-wide text-xs">SAF pricing note:</span>{' '}
-              {report.saf_note}
-            </p>
-          )}
-        </div>
-      ) : null}
+      )}
 
-      {/* ── SECTION 4: Upcoming Events ────────────────────────────────────── */}
-      {report.upcoming_events && report.upcoming_events.length > 0 && (
+      {/* SAF note */}
+      {report.saf_note && (
+        <p className="text-text-dim text-xs italic border-l-2 border-border pl-3">
+          <span className="font-semibold text-text-dim uppercase tracking-wide text-xs">SAF pricing note:</span>{' '}
+          {report.saf_note}
+        </p>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 4 — UPCOMING EVENTS
+          Date + event calendar. No commentary.
+          ═══════════════════════════════════════════════════════════════════ */}
+      {upcomingEvents.length > 0 && (
         <div className="bg-card border border-border rounded p-4" data-section="upcoming-events">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Upcoming Events</h2>
           <div className="divide-y divide-border/50">
-            {report.upcoming_events.map((ev, idx) => (
+            {upcomingEvents.map((ev, idx) => (
               <div key={idx} className="py-2 flex items-baseline gap-3">
                 <span className="text-accent font-mono font-bold text-xs shrink-0 min-w-[90px]">{ev.date}</span>
                 <span className="text-text-primary text-sm">{ev.event}</span>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* ── What to Watch (legacy fallback) ───────────────────────────────── */}
-      {!report.upcoming_events?.length && report.what_to_watch && report.what_to_watch.length > 0 && (
-        <div data-section="what-to-watch">
-          <WhatToWatchCard items={report.what_to_watch} />
         </div>
       )}
 
