@@ -144,8 +144,10 @@ const USD_MT_FACTORS: Record<string, number> = {
 };
 
 /** Compute the Gasoil–Brent crack spread in USD/MT.
- *  Heating Oil (USc/gal) × 7.45 → $/MT minus Brent (USD/bbl) × 7.5 → $/MT.
- *  (HO 1 gal ≈ 3.05 kg; 1 MT HO ≈ 305 gal; Brent 1 bbl ≈ 0.136 MT) */
+ *  yfinance returns HO in USD/gal (NOT cents/gal).
+ *  1 MT of heating oil ≈ 305 US gallons → HO (USD/gal) × 305 = USD/MT.
+ *  1 MT of crude oil ≈ 7.45 barrels     → Brent (USD/bbl) × 7.45 = USD/MT.
+ *  Crack = HO_USD/MT − Brent_USD/MT. */
 function computeCrackSpread(
   heatingOil: PricePoint[],
   brent: PricePoint[],
@@ -156,9 +158,9 @@ function computeCrackSpread(
   for (const ho of heatingOil) {
     const b = brentMap.get(ho.date);
     if (b == null) continue;
-    // HO is USc/gal → USD/MT: × 7.45
-    // Brent is USD/bbl → USD/MT: × 7.45 (approx 7.45 bbl/MT for distillates)
-    const hoUsdMt = ho.value * 7.45;
+    // HO: USD/gal × 305 gal/MT = USD/MT
+    // Brent: USD/bbl × 7.45 bbl/MT = USD/MT
+    const hoUsdMt = ho.value * 305;
     const brentUsdMt = b * 7.45;
     out.push({ date: ho.date, value: parseFloat((hoUsdMt - brentUsdMt).toFixed(2)) });
   }
