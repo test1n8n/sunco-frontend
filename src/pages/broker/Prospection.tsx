@@ -283,7 +283,6 @@ function CompaniesView() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [seeding, setSeeding] = useState(false);
 
   // Per-column filters
   const [fCountry, setFCountry] = useState('');
@@ -306,11 +305,6 @@ function CompaniesView() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
-
-  const seed = async () => {
-    setSeeding(true);
-    try { await apiPost('/prospection/seed'); await load(); } finally { setSeeding(false); }
-  };
 
   // Unique values for filter dropdowns
   const uniqVals = useMemo(() => {
@@ -371,23 +365,14 @@ function CompaniesView() {
 
   return (
     <div className="space-y-4">
-      {companies.length === 0 && !loading && (
-        <div className="bg-card border border-border rounded p-6 text-center">
-          <p className="text-text-primary text-sm mb-3">No companies in the database yet.</p>
-          <button onClick={seed} disabled={seeding} className="px-4 py-2 rounded text-sm font-semibold bg-accent/10 border border-accent text-accent hover:bg-accent/20 disabled:opacity-40">
-            {seeding ? 'Seeding…' : 'Seed Company Database'}
-          </button>
-          <p className="text-text-dim text-xs mt-2">Populates ~100 curated biofuel companies from public sources.</p>
-        </div>
-      )}
+      {/* Actions row — always visible */}
+      <div className="flex flex-wrap items-center gap-3">
+        <AddCompanyForm onAdded={load} />
+        <ImportIsccButton onDone={load} />
+      </div>
 
       {companies.length > 0 && (
         <>
-          {/* Actions row */}
-          <div className="flex flex-wrap items-center gap-3">
-            <AddCompanyForm onAdded={load} />
-            <ImportIsccButton onDone={load} />
-          </div>
 
           {/* Search + CSV export */}
           <div className="flex items-center gap-3">
