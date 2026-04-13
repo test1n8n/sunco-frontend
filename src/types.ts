@@ -2,17 +2,21 @@ export interface MacroSignal {
   name: string;
   direction: 'up' | 'down' | 'flat';
   change_pct: number;
-  biofuels_implication: string;
+  biofuels_implication?: string;
+  factual_note?: string;
 }
 
 export interface NewsItem {
   headline: string;
   source: string;
   url: string;
-  price_impact: string;
+  price_impact?: string;
+  context?: string;
   relevance: 'high' | 'medium' | 'low';
   published_date?: string;
   product_category?: 'SAF' | 'advanced_biofuels' | 'biodiesel' | 'general';
+  region?: string;
+  event_type?: string;
 }
 
 export interface ProductSnapshot {
@@ -24,9 +28,12 @@ export interface ProductSnapshot {
 
 export interface SupplyDemandOutlook {
   summary: string | null;
-  supply_signal: 'tight' | 'ample' | 'neutral';
-  demand_signal: 'strong' | 'weak' | 'neutral';
-  key_drivers: string[];
+  supply_signal?: 'tight' | 'ample' | 'neutral';
+  demand_signal?: 'strong' | 'weak' | 'neutral';
+  supply_data?: string;
+  demand_data?: string;
+  key_drivers?: string[];
+  key_data_points?: string[];
 }
 
 export interface KeyDate {
@@ -40,16 +47,37 @@ export interface Outlook {
   summary: string;
   key_risks?: string[];
   key_themes?: string[];
-  bias: 'bullish' | 'bearish' | 'neutral';
+  key_events?: string[];
+  key_facts?: string[];
+  bias?: 'bullish' | 'bearish' | 'neutral';
 }
 
 export interface Report {
   id: string;
   report_date: string;
+  headline_summary?: string;
   market_summary: string;
   data_confidence?: 'high' | 'moderate' | 'low';
   product_snapshot?: ProductSnapshot[];
   what_to_watch?: string[];
+  market_moving?: Array<{
+    headline: string;
+    source: string;
+    url: string;
+    event_type: string;
+    context: string;
+    affected_products: string[];
+    published_date?: string;
+  }>;
+  news_by_region?: Record<string, Array<{
+    headline: string;
+    source: string;
+    url: string;
+    event_type: string;
+    score: number;
+    context: string;
+  }>>;
+  upcoming_events?: Array<{ date: string; event: string }>;
   key_news: NewsItem[];
   macro_signals: MacroSignal[];
   supply_demand_outlook?: SupplyDemandOutlook | null;

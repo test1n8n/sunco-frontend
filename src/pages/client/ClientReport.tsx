@@ -108,7 +108,7 @@ function ClientOutlookCard({ outlook }: { outlook: Outlook }) {
           ))}
         </ul>
       )}
-      <BiasBadge bias={outlook.bias} />
+      {outlook.bias && <BiasBadge bias={outlook.bias} />}
     </div>
   );
 }
@@ -183,7 +183,7 @@ export default function ClientReport() {
             <h1 className="text-text-primary font-bold text-lg tracking-wide">Sunco Brokers Daily Intelligence Report</h1>
             <p className="text-text-dim text-xs mt-1 uppercase tracking-widest">{formatDate(report.report_date)}</p>
             <div className="flex items-center gap-3 mt-2">
-              <BiasBadge bias={report.short_term_outlook.bias} />
+              {report.short_term_outlook?.bias && <BiasBadge bias={report.short_term_outlook.bias} />}
               <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
             </div>
           </div>

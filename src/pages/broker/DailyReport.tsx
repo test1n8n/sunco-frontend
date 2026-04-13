@@ -188,7 +188,7 @@ export function NewsCard({ item, compact = false }: { item: NewsItem; compact?: 
           <span className="text-xs text-text-dim">{item.published_date}</span>
         )}
       </div>
-      <p className={`text-text-secondary italic mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>{item.price_impact}</p>
+      <p className={`text-text-secondary italic mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>{item.price_impact ?? item.context ?? ''}</p>
       <a
         href={item.url}
         target="_blank"
@@ -270,7 +270,7 @@ export function MacroSignalsTable({ signals }: { signals: MacroSignal[] }) {
               <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${signal.change_pct > 0 ? 'text-positive' : signal.change_pct < 0 ? 'text-negative' : 'text-text-dim'}`}>
                 {signal.change_pct > 0 ? '+' : ''}{signal.change_pct.toFixed(1)}%
               </td>
-              <td className="px-4 py-3 text-text-secondary text-sm hidden sm:table-cell">{signal.biofuels_implication}</td>
+              <td className="px-4 py-3 text-text-secondary text-sm hidden sm:table-cell">{signal.biofuels_implication ?? signal.factual_note ?? ''}</td>
             </tr>
           ))}
         </tbody>
@@ -282,7 +282,7 @@ export function MacroSignalsTable({ signals }: { signals: MacroSignal[] }) {
 // ─── Outlook Card ─────────────────────────────────────────────────────────────
 
 export function OutlookCard({ outlook }: { outlook: Outlook }) {
-  const bulletItems = outlook.key_risks ?? outlook.key_themes ?? [];
+  const bulletItems = outlook.key_risks ?? outlook.key_themes ?? outlook.key_events ?? outlook.key_facts ?? [];
   return (
     <div className="bg-card border border-border rounded border-l-2 border-l-accent p-5">
       <p className="text-xs text-text-dim font-semibold uppercase tracking-widest mb-2">{outlook.horizon}</p>
@@ -297,7 +297,7 @@ export function OutlookCard({ outlook }: { outlook: Outlook }) {
           ))}
         </ul>
       )}
-      <BiasBadge bias={outlook.bias} />
+      {outlook.bias && <BiasBadge bias={outlook.bias} />}
     </div>
   );
 }
@@ -321,13 +321,13 @@ function SupplyDemandCard({ outlook }: { outlook: SupplyDemandOutlook }) {
     <div className="bg-card border border-border rounded p-5">
       <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Supply / Demand Outlook</h2>
       <div className="flex flex-wrap gap-3 mb-4">
-        <SignalPill label="Supply" value={outlook.supply_signal} colorMap={SUPPLY_COLORS} />
-        <SignalPill label="Demand" value={outlook.demand_signal} colorMap={DEMAND_COLORS} />
+        <SignalPill label="Supply" value={outlook.supply_signal ?? outlook.supply_data ?? ''} colorMap={SUPPLY_COLORS} />
+        <SignalPill label="Demand" value={outlook.demand_signal ?? outlook.demand_data ?? ''} colorMap={DEMAND_COLORS} />
       </div>
       <p className="text-text-primary text-sm leading-relaxed mb-3">{outlook.summary}</p>
-      {outlook.key_drivers.length > 0 && (
+      {(outlook.key_drivers ?? outlook.key_data_points ?? []).length > 0 && (
         <ul className="space-y-1.5">
-          {outlook.key_drivers.map((d, idx) => (
+          {(outlook.key_drivers ?? outlook.key_data_points ?? []).map((d: string, idx: number) => (
             <li key={idx} className="text-sm text-text-secondary flex items-start gap-2">
               <span className="text-accent mt-0.5 text-xs shrink-0">›</span>
               <span>{d}</span>
@@ -544,9 +544,10 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
   if (!report) return null;
 
   // ── Categorise news ──────────────────────────────────────────────────────
-  const sortedNews = [...report.key_news].sort((a, b) => {
-    const order = { high: 0, medium: 1, low: 2 };
-    return order[a.relevance] - order[b.relevance];
+  const rawNews = Array.isArray(report.key_news) ? report.key_news : [];
+  const sortedNews = [...rawNews].sort((a, b) => {
+    const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    return (order[a.relevance] ?? 2) - (order[b.relevance] ?? 2);
   });
 
   const safNews       = sortedNews.filter(n => n.product_category === 'SAF');
@@ -584,7 +585,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         <div>
           <p className="text-text-dim text-xs tracking-widest uppercase mb-1">{formatDate(report.report_date)}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <BiasBadge bias={report.short_term_outlook.bias} />
+            {report.short_term_outlook?.bias && <BiasBadge bias={report.short_term_outlook.bias} />}
             <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
             {report.data_confidence && (
               <>

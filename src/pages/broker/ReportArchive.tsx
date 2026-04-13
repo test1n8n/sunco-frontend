@@ -34,7 +34,7 @@ function ReportView({ report }: { report: Report }) {
         <div>
           <p className="text-text-dim text-xs tracking-widest uppercase mb-1">{formatDate(report.report_date)}</p>
           <div className="flex items-center gap-3 mt-1">
-            <BiasBadge bias={report.short_term_outlook.bias} />
+            {report.short_term_outlook?.bias && <BiasBadge bias={report.short_term_outlook.bias} />}
             <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
           </div>
         </div>
