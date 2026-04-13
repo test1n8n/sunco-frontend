@@ -103,31 +103,112 @@ const COMPANY_TYPES = ['producer', 'trader', 'blender', 'obligated_party', 'feed
 
 function ImportIsccButton({ onDone }: { onDone: () => void }) {
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [companyCount, setCompanyCount] = useState(0);
+  const [startCount, setStartCount] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const run = async (onlyValid: boolean) => {
     setImporting(true);
-    setResult('Import started — this takes 3-5 minutes. Check Railway logs for progress.');
+    setStatus('running');
+    setElapsed(0);
+    setErrorMsg('');
+
+    // Get current count before import
+    try {
+      const before = await apiGet<{ count: number }>('/prospection/companies');
+      setStartCount(before.count);
+      setCompanyCount(before.count);
+    } catch { /* ignore */ }
+
+    // Trigger the import
     try {
       await apiPost(`/prospection/import-iscc?only_valid=${onlyValid}`);
-      // The import runs in background — we just poll for new companies
-      setTimeout(() => { void onDone(); setResult('Import running in background. Refresh the page in a few minutes to see new companies.'); }, 3000);
     } catch (err) {
-      setResult(`Error: ${err instanceof Error ? err.message : 'failed'}`);
-    } finally {
+      setStatus('error');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to start import');
       setImporting(false);
+      return;
     }
+
+    // Poll for progress every 5 seconds
+    const startTime = Date.now();
+    let stableCount = 0;
+    let lastCount = 0;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const data = await apiGet<{ count: number }>('/prospection/companies');
+        setCompanyCount(data.count);
+        setElapsed(Math.floor((Date.now() - startTime) / 1000));
+
+        // Detect when import is done: count stopped increasing for 3 consecutive polls
+        if (data.count === lastCount && data.count > startCount) {
+          stableCount++;
+          if (stableCount >= 3) {
+            clearInterval(pollInterval);
+            setStatus('done');
+            setImporting(false);
+            onDone();
+          }
+        } else {
+          stableCount = 0;
+        }
+        lastCount = data.count;
+
+        // Safety timeout: 10 minutes max
+        if (Date.now() - startTime > 600000) {
+          clearInterval(pollInterval);
+          setStatus('done');
+          setImporting(false);
+          onDone();
+        }
+      } catch { /* ignore poll errors */ }
+    }, 5000);
   };
 
+  const added = companyCount - startCount;
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+
   return (
-    <div className="flex items-center gap-2">
-      <button onClick={() => run(true)} disabled={importing} className="px-3 py-1 rounded text-[11px] font-semibold border border-positive/30 bg-positive/10 text-positive hover:bg-positive/20 disabled:opacity-40" title="Import only currently valid certificates (~20-30k)">
-        {importing ? 'Importing…' : 'Import ISCC (valid only)'}
-      </button>
-      <button onClick={() => run(false)} disabled={importing} className="px-3 py-1 rounded text-[11px] font-semibold border border-border bg-surface/50 text-text-secondary hover:border-accent/40 disabled:opacity-40" title="Import all ~87k certificates including expired">
-        {importing ? '…' : 'Import all 87k'}
-      </button>
-      {result && <span className="text-text-dim text-[10px]">{result}</span>}
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <button onClick={() => run(true)} disabled={importing} className={`px-3 py-1.5 rounded text-[11px] font-semibold border transition-colors ${importing ? 'border-positive/20 bg-positive/5 text-positive/50 cursor-not-allowed' : 'border-positive/30 bg-positive/10 text-positive hover:bg-positive/20'}`} title="Import only currently valid certificates (~20-30k)">
+          {status === 'running' ? 'Importing…' : 'Import ISCC (valid only)'}
+        </button>
+        <button onClick={() => run(false)} disabled={importing} className={`px-3 py-1.5 rounded text-[11px] font-semibold border transition-colors ${importing ? 'border-border bg-surface/30 text-text-dim cursor-not-allowed' : 'border-border bg-surface/50 text-text-secondary hover:border-accent/40'}`} title="Import all ~87k certificates including expired">
+          {status === 'running' ? '…' : 'Import all 87k'}
+        </button>
+      </div>
+
+      {status === 'running' && (
+        <div className="bg-accent/5 border border-accent/20 rounded p-3 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin shrink-0" />
+          <div className="text-xs">
+            <div className="text-accent font-semibold">ISCC import running…</div>
+            <div className="text-text-secondary mt-0.5">
+              {added > 0 ? `${added.toLocaleString()} new companies added` : 'Starting up — fetching first batch'}
+              {' · '}{minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`} elapsed
+            </div>
+            <div className="text-text-dim text-[10px] mt-0.5">This runs in the background — you can navigate away and come back.</div>
+          </div>
+        </div>
+      )}
+
+      {status === 'done' && (
+        <div className="bg-positive/5 border border-positive/20 rounded p-3 text-xs">
+          <span className="text-positive font-semibold">Import complete.</span>
+          <span className="text-text-secondary ml-2">{added.toLocaleString()} new companies added in {minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`}. Total: {companyCount.toLocaleString()}</span>
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div className="bg-negative/5 border border-negative/20 rounded p-3 text-xs text-negative">
+          Import failed: {errorMsg}
+        </div>
+      )}
     </div>
   );
 }
