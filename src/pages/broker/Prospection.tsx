@@ -283,6 +283,8 @@ function CompaniesView() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(100);
 
   // Per-column filters
   const [fCountry, setFCountry] = useState('');
@@ -318,6 +320,9 @@ function CompaniesView() {
       products: Array.from(new Set(companies.flatMap(c => c.products))).filter(Boolean).sort(),
     };
   }, [companies]);
+
+  // Reset to page 0 when any filter changes
+  useEffect(() => { setPage(0); }, [search, fCountry, fType, fScope, fProcessing, fFeedstock, fProduct, fSuspended, fValidity]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -426,58 +431,84 @@ function CompaniesView() {
           </div>
 
           {/* Table */}
-          <div className="bg-card border border-border rounded overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
-              <h3 className="text-text-primary font-semibold text-sm">Companies ({filtered.length.toLocaleString()} of {companies.length.toLocaleString()})</h3>
-            </div>
-            <div className="overflow-x-auto max-h-[40rem]">
-              <table className="w-full text-xs whitespace-nowrap">
-                <thead className="sticky top-0 bg-surface z-10">
-                  <tr className="border-b border-border">
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Company</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Country</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Role</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Scope</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Processing</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Feedstocks</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Products</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Valid From</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Valid Until</th>
-                    <th className="px-2 py-2 text-center text-text-dim text-[10px] font-semibold uppercase tracking-widest">Susp.</th>
-                    <th className="px-2 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest">Cert Body</th>
-                    <th className="px-2 py-2 text-center text-text-dim text-[10px] font-semibold uppercase tracking-widest">Cert</th>
-                    <th className="px-2 py-2 text-center text-text-dim text-[10px] font-semibold uppercase tracking-widest">Audit</th>
-                    <th className="px-2 py-2 text-center text-text-dim text-[10px] font-semibold uppercase tracking-widest">CRM</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.slice(0, 500).map(c => (
-                    <tr key={c.id} className="border-b border-border/50 hover:bg-surface/40">
-                      <td className="px-2 py-1.5 text-text-primary font-semibold max-w-[200px] truncate" title={c.name}>{c.name}</td>
-                      <td className="px-2 py-1.5 text-text-secondary">{c.country}</td>
-                      <td className="px-2 py-1.5 text-text-secondary">{c.company_type.replace(/_/g, ' ')}</td>
-                      <td className="px-2 py-1.5 text-text-dim max-w-[100px] truncate" title={c.iscc_scope}>{c.iscc_scope || '—'}</td>
-                      <td className="px-2 py-1.5 text-text-dim max-w-[100px] truncate" title={c.iscc_processing_unit_type}>{c.iscc_processing_unit_type || '—'}</td>
-                      <td className="px-2 py-1.5 text-text-dim max-w-[120px] truncate" title={c.feedstocks.join(', ')}>{c.feedstocks.join(', ') || '—'}</td>
-                      <td className="px-2 py-1.5 text-text-dim max-w-[120px] truncate" title={c.products.join(', ')}>{c.products.join(', ') || '—'}</td>
-                      <td className="px-2 py-1.5 text-text-dim font-mono">{fmtDate(c.iscc_valid_from)}</td>
-                      <td className="px-2 py-1.5 text-text-dim font-mono">{fmtDate(c.iscc_valid_to)}</td>
-                      <td className="px-2 py-1.5 text-center">{c.iscc_suspended ? <span className="text-negative font-bold">YES</span> : <span className="text-text-dim">—</span>}</td>
-                      <td className="px-2 py-1.5 text-text-dim max-w-[80px] truncate" title={c.iscc_cb}>{c.iscc_cb || '—'}</td>
-                      <td className="px-2 py-1.5 text-center">{c.iscc_cert_pdf_url ? <a href={c.iscc_cert_pdf_url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">PDF</a> : <span className="text-text-dim">—</span>}</td>
-                      <td className="px-2 py-1.5 text-center">{c.iscc_audit_url ? <a href={c.iscc_audit_url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Audit</a> : <span className="text-text-dim">—</span>}</td>
-                      <td className="px-2 py-1.5 text-center">{c.in_crm ? <span className="text-positive">✓</span> : <span className="text-text-dim">—</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {filtered.length > 500 && (
-              <div className="px-4 py-2 border-t border-border text-text-dim text-[10px]">
-                Showing first 500 of {filtered.length.toLocaleString()} results. Use filters to narrow down.
+          {(() => {
+            const totalPages = Math.ceil(filtered.length / pageSize);
+            const pageData = filtered.slice(page * pageSize, (page + 1) * pageSize);
+            const toggleCrm = async (id: number, current: boolean) => {
+              try {
+                await apiPatch(`/prospection/companies/${id}?in_crm=${!current}`);
+                setCompanies(prev => prev.map(c => c.id === id ? { ...c, in_crm: !current } : c));
+              } catch { /* ignore */ }
+            };
+            return (
+              <div className="bg-card border border-border rounded overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+                  <h3 className="text-text-primary font-semibold text-sm">
+                    Companies ({filtered.length.toLocaleString()} of {companies.length.toLocaleString()})
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-text-dim">Rows:</span>
+                    {[50, 100, 500].map(s => (
+                      <button key={s} onClick={() => { setPageSize(s); setPage(0); }} className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${pageSize === s ? 'bg-accent/10 border-accent text-accent' : 'bg-card border-border text-text-dim hover:border-accent/40'}`}>{s}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="overflow-x-auto max-h-[45rem]">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-surface z-10">
+                      <tr className="border-b border-border">
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[200px]">Company</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[50px]">Country</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[80px]">Role</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[100px]">Scope</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[120px]">Processing</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[160px]">Feedstocks</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[160px]">Products</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[80px]">Valid From</th>
+                        <th className="px-3 py-2 text-left text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[80px]">Valid Until</th>
+                        <th className="px-3 py-2 text-center text-text-dim text-[10px] font-semibold uppercase tracking-widest min-w-[50px]">CRM</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageData.map(c => (
+                        <tr key={c.id} className="border-b border-border/50 hover:bg-surface/40">
+                          <td className="px-3 py-2 text-text-primary font-semibold truncate max-w-[250px]" title={c.name}>{c.name}</td>
+                          <td className="px-3 py-2 text-text-secondary">{c.country}</td>
+                          <td className="px-3 py-2 text-text-secondary">{c.company_type.replace(/_/g, ' ')}</td>
+                          <td className="px-3 py-2 text-text-dim truncate max-w-[120px]" title={c.iscc_scope}>{c.iscc_scope || '—'}</td>
+                          <td className="px-3 py-2 text-text-dim truncate max-w-[140px]" title={c.iscc_processing_unit_type}>{c.iscc_processing_unit_type || '—'}</td>
+                          <td className="px-3 py-2 text-text-dim truncate max-w-[200px]" title={c.feedstocks.join(', ')}>{c.feedstocks.join(', ') || '—'}</td>
+                          <td className="px-3 py-2 text-text-dim truncate max-w-[200px]" title={c.products.join(', ')}>{c.products.join(', ') || '—'}</td>
+                          <td className="px-3 py-2 text-text-dim font-mono">{fmtDate(c.iscc_valid_from)}</td>
+                          <td className="px-3 py-2 text-text-dim font-mono">{fmtDate(c.iscc_valid_to)}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button onClick={() => void toggleCrm(c.id, c.in_crm)} className="transition-colors" title={c.in_crm ? 'Remove from CRM' : 'Add to CRM'}>
+                              {c.in_crm
+                                ? <span className="text-positive font-bold text-sm">✓</span>
+                                : <span className="text-negative/40 hover:text-negative font-bold text-sm">✗</span>
+                              }
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Pagination */}
+                <div className="px-4 py-2 border-t border-border flex items-center justify-between text-xs">
+                  <span className="text-text-dim">
+                    Page {page + 1} of {totalPages || 1} · Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length.toLocaleString()}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setPage(0)} disabled={page === 0} className="px-2 py-1 rounded border border-border text-text-dim hover:text-text-primary disabled:opacity-30">First</button>
+                    <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-2 py-1 rounded border border-border text-text-dim hover:text-text-primary disabled:opacity-30">Prev</button>
+                    <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-2 py-1 rounded border border-border text-text-dim hover:text-text-primary disabled:opacity-30">Next</button>
+                    <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} className="px-2 py-1 rounded border border-border text-text-dim hover:text-text-primary disabled:opacity-30">Last</button>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })()}
         </>
       )}
 
