@@ -43,6 +43,74 @@ export const MOCK_REPORT: Report = {
     'Friday USDA weekly export sales report — large soy sales to China would tighten US supply and lift BO=F',
     'Monitor any Argentine customs data release — UCOME shipment volumes to Europe for March',
   ],
+  market_moving: [
+    {
+      headline: 'EU Commission proposes increased SAF blending mandate for 2026',
+      source: 'Biofuels Digest',
+      url: 'https://biofuelsdigest.com',
+      event_type: 'MANDATE_CHANGE',
+      context: 'The European Commission published a proposal to raise the SAF blending obligation from 2% to 6% by 2030, effective under ReFuelEU Aviation.',
+      affected_products: ['SAF', 'HVO'],
+      published_date: '29 Mar 2026',
+    },
+    {
+      headline: 'UCO exports from China tighten as domestic collection declines',
+      source: 'Reuters',
+      url: 'https://reuters.com',
+      event_type: 'SUPPLY_SHOCK',
+      context: 'Chinese UCO collection volumes fell 12% month-on-month in March. Export availability to Europe and Southeast Asia is reduced.',
+      affected_products: ['FAME0', 'HVO', 'UCO'],
+      published_date: '28 Mar 2026',
+    },
+    {
+      headline: 'German THG-Quote Q2 compliance window opens — blenders accelerate FAME0 purchases',
+      source: 'Biofuels International',
+      url: 'https://biofuels-news.com',
+      event_type: 'MANDATE_CHANGE',
+      context: 'German obligated parties began Q2 THG-Quote compliance buying, with FAME0 spot demand at ARA rising 15% week-on-week.',
+      affected_products: ['FAME0', 'RME'],
+      published_date: '29 Mar 2026',
+    },
+  ],
+  news_by_region: {
+    eu_regulation: [
+      {
+        headline: 'ReFuelEU Aviation delegated act: HEFA pathway GHG threshold confirmed',
+        source: 'European Commission',
+        url: 'https://ec.europa.eu',
+        event_type: 'MANDATE_CHANGE',
+        score: 7,
+        context: 'HEFA pathway confirmed at 65% GHG savings threshold under ReFuelEU Aviation delegated act.',
+      },
+    ],
+    feedstock_supply: [
+      {
+        headline: 'US soybean crop estimate revised upward by USDA',
+        source: 'USDA',
+        url: 'https://usda.gov',
+        event_type: 'FEEDSTOCK_PRICE',
+        score: 6,
+        context: 'USDA raised the 2025/26 US soybean crop estimate by 2.1 million bushels to 4.37 billion bushels.',
+      },
+    ],
+    asia_pacific: [],
+    americas: [],
+    macro_energy: [
+      {
+        headline: 'Neste raises NExBTL HVO output guidance on strong aviation demand',
+        source: 'Reuters',
+        url: 'https://reuters.com',
+        event_type: 'CAPACITY_CHANGE',
+        score: 6,
+        context: 'Neste increased 2026 renewable product output guidance to 4.2 MT from 3.8 MT, citing SAF demand.',
+      },
+    ],
+  },
+  upcoming_events: [
+    { date: '31 Mar 2026', event: 'Q1 German THG-Quote reporting deadline' },
+    { date: '10 Apr 2026', event: 'USDA WASDE monthly crop report' },
+    { date: '30 Apr 2026', event: 'UK RTFO Q1 obligation period end' },
+  ],
   key_news: [
     {
       headline: 'EU Commission proposes increased SAF blending mandate for 2026',

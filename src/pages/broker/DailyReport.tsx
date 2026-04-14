@@ -4,7 +4,6 @@ import { MOCK_REPORT } from '../../mockData';
 import { API_BASE_URL, API_KEY } from '../../config';
 import BiasBadge from '../../components/BiasBadge';
 import Spinner from '../../components/Spinner';
-import ErrorBanner from '../../components/ErrorBanner';
 import { useToast, ToastContainer } from '../../components/Toast';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
 import ProductReportPanel from '../../components/ProductReportPanel';
@@ -60,6 +59,26 @@ function formatDate(dateStr: string): string {
     timeZone: 'UTC',
   });
 }
+
+// ─── Shared event type color maps ────────────────────────────────────────────
+
+const EVENT_STYLES: Record<string, { border: string; badge: string }> = {
+  MANDATE_CHANGE:      { border: 'border-l-orange-500', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+  SUPPLY_SHOCK:        { border: 'border-l-red-500',    badge: 'bg-red-500/10 text-red-400 border-red-500/20' },
+  CERTIFICATION_EVENT: { border: 'border-l-violet-500', badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+  TRADE_MEASURE:       { border: 'border-l-blue-500',   badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  FEEDSTOCK_PRICE:     { border: 'border-l-emerald-500',badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  CAPACITY_CHANGE:     { border: 'border-l-cyan-500',   badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
+};
+
+const EVENT_BADGE_COLORS: Record<string, string> = {
+  FEEDSTOCK_PRICE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  TRADE_MEASURE: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  CAPACITY_CHANGE: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+  SUPPLY_SHOCK: 'bg-red-500/10 text-red-400 border-red-500/20',
+  MANDATE_CHANGE: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  CERTIFICATION_EVENT: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+};
 
 // ─── Atoms ───────────────────────────────────────────────────────────────────
 
@@ -298,9 +317,15 @@ function SupplyDemandCard({ outlook }: { outlook: SupplyDemandOutlook }) {
     <div className="bg-card border border-border rounded p-5">
       <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Supply / Demand Outlook</h2>
       <div className="flex flex-wrap gap-3 mb-4">
-        <SignalPill label="Supply" value={outlook.supply_signal ?? outlook.supply_data ?? ''} colorMap={SUPPLY_COLORS} />
-        <SignalPill label="Demand" value={outlook.demand_signal ?? outlook.demand_data ?? ''} colorMap={DEMAND_COLORS} />
+        <SignalPill label="Supply" value={outlook.supply_signal ?? ''} colorMap={SUPPLY_COLORS} />
+        <SignalPill label="Demand" value={outlook.demand_signal ?? ''} colorMap={DEMAND_COLORS} />
       </div>
+      {(outlook.supply_data || outlook.demand_data) && (
+        <div className="flex flex-wrap gap-4 mb-3 text-xs text-text-secondary">
+          {outlook.supply_data && <span>Supply: {outlook.supply_data}</span>}
+          {outlook.demand_data && <span>Demand: {outlook.demand_data}</span>}
+        </div>
+      )}
       <p className="text-text-primary text-sm leading-relaxed mb-3">{outlook.summary}</p>
       {(outlook.key_drivers ?? outlook.key_data_points ?? []).length > 0 && (
         <ul className="space-y-1.5">
@@ -386,13 +411,13 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         } else {
           setReport(data);
           setBrokerNotes(data.broker_notes ?? '');
-          // Fetch price panel in parallel (non-blocking — failures are silent)
+          // Fetch price panel in parallel (non-blocking)
           fetch(`${API_BASE_URL}/price-panel/latest`, {
             headers: { 'X-API-Key': API_KEY },
           })
             .then(r => r.ok ? r.json() : null)
             .then((p: PricePanel | null) => { if (p) setPanel(p); })
-            .catch(() => {});
+            .catch((err) => { console.warn('Price panel fetch failed:', err); });
         }
       } catch {
         setReport(MOCK_REPORT);
@@ -423,6 +448,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       const POLL_INTERVAL = 6000;
       const MAX_POLLS = 25;
       let polls = 0;
+      let wasUpdated = false;
       await new Promise<void>((resolve, reject) => {
         const poll = setInterval(async () => {
           polls++;
@@ -430,7 +456,8 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
             const latest = await fetchLatestReport();
             const newGeneratedAt = latest?.generated_at ?? null;
             const updated = newGeneratedAt !== null && newGeneratedAt !== previousGeneratedAt;
-            if (updated || polls >= MAX_POLLS) {
+            if (updated) {
+              wasUpdated = true;
               clearInterval(poll);
               if (latest) {
                 setReport(latest);
@@ -439,6 +466,9 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                 setUsedMock(false);
               }
               resolve();
+            } else if (polls >= MAX_POLLS) {
+              clearInterval(poll);
+              resolve();
             }
           } catch (err) {
             clearInterval(poll);
@@ -446,9 +476,14 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           }
         }, POLL_INTERVAL);
       });
-      showToast('success', 'Report refreshed successfully.');
-    } catch {
-      showToast('error', 'Refresh failed — please try again.');
+      if (wasUpdated) {
+        showToast('success', 'Report refreshed successfully.');
+      } else {
+        showToast('error', 'Refresh timed out — report may still be generating. Try again shortly.');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      showToast('error', `Refresh failed — ${msg}`);
     } finally {
       stepTimers.forEach(clearTimeout);
       setRefreshing(false);
@@ -465,10 +500,14 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
         body: JSON.stringify({ broker_notes: brokerNotes }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || `HTTP ${res.status}`);
+      }
       showToast('success', 'Notes saved.');
-    } catch {
-      showToast('error', 'Failed to save notes.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      showToast('error', `Failed to save notes: ${msg}`);
     } finally {
       setSavingNotes(false);
     }
@@ -477,14 +516,18 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
   const handleSendToClients = async () => {
     setSendingToClients(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/run-now`, {
+      const res = await fetch(`${API_BASE_URL}/send-to-clients`, {
         method: 'POST',
         headers: { 'X-API-Key': API_KEY },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || `HTTP ${res.status}`);
+      }
       showToast('success', 'Report sent to clients.');
-    } catch {
-      showToast('error', 'Failed to send to clients.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      showToast('error', `Failed to send to clients: ${msg}`);
     } finally {
       setSendingToClients(false);
     }
@@ -534,7 +577,15 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
     <div className="space-y-6 max-w-4xl">
       <ToastContainer toasts={toasts} dismissToast={dismissToast} />
 
-      {usedMock && <ErrorBanner />}
+      {usedMock && (
+        <div className="bg-negative/10 border border-negative/30 rounded px-4 py-3 text-sm text-negative flex items-start gap-2">
+          <span className="shrink-0 font-bold">⚠</span>
+          <span>
+            <span className="font-semibold">Backend unavailable</span> — showing cached sample data.
+            Do not use this data for trading decisions. Regenerate or check backend status.
+          </span>
+        </div>
+      )}
 
       {/* Thin data warning */}
       {report.data_confidence === 'low' && (
@@ -572,7 +623,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           {isBroker && (
             <button
               onClick={() => void handleRefresh()}
-              disabled={refreshing || sendingToClients}
+              disabled={refreshing || sendingToClients || usedMock}
               title={refreshing ? refreshStep : 'Re-run the pipeline: fetch latest news, reclassify and regenerate the report'}
               className="bg-card border border-border text-text-secondary px-4 py-2 rounded text-xs font-semibold hover:text-text-primary hover:border-accent/50 transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest min-w-[140px] justify-center"
             >
@@ -590,7 +641,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           {isBroker && (
             <button
               onClick={handleSendToClients}
-              disabled={sendingToClients || refreshing}
+              disabled={sendingToClients || refreshing || usedMock}
               className="bg-accent text-surface px-4 py-2 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
             >
               {sendingToClients ? (
@@ -658,15 +709,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         <div className="space-y-3" data-section="market-moving">
           <SectionHeader title="Market-Moving" subtitle="High-relevance events" />
           {marketMoving.map((item, idx) => {
-            const evtStyles: Record<string, { border: string; badge: string }> = {
-              MANDATE_CHANGE:      { border: 'border-l-orange-500', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-              SUPPLY_SHOCK:        { border: 'border-l-red-500',    badge: 'bg-red-500/10 text-red-400 border-red-500/20' },
-              CERTIFICATION_EVENT: { border: 'border-l-violet-500', badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
-              TRADE_MEASURE:       { border: 'border-l-blue-500',   badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-              FEEDSTOCK_PRICE:     { border: 'border-l-emerald-500',badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-              CAPACITY_CHANGE:     { border: 'border-l-cyan-500',   badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
-            };
-            const style = evtStyles[item.event_type] ?? { border: 'border-l-accent', badge: 'bg-accent/10 text-accent border-accent/20' };
+            const style = EVENT_STYLES[item.event_type] ?? { border: 'border-l-accent', badge: 'bg-accent/10 text-accent border-accent/20' };
             const cleanSource = cleanSourceName(item.source);
             const fmtDate = item.published_date ? formatPubDate(item.published_date) : '';
             return (
@@ -718,14 +761,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                 <div className="divide-y divide-border/50">
                   {items.map((item, i) => {
                     const cleanSrc = cleanSourceName(item.source);
-                    const evtBadge: Record<string, string> = {
-                      FEEDSTOCK_PRICE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                      TRADE_MEASURE: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                      CAPACITY_CHANGE: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-                      SUPPLY_SHOCK: 'bg-red-500/10 text-red-400 border-red-500/20',
-                      MANDATE_CHANGE: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-                    };
-                    const badgeClass = evtBadge[item.event_type] ?? 'bg-surface/50 text-text-dim border-border';
+                    const badgeClass = EVENT_BADGE_COLORS[item.event_type] ?? 'bg-surface/50 text-text-dim border-border';
                     return (
                       <div key={i} className="px-4 py-3 hover:bg-surface/20">
                         <div className="flex items-start justify-between gap-3">
