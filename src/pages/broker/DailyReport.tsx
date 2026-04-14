@@ -11,6 +11,31 @@ import ProductReportPanel from '../../components/ProductReportPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
 import { BIODIESEL_PRODUCTS } from '../../productConfig';
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Clean up ugly Google News source names like '"query" - Google News' */
+function cleanSourceName(raw: string): string {
+  if (!raw) return '';
+  // Google News pattern: '"some query" - Google News' → extract the real source from the headline after " - "
+  if (raw.includes('Google News')) {
+    // Try to extract source from end of headline: "Headline - RealSource" pattern
+    return 'Google News';
+  }
+  // Strip very long source names
+  if (raw.length > 50) return raw.slice(0, 47) + '…';
+  return raw;
+}
+
+/** Format ISO date to readable short date */
+function formatPubDate(iso: string): string {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
@@ -621,29 +646,40 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         <div className="space-y-3" data-section="market-moving">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market-Moving</h2>
           {marketMoving.map((item, idx) => {
-            const evtColors: Record<string, string> = {
-              MANDATE_CHANGE: 'border-l-orange-500', SUPPLY_SHOCK: 'border-l-red-500',
-              CERTIFICATION_EVENT: 'border-l-violet-500', TRADE_MEASURE: 'border-l-blue-500',
-              FEEDSTOCK_PRICE: 'border-l-emerald-500', CAPACITY_CHANGE: 'border-l-cyan-500',
+            const evtStyles: Record<string, { border: string; badge: string }> = {
+              MANDATE_CHANGE:      { border: 'border-l-orange-500', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+              SUPPLY_SHOCK:        { border: 'border-l-red-500',    badge: 'bg-red-500/10 text-red-400 border-red-500/20' },
+              CERTIFICATION_EVENT: { border: 'border-l-violet-500', badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+              TRADE_MEASURE:       { border: 'border-l-blue-500',   badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+              FEEDSTOCK_PRICE:     { border: 'border-l-emerald-500',badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+              CAPACITY_CHANGE:     { border: 'border-l-cyan-500',   badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
             };
-            const borderClass = evtColors[item.event_type] ?? 'border-l-accent';
+            const style = evtStyles[item.event_type] ?? { border: 'border-l-accent', badge: 'bg-accent/10 text-accent border-accent/20' };
+            const cleanSource = cleanSourceName(item.source);
+            const fmtDate = item.published_date ? formatPubDate(item.published_date) : '';
             return (
-              <div key={idx} className={`bg-card border border-border ${borderClass} border-l-4 rounded p-4`}>
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-surface/50 text-text-dim border border-border">
+              <div key={idx} className={`bg-card border border-border ${style.border} border-l-4 rounded p-4`}>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${style.badge}`}>
                     {(item.event_type || '').replace(/_/g, ' ')}
                   </span>
-                  <span className="text-text-dim text-[10px] shrink-0">{item.source}{item.published_date ? ` · ${item.published_date}` : ''}</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-negative/10 text-negative border border-negative/20">HIGH</span>
+                  <span className="text-text-dim text-[10px] ml-auto">{cleanSource}{fmtDate ? ` · ${fmtDate}` : ''}</span>
                 </div>
-                <h3 className="text-text-primary font-semibold text-sm mb-1">{item.headline}</h3>
-                {item.context && <p className="text-text-secondary text-xs leading-relaxed mb-2">{item.context}</p>}
+                <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-text-primary font-semibold text-sm hover:text-accent transition-colors">
+                  {item.headline}
+                </a>
+                {item.context && <p className="text-text-secondary text-xs leading-relaxed mt-1 mb-2">{item.context}</p>}
                 {item.affected_products?.length > 0 && (
-                  <div className="flex gap-1 flex-wrap">
+                  <div className="flex gap-1 flex-wrap mt-2">
                     {item.affected_products.map((p: string) => (
-                      <span key={p} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface/50 text-text-dim border border-border">{p}</span>
+                      <span key={p} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-accent/10 text-accent border border-accent/20">{p}</span>
                     ))}
                   </div>
                 )}
+                <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-accent text-xs font-semibold hover:underline tracking-wide uppercase mt-2 inline-block">
+                  Read more →
+                </a>
               </div>
             );
           })}
@@ -652,7 +688,6 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 3 — NEWS BY REGION
-          Built by code from Haiku classification. Grouped into 5 buckets.
           ═══════════════════════════════════════════════════════════════════ */}
       {hasAnyRegionalNews && (
         <div className="space-y-4" data-section="news">
@@ -672,20 +707,34 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                   <h3 className="text-text-dim font-semibold text-[10px] uppercase tracking-widest">{label}</h3>
                 </div>
                 <div className="divide-y divide-border/50">
-                  {items.map((item, i) => (
-                    <div key={i} className="px-4 py-3 hover:bg-surface/20">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-text-primary text-sm font-medium">{item.headline}</h4>
-                          {item.context && <p className="text-text-secondary text-xs mt-0.5">{item.context}</p>}
+                  {items.map((item, i) => {
+                    const cleanSrc = cleanSourceName(item.source);
+                    const evtBadge: Record<string, string> = {
+                      FEEDSTOCK_PRICE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                      TRADE_MEASURE: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                      CAPACITY_CHANGE: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+                      SUPPLY_SHOCK: 'bg-red-500/10 text-red-400 border-red-500/20',
+                      MANDATE_CHANGE: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                    };
+                    const badgeClass = evtBadge[item.event_type] ?? 'bg-surface/50 text-text-dim border-border';
+                    return (
+                      <div key={i} className="px-4 py-3 hover:bg-surface/20">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-text-primary text-sm font-medium hover:text-accent transition-colors">
+                              {item.headline}
+                            </a>
+                            {item.context && <p className="text-text-secondary text-xs mt-0.5">{item.context}</p>}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${badgeClass}`}>{(item.event_type || '').replace(/_/g, ' ')}</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-accent/10 text-accent border border-accent/20">MEDIUM</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[9px] text-text-dim px-1.5 py-0.5 rounded border border-border whitespace-nowrap">{(item.event_type || '').replace(/_/g, ' ')}</span>
-                          <span className="text-text-dim text-[10px] whitespace-nowrap">{item.source}</span>
-                        </div>
+                        <div className="mt-1 text-[10px] text-text-dim">{cleanSrc}</div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
