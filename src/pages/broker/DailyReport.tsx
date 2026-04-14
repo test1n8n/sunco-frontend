@@ -390,6 +390,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
   const [sendingToClients, setSendingToClients] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshStep, setRefreshStep] = useState('');
+  const [fetchError, setFetchError] = useState('');
   const { toasts, showToast, dismissToast } = useToast();
 
   const fetchLatestReport = async (): Promise<Report | null> => {
@@ -419,7 +420,10 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
             .then((p: PricePanel | null) => { if (p) setPanel(p); })
             .catch((err) => { console.warn('Price panel fetch failed:', err); });
         }
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('Report fetch failed:', msg);
+        setFetchError(msg);
         setReport(MOCK_REPORT);
         setBrokerNotes(MOCK_REPORT.broker_notes ?? '');
         setUsedMock(true);
@@ -582,7 +586,8 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           <span className="shrink-0 font-bold">⚠</span>
           <span>
             <span className="font-semibold">Backend unavailable</span> — showing cached sample data.
-            Do not use this data for trading decisions. Regenerate or check backend status.
+            Do not use this data for trading decisions.
+            {fetchError && <span className="block mt-1 text-xs opacity-75">Error: {fetchError}</span>}
           </span>
         </div>
       )}
