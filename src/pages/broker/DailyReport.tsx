@@ -16,14 +16,16 @@ import { BIODIESEL_PRODUCTS } from '../../productConfig';
 /** Clean up ugly Google News source names like '"query" - Google News' */
 function cleanSourceName(raw: string): string {
   if (!raw) return '';
-  // Google News pattern: '"some query" - Google News' → extract the real source from the headline after " - "
-  if (raw.includes('Google News')) {
-    // Try to extract source from end of headline: "Headline - RealSource" pattern
-    return 'Google News';
-  }
-  // Strip very long source names
+  if (raw.includes('Google News')) return 'Google News';
   if (raw.length > 50) return raw.slice(0, 47) + '…';
   return raw;
+}
+
+/** Strip " - Source Name" suffix from headlines (Google News appends these) */
+function cleanHeadline(raw: string): string {
+  if (!raw) return '';
+  // Remove trailing " - Source Name" patterns
+  return raw.replace(/\s*[-–—]\s*[A-Z][\w\s.,'&]+$/, '').trim();
 }
 
 /** Format ISO date to readable short date */
@@ -34,6 +36,16 @@ function formatPubDate(iso: string): string {
   } catch {
     return iso.slice(0, 10);
   }
+}
+
+/** Reusable section header component */
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="pb-2 mb-1 border-b border-border/60">
+      <h2 className="text-text-primary font-semibold text-sm uppercase tracking-widest">{title}</h2>
+      {subtitle && <p className="text-text-dim text-[10px] mt-0.5">{subtitle}</p>}
+    </div>
+  );
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -519,7 +531,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
     report.supply_demand_outlook.summary != null;
 
   return (
-    <div className="space-y-5 max-w-4xl">
+    <div className="space-y-6 max-w-4xl">
       <ToastContainer toasts={toasts} dismissToast={dismissToast} />
 
       {usedMock && <ErrorBanner />}
@@ -625,17 +637,17 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           ═══════════════════════════════════════════════════════════════════ */}
       {report.headline_summary && (
         <div className="bg-surface/60 border-l-4 border-accent rounded p-5">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-2">Headlines</h2>
-          <p className="text-text-primary text-sm leading-relaxed font-medium">{report.headline_summary}</p>
+          <SectionHeader title="Headlines" subtitle="Key events — last 48 hours" />
+          <p className="text-text-primary text-sm leading-relaxed font-medium mt-3">{report.headline_summary}</p>
         </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          MARKET SUMMARY (Opus Call 1 output)
+          MARKET SUMMARY
           ═══════════════════════════════════════════════════════════════════ */}
       <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Summary</h2>
-        <p className="text-text-primary text-sm leading-relaxed">{report.market_summary}</p>
+        <SectionHeader title="Market Summary" subtitle="ICE settlements, volumes, spreads" />
+        <p className="text-text-primary text-sm leading-relaxed mt-3">{report.market_summary}</p>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
@@ -644,7 +656,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           ═══════════════════════════════════════════════════════════════════ */}
       {marketMoving.length > 0 && (
         <div className="space-y-3" data-section="market-moving">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Market-Moving</h2>
+          <SectionHeader title="Market-Moving" subtitle="High-relevance events" />
           {marketMoving.map((item, idx) => {
             const evtStyles: Record<string, { border: string; badge: string }> = {
               MANDATE_CHANGE:      { border: 'border-l-orange-500', badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
@@ -666,10 +678,10 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                   <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-negative/10 text-negative border border-negative/20">HIGH</span>
                   <span className="text-text-dim text-[10px] ml-auto">{cleanSource}{fmtDate ? ` · ${fmtDate}` : ''}</span>
                 </div>
-                <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-text-primary font-semibold text-sm hover:text-accent transition-colors">
-                  {item.headline}
+                <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-text-primary font-semibold text-sm hover:text-accent transition-colors block leading-snug">
+                  {cleanHeadline(item.headline)}
                 </a>
-                {item.context && <p className="text-text-secondary text-xs leading-relaxed mt-1 mb-2">{item.context}</p>}
+                {item.context && <p className="text-text-secondary text-xs leading-relaxed mt-1.5">{item.context}</p>}
                 {item.affected_products?.length > 0 && (
                   <div className="flex gap-1 flex-wrap mt-2">
                     {item.affected_products.map((p: string) => (
@@ -677,9 +689,6 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                     ))}
                   </div>
                 )}
-                <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-accent text-xs font-semibold hover:underline tracking-wide uppercase mt-2 inline-block">
-                  Read more →
-                </a>
               </div>
             );
           })}
@@ -691,7 +700,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           ═══════════════════════════════════════════════════════════════════ */}
       {hasAnyRegionalNews && (
         <div className="space-y-4" data-section="news">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">News by Region</h2>
+          <SectionHeader title="News by Region" subtitle="Grouped by geography and theme" />
           {([
             { key: 'eu_regulation', label: 'EU Regulation & Mandates' },
             { key: 'feedstock_supply', label: 'Feedstock Supply' },
@@ -722,7 +731,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-text-primary text-sm font-medium hover:text-accent transition-colors">
-                              {item.headline}
+                              {cleanHeadline(item.headline)}
                             </a>
                             {item.context && <p className="text-text-secondary text-xs mt-0.5">{item.context}</p>}
                           </div>
@@ -756,7 +765,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           ═══════════════════════════════════════════════════════════════════ */}
       {upcomingEvents.length > 0 && (
         <div className="bg-card border border-border rounded p-4" data-section="upcoming-events">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Upcoming Events</h2>
+          <SectionHeader title="Upcoming Events" />
           <div className="divide-y divide-border/50">
             {upcomingEvents.map((ev, idx) => (
               <div key={idx} className="py-2 flex items-baseline gap-3">
@@ -796,13 +805,13 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ── Macro Signals ─────────────────────────────────────────────────── */}
       <div data-section="macro-signals">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Macro Signals</h2>
+        <SectionHeader title="Macro Signals" />
         <MacroSignalsTable signals={report.macro_signals} />
       </div>
 
       {/* ── Market Outlook ────────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Market Outlook</h2>
+        <SectionHeader title="Market Outlook" />
         <div className="grid gap-4 md:grid-cols-2">
           <OutlookCard outlook={report.short_term_outlook} />
           <OutlookCard outlook={report.long_term_outlook} />
