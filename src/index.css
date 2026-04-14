@@ -230,11 +230,10 @@
   }
 
   /* ── Links: show URL after link text ───────────────────────────────────── */
+  /* Disabled for news article links — Google News URLs are massive and ugly.
+     Only show URLs for non-news links (e.g. source references in research). */
   a[href^="http"]::after {
-    content: " (" attr(href) ")";
-    font-size: 7pt;
-    color: #888 !important;
-    word-break: break-all;
+    content: none !important;
   }
 
   /* But not for nav links */
