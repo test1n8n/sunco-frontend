@@ -114,9 +114,12 @@ export interface CombinedProductGroup {
   flatColor: string;
 }
 
+/** Flat color is a consistent light gray across all products for instant visual distinction */
+export const FLAT_COLOR = '#94a3b8';  // slate-400 — neutral, contrasts with all product colors
+
 export const COMBINED_PRODUCT_GROUPS: CombinedProductGroup[] = [
-  { name: 'FAME0', diffCode: 'BFZ', flatCode: 'FAM', diffColor: '#10b981', flatColor: '#059669' },
-  { name: 'RME',   diffCode: 'BRI', flatCode: 'ABI', diffColor: '#f59e0b', flatColor: '#d97706' },
-  { name: 'UCOME', diffCode: 'UCR', flatCode: 'BDB', diffColor: '#ef4444', flatColor: '#dc2626' },
-  { name: 'HVO',   diffCode: 'HVO', flatCode: 'BDA', diffColor: '#8b5cf6', flatColor: '#7c3aed' },
+  { name: 'FAME0', diffCode: 'BFZ', flatCode: 'FAM', diffColor: '#10b981', flatColor: FLAT_COLOR },
+  { name: 'RME',   diffCode: 'BRI', flatCode: 'ABI', diffColor: '#f59e0b', flatColor: FLAT_COLOR },
+  { name: 'UCOME', diffCode: 'UCR', flatCode: 'BDB', diffColor: '#ef4444', flatColor: FLAT_COLOR },
+  { name: 'HVO',   diffCode: 'HVO', flatCode: 'BDA', diffColor: '#8b5cf6', flatColor: FLAT_COLOR },
 ];
