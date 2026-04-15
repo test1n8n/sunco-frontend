@@ -5,6 +5,7 @@ import GasoilReportPanel from '../../components/GasoilReportPanel';
 import ProductReportPanel from '../../components/ProductReportPanel';
 import CombinedProductPanel from '../../components/CombinedProductPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
+import DiffRecapChart from '../../components/DiffRecapChart';
 import PricePanelForm from '../../components/PricePanelForm';
 import { COMBINED_PRODUCT_GROUPS } from '../../productConfig';
 
@@ -67,7 +68,13 @@ export default function ProductsData() {
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Section 3: Biodiesel trade screenshots */}
+      {/* Section 4: Daily Recap — Stacked Volume + OI Aggregated */}
+      <DiffRecapChart days={90} />
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Section 5: Biodiesel trade screenshots */}
       <BiodieselTradesPanel />
 
       {/* Divider */}
