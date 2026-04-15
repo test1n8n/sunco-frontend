@@ -7,8 +7,9 @@ import Spinner from '../../components/Spinner';
 import { useToast, ToastContainer } from '../../components/Toast';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
 import ProductReportPanel from '../../components/ProductReportPanel';
+import CombinedProductPanel from '../../components/CombinedProductPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
-import { BIODIESEL_PRODUCTS } from '../../productConfig';
+import { COMBINED_PRODUCT_GROUPS } from '../../productConfig';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -821,18 +822,20 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ── LS Gasoil Charts (read-only — data from Products Data tab) ───── */}
       <GasoilReportPanel readOnly reportDate={report.report_date} />
 
-      {/* ── Biodiesel Product Charts (read-only — data from Products Data tab) ── */}
-      {BIODIESEL_PRODUCTS.map((product) => (
-        <ProductReportPanel
-          key={product.code}
-          productCode={product.code}
-          productName={`ICE ${product.name} (${product.code})`}
-          accentColor={product.color}
-          dropZoneLabel={product.dropZoneLabel}
-          isDiff={product.isDiff}
-          readOnly
-        />
+      {/* ── Combined Diff + Flat Charts (read-only — data from Products Data tab) ── */}
+      {COMBINED_PRODUCT_GROUPS.map((group) => (
+        <CombinedProductPanel key={group.name} group={group} readOnly />
       ))}
+
+      {/* ── SAF (read-only — outright only, no diff) ── */}
+      <ProductReportPanel
+        productCode="ZAF"
+        productName="ICE SAF (ZAF)"
+        accentColor="#06b6d4"
+        dropZoneLabel=""
+        isDiff={false}
+        readOnly
+      />
 
       {/* ── Biodiesel Trades (read-only — data from Products Data tab) ────── */}
       <BiodieselTradesPanel readOnly />

@@ -3,9 +3,10 @@ import type { PricePanel } from '../../types';
 import { API_BASE_URL, API_KEY } from '../../config';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
 import ProductReportPanel from '../../components/ProductReportPanel';
+import CombinedProductPanel from '../../components/CombinedProductPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
 import PricePanelForm from '../../components/PricePanelForm';
-import { BIODIESEL_PRODUCTS } from '../../productConfig';
+import { COMBINED_PRODUCT_GROUPS } from '../../productConfig';
 
 export default function ProductsData() {
   const [panel, setPanel] = useState<PricePanel | null>(null);
@@ -43,19 +44,25 @@ export default function ProductsData() {
       {/* Section 1: LS Gasoil PDF upload + forward curve + charts */}
       <GasoilReportPanel />
 
-      {/* Section 2: Biodiesel product PDFs */}
-      {BIODIESEL_PRODUCTS.map((product) => (
-        <div key={product.code}>
+      {/* Section 2: Combined Diff + Flat biodiesel panels */}
+      {COMBINED_PRODUCT_GROUPS.map((group) => (
+        <div key={group.name}>
           <div className="border-t border-border mt-2" />
-          <ProductReportPanel
-            productCode={product.code}
-            productName={`ICE ${product.name} (${product.code})`}
-            accentColor={product.color}
-            dropZoneLabel={product.dropZoneLabel}
-            isDiff={product.isDiff}
-          />
+          <CombinedProductPanel group={group} />
         </div>
       ))}
+
+      {/* Section 3: SAF — outright only (no diff counterpart) */}
+      <div>
+        <div className="border-t border-border mt-2" />
+        <ProductReportPanel
+          productCode="ZAF"
+          productName="ICE SAF (ZAF)"
+          accentColor="#06b6d4"
+          dropZoneLabel="Drop ICE SAF (ZAF) PDF here, or click to select"
+          isDiff={false}
+        />
+      </div>
 
       {/* Divider */}
       <div className="border-t border-border" />

@@ -189,3 +189,18 @@ export interface PricePanel {
   fetched_at: string | null;
   diffs_updated_at: string | null;
 }
+
+// ─── Combined Diff + Flat chart types ────────────────────────────────────────
+
+export interface CombinedCurveRow {
+  contract: string;
+  diffSettlement?: number;
+  flatSettlement?: number;
+}
+
+export interface CombinedBarRow {
+  contract: string;
+  diffValue: number;
+  flatValue: number;
+  total: number;
+}
