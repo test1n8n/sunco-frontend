@@ -55,6 +55,9 @@ interface BiodieselTradeReport {
   total_trades: number;
   outright_volume: number;
   spread_volume: number;
+  time_spread_volume: number;
+  product_spread_volume: number;
+  flat_volume: number;
   go_settlement: number | null;
   uploaded_at: string | null;
 }
@@ -213,7 +216,7 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
-          ICE Biodiesel Trades — Swaps Recap &amp; Spreads
+          ICE Biodiesel Diff Swaps — Trades, Recap &amp; Spreads
         </h2>
         {uploadedAt && <span className="text-text-dim text-xs">uploaded {uploadedAt}</span>}
       </div>
@@ -244,11 +247,13 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
       {report && (
         <>
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <MetricCard label="Total Trades" value={report.total_trades.toLocaleString()} />
-            <MetricCard label="Outright Volume" value={`${report.outright_volume.toLocaleString()} lots`} />
-            <MetricCard label="Spread Volume" value={`${report.spread_volume.toLocaleString()} lots`} />
-            <MetricCard label="GO Settlement" value={report.go_settlement != null ? `${report.go_settlement.toLocaleString()} $/MT` : '\u2014'} />
+            <MetricCard label="Diff Outright Vol" value={`${report.outright_volume.toLocaleString()}`} sub="lots (no spread)" />
+            <MetricCard label="Time Spread Vol" value={`${(report.time_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
+            <MetricCard label="Product Spread Vol" value={`${(report.product_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
+            <MetricCard label="Total Spread Vol" value={`${report.spread_volume.toLocaleString()}`} sub="lots (time + product)" />
+            <MetricCard label="GO Settlement" value={report.go_settlement != null ? `${report.go_settlement.toLocaleString()}` : '\u2014'} sub="$/MT" />
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════
@@ -257,7 +262,7 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
           {recap.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
               <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Swaps Recap — By Product &amp; Delivery
+                Diff Swaps Recap — By Product &amp; Delivery
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
