@@ -46,23 +46,23 @@
   /* ── Page setup ─────────────────────────────────────────────────────────── */
   @page {
     size: A4;
-    margin: 16mm 14mm 18mm 14mm;
+    margin: 18mm 15mm 20mm 15mm;
   }
 
-  /* ── Reset dark theme to white — but KEEP specific colors ──────────────── */
+  /* ── Reset dark theme to clean white ───────────────────────────────────── */
   body {
     background: #fff !important;
-    color: #1e293b !important;
-    font-size: 10.5pt;
+    color: #1a1a1a !important;
+    font-size: 11pt;
     line-height: 1.5;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Default text to dark slate */
   *,
   *::before,
   *::after {
+    background: transparent !important;
     box-shadow: none !important;
     text-shadow: none !important;
   }
@@ -88,70 +88,88 @@
   main > div { padding: 0 !important; }
   .max-w-4xl { max-width: 100% !important; }
 
-  /* ── Professional branded header ───────────────────────────────────────── */
+  /* ── Professional header ───────────────────────────────────────────────── */
   .space-y-5.max-w-4xl::before,
   .space-y-6.max-w-4xl::before {
     content: "SUNCO BROKERS  ·  Biofuels Market Intelligence Report";
     display: block;
     font-size: 9pt;
-    font-weight: 800;
-    letter-spacing: 2.5pt;
+    font-weight: 700;
+    letter-spacing: 2pt;
     text-transform: uppercase;
-    color: #1B2A4A !important;
-    border-bottom: 3px solid #1B2A4A;
+    color: #92400e !important;
+    border-bottom: 2px solid #d97706;
     padding-bottom: 8pt;
-    margin-bottom: 14pt;
+    margin-bottom: 12pt;
   }
 
-  /* ── Card styling — light backgrounds with colored accents ─────────────── */
-  [class*="bg-card"] {
-    background: #fff !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 6px !important;
+  /* ── Card / panel styling ──────────────────────────────────────────────── */
+  [class*="bg-card"],
+  [class*="bg-surface"],
+  [class*="bg-panel"] {
+    border: 1px solid #d0d0d0 !important;
+    border-radius: 4px !important;
     padding: 10pt 12pt !important;
     break-inside: avoid;
   }
 
-  /* Metric cards — subtle blue-gray background */
-  [class*="bg-surface"] {
-    background: #f1f5f9 !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 6px !important;
-    padding: 8pt 10pt !important;
-    break-inside: avoid;
-  }
-
-  /* Headline summary — light amber accent background */
   [class*="border-l-accent"] {
-    border-left: 4px solid #d97706 !important;
-    background: #fffbeb !important;
+    border-left: 3px solid #d97706 !important;
   }
 
-  /* Market-moving event cards — keep their colored left borders */
-  [class*="border-l-orange-500"] { border-left: 4px solid #f97316 !important; }
-  [class*="border-l-red-500"]    { border-left: 4px solid #ef4444 !important; }
-  [class*="border-l-violet-500"] { border-left: 4px solid #8b5cf6 !important; }
-  [class*="border-l-blue-500"]   { border-left: 4px solid #3b82f6 !important; }
-  [class*="border-l-emerald-500"]{ border-left: 4px solid #10b981 !important; }
-  [class*="border-l-cyan-500"]   { border-left: 4px solid #06b6d4 !important; }
-
-  /* ── Text colors — with actual colors, not all black ───────────────────── */
-  [class*="text-text-primary"] { color: #0f172a !important; }
-  [class*="text-text-secondary"] { color: #334155 !important; }
-  [class*="text-text-dim"] { color: #64748b !important; }
+  /* ── Text colors ───────────────────────────────────────────────────────── */
+  [class*="text-text-primary"] { color: #111 !important; }
+  [class*="text-text-secondary"] { color: #444 !important; }
+  [class*="text-text-dim"] { color: #666 !important; }
   [class*="text-accent"] { color: #b45309 !important; }
   [class*="text-positive"] { color: #15803d !important; }
   [class*="text-negative"] { color: #dc2626 !important; }
 
-  /* Event type badges — keep their colors */
-  [class*="bg-orange-500\\/10"] { background: #fff7ed !important; color: #c2410c !important; border: 1px solid #fdba74 !important; }
-  [class*="bg-red-500\\/10"]    { background: #fef2f2 !important; color: #dc2626 !important; border: 1px solid #fca5a5 !important; }
-  [class*="bg-violet-500\\/10"] { background: #f5f3ff !important; color: #7c3aed !important; border: 1px solid #c4b5fd !important; }
-  [class*="bg-blue-500\\/10"]   { background: #eff6ff !important; color: #2563eb !important; border: 1px solid #93c5fd !important; }
-  [class*="bg-emerald-500\\/10"]{ background: #ecfdf5 !important; color: #059669 !important; border: 1px solid #6ee7b7 !important; }
-  [class*="bg-cyan-500\\/10"]   { background: #ecfeff !important; color: #0891b2 !important; border: 1px solid #67e8f9 !important; }
+  /* ── PRODUCT COLORS IN TABLES ──────────────────────────────────────────── */
+  /* Preserve inline style="color:..." on product name cells so each product
+     keeps its branded color in print (FAME0=green, RME=amber, UCOME=red,
+     HVO=purple, SAF=cyan). The [style] selector overrides the blanket
+     color reset above. */
+  td[style*="color"],
+  span[style*="color"] {
+    color: inherit !important;
+  }
 
-  /* Confidence / relevance badges */
+  /* Also preserve colored left borders on table rows (product grouping) */
+  tr[style*="border-left-color"] {
+    border-left-color: inherit !important;
+  }
+
+  /* ── Table styling ──────────────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    break-inside: avoid;
+  }
+
+  thead { display: table-header-group; }
+
+  th {
+    background: #f5f5f5 !important;
+    color: #333 !important;
+    border-bottom: 2px solid #ccc !important;
+    padding: 6pt 8pt !important;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+  }
+
+  td {
+    border-bottom: 1px solid #e5e5e5 !important;
+    padding: 5pt 8pt !important;
+    font-size: 9.5pt;
+  }
+
+  tr:nth-child(even) td {
+    background: #fafafa !important;
+  }
+
+  /* ── Badges ────────────────────────────────────────────────────────────── */
   [class*="bg-positive"] {
     background: #dcfce7 !important;
     color: #15803d !important;
@@ -168,50 +186,15 @@
     border: 1px solid #fcd34d !important;
   }
 
-  /* ── Table styling — clean with colored header ─────────────────────────── */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    break-inside: avoid;
-  }
-
-  thead { display: table-header-group; }
-
-  th {
-    background: #1B2A4A !important;
-    color: #fff !important;
-    border-bottom: none !important;
-    padding: 7pt 8pt !important;
-    font-size: 7.5pt;
-    text-transform: uppercase;
-    letter-spacing: 0.5pt;
-  }
-
-  td {
-    border-bottom: 1px solid #e2e8f0 !important;
-    padding: 5pt 8pt !important;
-    font-size: 9.5pt;
-    color: #1e293b !important;
-  }
-
-  tr:nth-child(even) td {
-    background: #f8fafc !important;
-  }
-
-  /* ── Charts (Recharts SVG) — keep colors ───────────────────────────────── */
+  /* ── Charts ────────────────────────────────────────────────────────────── */
   .recharts-wrapper { break-inside: avoid; }
   .recharts-cartesian-grid-bg { fill: transparent !important; }
-  .recharts-cartesian-grid line { stroke: #e2e8f0 !important; }
+  .recharts-cartesian-grid line { stroke: #ddd !important; }
   .recharts-text,
-  .recharts-cartesian-axis-tick-value { fill: #475569 !important; }
+  .recharts-cartesian-axis-tick-value { fill: #333 !important; }
 
-  /* ── Page break helpers ────────────────────────────────────────────────── */
+  /* ── Page breaks ───────────────────────────────────────────────────────── */
   h2 { break-after: avoid; }
-
-  /* Section headers — navy with underline */
-  [class*="border-b"][class*="border-border"] {
-    border-bottom: 2px solid #1B2A4A !important;
-  }
 
   /* ── Links ─────────────────────────────────────────────────────────────── */
   a[href^="http"]::after { content: none !important; }
@@ -226,9 +209,9 @@
   /* ── Footer ────────────────────────────────────────────────────────────── */
   @page {
     @bottom-center {
-      content: "Sunco Brokers SA — Geneva  ·  Confidential";
+      content: "Sunco Brokers SA — Geneva · Confidential";
       font-size: 7pt;
-      color: #94a3b8;
+      color: #999;
     }
   }
 }
