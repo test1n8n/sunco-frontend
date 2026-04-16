@@ -62,14 +62,21 @@
   *,
   *::before,
   *::after {
+    color: #1a1a1a !important;
+    background: transparent !important;
     box-shadow: none !important;
     text-shadow: none !important;
   }
 
-  /* Reset backgrounds to white — but NOT on SVG chart elements */
-  *:not(svg):not(svg *):not(.recharts-wrapper):not(.recharts-wrapper *) {
-    background: transparent !important;
+  /* ── Restore colors that need to survive print ─────────────────────────── */
+  /* Product name colors set via inline style */
+  td[style*="color"], span[style*="color"], tr[style*="border"] {
+    color: inherit !important;
   }
+  /* Positive/negative */
+  [class*="text-positive"] { color: #15803d !important; }
+  [class*="text-negative"] { color: #dc2626 !important; }
+  [class*="text-accent"] { color: #b45309 !important; }
 
   /* ── Hide non-content elements ─────────────────────────────────────────── */
   aside, header, button, textarea, nav,
@@ -126,24 +133,6 @@
   [class*="text-text-primary"] { color: #111 !important; }
   [class*="text-text-secondary"] { color: #444 !important; }
   [class*="text-text-dim"] { color: #666 !important; }
-  [class*="text-accent"] { color: #b45309 !important; }
-  [class*="text-positive"] { color: #15803d !important; }
-  [class*="text-negative"] { color: #dc2626 !important; }
-
-  /* ── PRODUCT COLORS IN TABLES ──────────────────────────────────────────── */
-  /* Preserve inline style="color:..." on product name cells so each product
-     keeps its branded color in print (FAME0=green, RME=amber, UCOME=red,
-     HVO=purple, SAF=cyan). The [style] selector overrides the blanket
-     color reset above. */
-  td[style*="color"],
-  span[style*="color"] {
-    color: inherit !important;
-  }
-
-  /* Also preserve colored left borders on table rows (product grouping) */
-  tr[style*="border-left-color"] {
-    border-left-color: inherit !important;
-  }
 
   /* ── Table styling ──────────────────────────────────────────────────────── */
   table {
@@ -191,41 +180,20 @@
     border: 1px solid #fcd34d !important;
   }
 
-  /* ── Charts — preserve colors and prevent clipping ──────────────────── */
+  /* ── Charts ────────────────────────────────────────────────────────────── */
   .recharts-wrapper {
     break-inside: avoid;
     overflow: visible !important;
   }
 
-  .recharts-surface {
+  .recharts-responsive-container {
     overflow: visible !important;
   }
-
-  /* Keep chart line/bar/dot colors — override the blanket transparent */
-  .recharts-line-curve,
-  .recharts-bar-rectangle,
-  .recharts-rectangle,
-  .recharts-dot,
-  .recharts-active-dot,
-  .recharts-legend-item-text {
-    color: inherit !important;
-  }
-
-  /* Preserve SVG stroke and fill colors on chart elements */
-  .recharts-line-curve { stroke: inherit !important; }
-  .recharts-bar-rectangle rect,
-  .recharts-rectangle { fill: inherit !important; }
-  .recharts-dot circle { fill: inherit !important; stroke: inherit !important; }
 
   .recharts-cartesian-grid-bg { fill: transparent !important; }
   .recharts-cartesian-grid line { stroke: #ddd !important; }
   .recharts-text,
   .recharts-cartesian-axis-tick-value { fill: #333 !important; }
-
-  /* Ensure ResponsiveContainer doesn't clip */
-  .recharts-responsive-container {
-    overflow: visible !important;
-  }
 
   /* ── Page breaks ───────────────────────────────────────────────────────── */
   h2 { break-after: avoid; }
