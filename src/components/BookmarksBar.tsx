@@ -75,7 +75,7 @@ export default function BookmarksBar({ pageTitle }: BookmarksBarProps) {
 
   if (bookmarks.length === 0) {
     return (
-      <div className="bg-panel/60 border-b border-border px-4 md:px-6 py-1.5 flex items-center gap-2 flex-shrink-0">
+      <div data-print-hide className="bg-panel/60 border-b border-border px-4 md:px-6 py-1.5 flex items-center gap-2 flex-shrink-0">
         <span className="text-text-dim text-[10px] uppercase tracking-widest">Bookmarks</span>
         <button
           onClick={toggleCurrent}
@@ -89,7 +89,7 @@ export default function BookmarksBar({ pageTitle }: BookmarksBarProps) {
   }
 
   return (
-    <div className="bg-panel/60 border-b border-border px-4 md:px-6 py-1.5 flex items-center gap-2 flex-shrink-0 overflow-x-auto">
+    <div data-print-hide className="bg-panel/60 border-b border-border px-4 md:px-6 py-1.5 flex items-center gap-2 flex-shrink-0 overflow-x-auto">
       <span className="text-text-dim text-[10px] uppercase tracking-widest shrink-0">★</span>
       {bookmarks.map((b) => (
         <div key={b.path} className="group flex items-center shrink-0">

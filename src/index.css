@@ -62,15 +62,20 @@
   *,
   *::before,
   *::after {
-    background: transparent !important;
     box-shadow: none !important;
     text-shadow: none !important;
   }
 
+  /* Reset backgrounds to white — but NOT on SVG chart elements */
+  *:not(svg):not(svg *):not(.recharts-wrapper):not(.recharts-wrapper *) {
+    background: transparent !important;
+  }
+
   /* ── Hide non-content elements ─────────────────────────────────────────── */
-  aside, header, button, textarea,
+  aside, header, button, textarea, nav,
   [class*="ErrorBanner"], [class*="toast"],
-  [class*="drop"], input[type="file"] {
+  [class*="drop"], input[type="file"],
+  [data-print-hide] {
     display: none !important;
   }
 
@@ -186,12 +191,41 @@
     border: 1px solid #fcd34d !important;
   }
 
-  /* ── Charts ────────────────────────────────────────────────────────────── */
-  .recharts-wrapper { break-inside: avoid; }
+  /* ── Charts — preserve colors and prevent clipping ──────────────────── */
+  .recharts-wrapper {
+    break-inside: avoid;
+    overflow: visible !important;
+  }
+
+  .recharts-surface {
+    overflow: visible !important;
+  }
+
+  /* Keep chart line/bar/dot colors — override the blanket transparent */
+  .recharts-line-curve,
+  .recharts-bar-rectangle,
+  .recharts-rectangle,
+  .recharts-dot,
+  .recharts-active-dot,
+  .recharts-legend-item-text {
+    color: inherit !important;
+  }
+
+  /* Preserve SVG stroke and fill colors on chart elements */
+  .recharts-line-curve { stroke: inherit !important; }
+  .recharts-bar-rectangle rect,
+  .recharts-rectangle { fill: inherit !important; }
+  .recharts-dot circle { fill: inherit !important; stroke: inherit !important; }
+
   .recharts-cartesian-grid-bg { fill: transparent !important; }
   .recharts-cartesian-grid line { stroke: #ddd !important; }
   .recharts-text,
   .recharts-cartesian-axis-tick-value { fill: #333 !important; }
+
+  /* Ensure ResponsiveContainer doesn't clip */
+  .recharts-responsive-container {
+    overflow: visible !important;
+  }
 
   /* ── Page breaks ───────────────────────────────────────────────────────── */
   h2 { break-after: avoid; }
