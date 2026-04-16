@@ -46,50 +46,36 @@
   /* ── Page setup ─────────────────────────────────────────────────────────── */
   @page {
     size: A4;
-    margin: 18mm 15mm 20mm 15mm;
+    margin: 16mm 14mm 18mm 14mm;
   }
 
-  /* ── Reset dark theme to white ─────────────────────────────────────────── */
+  /* ── Reset dark theme to white — but KEEP specific colors ──────────────── */
+  body {
+    background: #fff !important;
+    color: #1e293b !important;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Default text to dark slate */
   *,
   *::before,
   *::after {
-    color: #1a1a1a !important;
-    background: transparent !important;
     box-shadow: none !important;
     text-shadow: none !important;
   }
 
-  body {
-    background: #fff !important;
-    color: #1a1a1a !important;
-    font-size: 11pt;
-    line-height: 1.5;
-  }
-
   /* ── Hide non-content elements ─────────────────────────────────────────── */
-  /* Sidebar */
-  aside,
-  /* Top header bar */
-  header,
-  /* All buttons (Regenerate, Send, Download PDF, Save Notes) */
-  button,
-  /* Broker notes textarea */
-  textarea,
-  /* Error/mock banners */
-  [class*="ErrorBanner"],
-  /* Toast notifications */
-  [class*="toast"],
-  /* Drop zones */
-  [class*="drop"],
-  /* File inputs */
-  input[type="file"] {
+  aside, header, button, textarea,
+  [class*="ErrorBanner"], [class*="toast"],
+  [class*="drop"], input[type="file"] {
     display: none !important;
   }
 
-  /* ── Remove overflow restrictions so content can flow across pages ────── */
-  html, body,
-  #root,
-  #root > div,
+  /* ── Remove overflow restrictions ──────────────────────────────────────── */
+  html, body, #root, #root > div,
   [class*="overflow-hidden"],
   [class*="overflow-y-auto"] {
     overflow: visible !important;
@@ -97,149 +83,139 @@
     max-height: none !important;
   }
 
-  /* Flex layout → simple block for printing */
-  #root > div {
-    display: block !important;
+  #root > div { display: block !important; }
+  main { overflow: visible !important; padding: 0 !important; }
+  main > div { padding: 0 !important; }
+  .max-w-4xl { max-width: 100% !important; }
+
+  /* ── Professional branded header ───────────────────────────────────────── */
+  .space-y-5.max-w-4xl::before,
+  .space-y-6.max-w-4xl::before {
+    content: "SUNCO BROKERS  ·  Biofuels Market Intelligence Report";
+    display: block;
+    font-size: 9pt;
+    font-weight: 800;
+    letter-spacing: 2.5pt;
+    text-transform: uppercase;
+    color: #1B2A4A !important;
+    border-bottom: 3px solid #1B2A4A;
+    padding-bottom: 8pt;
+    margin-bottom: 14pt;
   }
 
-  main {
-    overflow: visible !important;
-    padding: 0 !important;
-  }
-
-  main > div {
-    padding: 0 !important;
-  }
-
-  /* ── Content area max-width for print readability ───────────────────────── */
-  .max-w-4xl {
-    max-width: 100% !important;
-  }
-
-  /* ── Card / panel styling ──────────────────────────────────────────────── */
-  [class*="bg-card"],
-  [class*="bg-surface"],
-  [class*="bg-panel"] {
-    border: 1px solid #d0d0d0 !important;
-    border-radius: 4px !important;
+  /* ── Card styling — light backgrounds with colored accents ─────────────── */
+  [class*="bg-card"] {
+    background: #fff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
     padding: 10pt 12pt !important;
     break-inside: avoid;
   }
 
-  /* Accent left border on key cards */
-  [class*="border-l-accent"] {
-    border-left: 3px solid #d97706 !important;
-  }
-
-  /* ── Text colors for print ─────────────────────────────────────────────── */
-  [class*="text-text-primary"] {
-    color: #111 !important;
-  }
-
-  [class*="text-text-secondary"] {
-    color: #444 !important;
-  }
-
-  [class*="text-text-dim"] {
-    color: #666 !important;
-  }
-
-  [class*="text-accent"] {
-    color: #b45309 !important;
-  }
-
-  [class*="text-positive"] {
-    color: #16803c !important;
-  }
-
-  [class*="text-negative"] {
-    color: #dc2626 !important;
-  }
-
-  /* ── Table styling ──────────────────────────────────────────────────────── */
-  table {
-    width: 100%;
-    border-collapse: collapse;
+  /* Metric cards — subtle blue-gray background */
+  [class*="bg-surface"] {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    padding: 8pt 10pt !important;
     break-inside: avoid;
   }
 
-  thead {
-    display: table-header-group;
+  /* Headline summary — light amber accent background */
+  [class*="border-l-accent"] {
+    border-left: 4px solid #d97706 !important;
+    background: #fffbeb !important;
   }
 
-  th {
-    background: #f5f5f5 !important;
-    color: #333 !important;
-    border-bottom: 2px solid #ccc !important;
-    padding: 6pt 8pt !important;
-    font-size: 8pt;
-    text-transform: uppercase;
-    letter-spacing: 0.5pt;
-  }
+  /* Market-moving event cards — keep their colored left borders */
+  [class*="border-l-orange-500"] { border-left: 4px solid #f97316 !important; }
+  [class*="border-l-red-500"]    { border-left: 4px solid #ef4444 !important; }
+  [class*="border-l-violet-500"] { border-left: 4px solid #8b5cf6 !important; }
+  [class*="border-l-blue-500"]   { border-left: 4px solid #3b82f6 !important; }
+  [class*="border-l-emerald-500"]{ border-left: 4px solid #10b981 !important; }
+  [class*="border-l-cyan-500"]   { border-left: 4px solid #06b6d4 !important; }
 
-  td {
-    border-bottom: 1px solid #e5e5e5 !important;
-    padding: 5pt 8pt !important;
-    font-size: 9.5pt;
-  }
+  /* ── Text colors — with actual colors, not all black ───────────────────── */
+  [class*="text-text-primary"] { color: #0f172a !important; }
+  [class*="text-text-secondary"] { color: #334155 !important; }
+  [class*="text-text-dim"] { color: #64748b !important; }
+  [class*="text-accent"] { color: #b45309 !important; }
+  [class*="text-positive"] { color: #15803d !important; }
+  [class*="text-negative"] { color: #dc2626 !important; }
 
-  tr:nth-child(even) td {
-    background: #fafafa !important;
-  }
+  /* Event type badges — keep their colors */
+  [class*="bg-orange-500\\/10"] { background: #fff7ed !important; color: #c2410c !important; border: 1px solid #fdba74 !important; }
+  [class*="bg-red-500\\/10"]    { background: #fef2f2 !important; color: #dc2626 !important; border: 1px solid #fca5a5 !important; }
+  [class*="bg-violet-500\\/10"] { background: #f5f3ff !important; color: #7c3aed !important; border: 1px solid #c4b5fd !important; }
+  [class*="bg-blue-500\\/10"]   { background: #eff6ff !important; color: #2563eb !important; border: 1px solid #93c5fd !important; }
+  [class*="bg-emerald-500\\/10"]{ background: #ecfdf5 !important; color: #059669 !important; border: 1px solid #6ee7b7 !important; }
+  [class*="bg-cyan-500\\/10"]   { background: #ecfeff !important; color: #0891b2 !important; border: 1px solid #67e8f9 !important; }
 
-  /* ── Badges for print ──────────────────────────────────────────────────── */
+  /* Confidence / relevance badges */
   [class*="bg-positive"] {
     background: #dcfce7 !important;
-    color: #16803c !important;
+    color: #15803d !important;
     border: 1px solid #86efac !important;
   }
-
   [class*="bg-negative"] {
     background: #fee2e2 !important;
     color: #dc2626 !important;
     border: 1px solid #fca5a5 !important;
   }
-
   [class*="bg-accent"] {
     background: #fef3c7 !important;
     color: #92400e !important;
     border: 1px solid #fcd34d !important;
   }
 
-  /* ── Charts (Recharts SVG) ─────────────────────────────────────────────── */
-  .recharts-wrapper {
+  /* ── Table styling — clean with colored header ─────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
     break-inside: avoid;
   }
 
-  .recharts-cartesian-grid-bg {
-    fill: transparent !important;
+  thead { display: table-header-group; }
+
+  th {
+    background: #1B2A4A !important;
+    color: #fff !important;
+    border-bottom: none !important;
+    padding: 7pt 8pt !important;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
   }
 
-  .recharts-cartesian-grid line {
-    stroke: #ddd !important;
+  td {
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 5pt 8pt !important;
+    font-size: 9.5pt;
+    color: #1e293b !important;
   }
 
+  tr:nth-child(even) td {
+    background: #f8fafc !important;
+  }
+
+  /* ── Charts (Recharts SVG) — keep colors ───────────────────────────────── */
+  .recharts-wrapper { break-inside: avoid; }
+  .recharts-cartesian-grid-bg { fill: transparent !important; }
+  .recharts-cartesian-grid line { stroke: #e2e8f0 !important; }
   .recharts-text,
-  .recharts-cartesian-axis-tick-value {
-    fill: #333 !important;
-  }
+  .recharts-cartesian-axis-tick-value { fill: #475569 !important; }
 
   /* ── Page break helpers ────────────────────────────────────────────────── */
-  h2 {
-    break-after: avoid;
+  h2 { break-after: avoid; }
+
+  /* Section headers — navy with underline */
+  [class*="border-b"][class*="border-border"] {
+    border-bottom: 2px solid #1B2A4A !important;
   }
 
-  /* ── Links: show URL after link text ───────────────────────────────────── */
-  /* Disabled for news article links — Google News URLs are massive and ugly.
-     Only show URLs for non-news links (e.g. source references in research). */
-  a[href^="http"]::after {
-    content: none !important;
-  }
-
-  /* But not for nav links */
-  nav a::after {
-    content: none !important;
-  }
+  /* ── Links ─────────────────────────────────────────────────────────────── */
+  a[href^="http"]::after { content: none !important; }
+  nav a::after { content: none !important; }
 
   /* ── Hidden columns: show on print ─────────────────────────────────────── */
   .hidden.sm\:table-cell,
@@ -247,26 +223,12 @@
     display: table-cell !important;
   }
 
-  /* ── Professional header (generated via ::before on content area) ──────── */
-  .space-y-5.max-w-4xl::before {
-    content: "SUNCO BROKERS  ·  Biofuels Market Intelligence Report";
-    display: block;
-    font-size: 9pt;
-    font-weight: 700;
-    letter-spacing: 2pt;
-    text-transform: uppercase;
-    color: #92400e !important;
-    border-bottom: 2px solid #d97706;
-    padding-bottom: 8pt;
-    margin-bottom: 12pt;
-  }
-
-  /* ── Footer with page numbers ──────────────────────────────────────────── */
+  /* ── Footer ────────────────────────────────────────────────────────────── */
   @page {
     @bottom-center {
-      content: "Sunco Brokers SA — Geneva · Confidential";
+      content: "Sunco Brokers SA — Geneva  ·  Confidential";
       font-size: 7pt;
-      color: #999;
+      color: #94a3b8;
     }
   }
 }
@@ -432,11 +394,14 @@
   }
 
   /* ── Header: compact report branding ───────────────────────────────── */
-  body.short-pdf .space-y-5.max-w-4xl::before {
+  body.short-pdf .space-y-5.max-w-4xl::before,
+  body.short-pdf .space-y-6.max-w-4xl::before {
     content: "SUNCO BROKERS  ·  Daily Market Summary";
     font-size: 8pt !important;
     padding-bottom: 4pt !important;
     margin-bottom: 6pt !important;
+    color: #1B2A4A !important;
+    border-bottom-color: #1B2A4A !important;
   }
 
   /* ── Hide link URLs in short mode (saves space) ────────────────────── */
