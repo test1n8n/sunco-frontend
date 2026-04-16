@@ -63,6 +63,15 @@ export const PRODUCTS: ProductDef[] = [
     dropZoneLabel: 'Drop ICE SAF (ZAF) PDF here, or click to select',
     isDiff: false,
   },
+  {
+    code: 'SAR',
+    name: 'SAF Diff',
+    fullName: 'SAF FOB ARA Range (RED Compliant) vs LS Gasoil Diff',
+    iceTicker: 'SAR',
+    color: '#0891b2',
+    dropZoneLabel: 'Drop ICE SAF Diff (SAR) PDF here, or click to select',
+    isDiff: true,
+  },
   // ── Flat / Outright price products ──
   {
     code: 'FAM',
@@ -102,8 +111,8 @@ export const PRODUCTS: ProductDef[] = [
   },
 ];
 
-/** All biodiesel products (excluding gasoil and flat outrights) */
-export const BIODIESEL_PRODUCTS = PRODUCTS.filter((p) => p.code !== 'G' && !['FAM', 'ABI', 'BDB', 'BDA'].includes(p.code));
+/** All biodiesel products (excluding gasoil, flat outrights, and SAR diff) */
+export const BIODIESEL_PRODUCTS = PRODUCTS.filter((p) => p.code !== 'G' && !['FAM', 'ABI', 'BDB', 'BDA', 'SAR'].includes(p.code));
 
 /** Combined diff + flat product groups for analysis */
 export interface CombinedProductGroup {
@@ -122,4 +131,5 @@ export const COMBINED_PRODUCT_GROUPS: CombinedProductGroup[] = [
   { name: 'RME',   diffCode: 'BRI', flatCode: 'ABI', diffColor: '#f59e0b', flatColor: FLAT_COLOR },
   { name: 'UCOME', diffCode: 'UCR', flatCode: 'BDB', diffColor: '#ef4444', flatColor: FLAT_COLOR },
   { name: 'HVO',   diffCode: 'HVO', flatCode: 'BDA', diffColor: '#8b5cf6', flatColor: FLAT_COLOR },
+  { name: 'SAF',   diffCode: 'SAR', flatCode: 'ZAF', diffColor: '#0891b2', flatColor: FLAT_COLOR },
 ];

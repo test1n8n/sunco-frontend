@@ -6,7 +6,6 @@ import BiasBadge from '../../components/BiasBadge';
 import Spinner from '../../components/Spinner';
 import { useToast, ToastContainer } from '../../components/Toast';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
-import ProductReportPanel from '../../components/ProductReportPanel';
 import CombinedProductPanel from '../../components/CombinedProductPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
 import { COMBINED_PRODUCT_GROUPS } from '../../productConfig';
@@ -827,15 +826,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         <CombinedProductPanel key={group.name} group={group} readOnly />
       ))}
 
-      {/* ── SAF (read-only — outright only, no diff) ── */}
-      <ProductReportPanel
-        productCode="ZAF"
-        productName="ICE SAF (ZAF)"
-        accentColor="#06b6d4"
-        dropZoneLabel=""
-        isDiff={false}
-        readOnly
-      />
+      {/* SAF is now part of COMBINED_PRODUCT_GROUPS above (SAR diff + ZAF flat) */}
 
       {/* ── Biodiesel Trades (read-only — data from Products Data tab) ────── */}
       <BiodieselTradesPanel readOnly />

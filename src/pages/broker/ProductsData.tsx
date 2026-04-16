@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import type { PricePanel } from '../../types';
 import { API_BASE_URL, API_KEY } from '../../config';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
-import ProductReportPanel from '../../components/ProductReportPanel';
 import CombinedProductPanel from '../../components/CombinedProductPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
 import DiffRecapChart from '../../components/DiffRecapChart';
@@ -53,22 +52,10 @@ export default function ProductsData() {
         </div>
       ))}
 
-      {/* Section 3: SAF — outright only (no diff counterpart) */}
-      <div>
-        <div className="border-t border-border mt-2" />
-        <ProductReportPanel
-          productCode="ZAF"
-          productName="ICE SAF (ZAF)"
-          accentColor="#06b6d4"
-          dropZoneLabel="Drop ICE SAF (ZAF) PDF here, or click to select"
-          isDiff={false}
-        />
-      </div>
-
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Section 4: Daily Recap — Stacked Volume + OI Aggregated */}
+      {/* Section 3: Daily Recap — Stacked Volume + OI Aggregated */}
       <DiffRecapChart days={90} />
 
       {/* Divider */}
