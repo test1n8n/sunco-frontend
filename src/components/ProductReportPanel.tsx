@@ -6,6 +6,24 @@ import {
 import type { GasoilReport } from '../types';
 import { API_BASE_URL, API_KEY } from '../config';
 
+// ─── Contract month helpers ──────────────────────────────────────────────────
+
+const MONTHS_MAP: Record<string, number> = {
+  Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
+  Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12,
+};
+
+function contractSortKey(contract: string): number {
+  const mon = contract.slice(0, 3);
+  const yr = parseInt(contract.slice(3), 10);
+  return (yr + 2000) * 12 + (MONTHS_MAP[mon] ?? 0);
+}
+
+function maxContractKey(): number {
+  const now = new Date();
+  return (now.getFullYear() + 1) * 12 + (now.getMonth() + 1);
+}
+
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
 function ChartTooltip({ active, payload, label, unit }: {
@@ -178,10 +196,11 @@ export default function ProductReportPanel({
     }
   };
 
-  // Limit forward curve to first 18 contracts (liquid range) for readability
-  const curveData = report?.forward_curve.slice(0, 18) ?? [];
+  // Limit forward curve to 12 months ahead from today
+  const maxKey = maxContractKey();
+  const curveData = (report?.forward_curve ?? []).filter((r) => contractSortKey(r.contract) <= maxKey);
   const volumeData = report?.volume_by_delivery ?? [];
-  const oiData = report?.oi_curve.slice(0, 18) ?? [];
+  const oiData = (report?.oi_curve ?? []).filter((r) => contractSortKey(r.contract) <= maxKey);
 
   const uploadedAt = report?.uploaded_at
     ? new Date(report.uploaded_at).toLocaleTimeString('en-GB', {

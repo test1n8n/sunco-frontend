@@ -20,6 +20,12 @@ function contractSortKey(contract: string): number {
   return (yr + 2000) * 12 + (MONTHS[mon] ?? 0);
 }
 
+/** Max sort key = 12 months from today. Contracts beyond this are excluded from charts. */
+function maxContractKey(): number {
+  const now = new Date();
+  return (now.getFullYear() + 1) * 12 + (now.getMonth() + 1); // +1 year from current month
+}
+
 function mergeCurveData(
   diffCurve: { contract: string; settlement: number; change: number }[],
   flatCurve: { contract: string; settlement: number; change: number }[],
@@ -216,10 +222,11 @@ export default function CombinedProductPanel({ group, readOnly = false }: Combin
 
   // ── Merge data for charts ──────────────────────────────────────────────────
 
+  const maxKey = maxContractKey();
   const curveData = mergeCurveData(
     diffReport?.forward_curve ?? [],
     flatReport?.forward_curve ?? [],
-  );
+  ).filter((r) => contractSortKey(r.contract) <= maxKey);
 
   const oiData = mergeBarData(
     (diffReport?.oi_curve ?? []).map((r) => ({ contract: r.contract, value: r.oi })),
