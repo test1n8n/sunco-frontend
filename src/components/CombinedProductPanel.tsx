@@ -6,6 +6,7 @@ import {
 import type { GasoilReport, CombinedCurveRow, CombinedBarRow } from '../types';
 import type { CombinedProductGroup } from '../productConfig';
 import { API_BASE_URL, API_KEY } from '../config';
+import { findFrontMonthRow } from '../utils/frontMonth';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -239,8 +240,8 @@ export default function CombinedProductPanel({ group, readOnly = false }: Combin
   );
 
   const hasData = diffReport || flatReport;
-  const diffM1 = diffReport?.forward_curve?.[0];
-  const flatM1 = flatReport?.forward_curve?.[0];
+  const diffM1 = findFrontMonthRow(diffReport?.forward_curve, diffReport?.front_month_contract);
+  const flatM1 = findFrontMonthRow(flatReport?.forward_curve, flatReport?.front_month_contract);
   const totalVol = (diffReport?.total_volume ?? 0) + (flatReport?.total_volume ?? 0);
   const totalOI = (diffReport?.total_oi ?? 0) + (flatReport?.total_oi ?? 0);
 

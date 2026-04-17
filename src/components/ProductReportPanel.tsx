@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import type { GasoilReport } from '../types';
 import { API_BASE_URL, API_KEY } from '../config';
+import { findFrontMonthRow } from '../utils/frontMonth';
 
 // ─── Contract month helpers ──────────────────────────────────────────────────
 
@@ -251,15 +252,16 @@ export default function ProductReportPanel({
                 sub="Vol-weighted avg settlement"
               />
             )}
-            <MetricCard
-              label={isDiff ? 'M1 Diff vs GO' : 'M1 Settlement'}
-              value={
-                curveData[0]
-                  ? `${curveData[0].settlement.toLocaleString()} $/MT`
-                  : '—'
-              }
-              sub={curveData[0] ? `${curveData[0].contract} · chg ${curveData[0].change >= 0 ? '+' : ''}${curveData[0].change}` : ''}
-            />
+            {(() => {
+              const m1 = findFrontMonthRow(curveData, report?.front_month_contract);
+              return (
+                <MetricCard
+                  label={isDiff ? 'M1 Diff vs GO' : 'M1 Settlement'}
+                  value={m1 ? `${m1.settlement.toLocaleString()} $/MT` : '—'}
+                  sub={m1 ? `${m1.contract} · chg ${m1.change >= 0 ? '+' : ''}${m1.change}` : ''}
+                />
+              );
+            })()}
             <MetricCard
               label="Total Volume"
               value={report.total_volume.toLocaleString()}

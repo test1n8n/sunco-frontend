@@ -178,6 +178,8 @@ export interface GasoilReport {
   total_spread_volume: number;
   uploaded_at: string | null;
   source_filename: string;
+  /** Live front-month contract (e.g. "Jun26") resolved via ICE expiry rule. */
+  front_month_contract?: string;
 }
 
 export interface PricePanel {
@@ -188,6 +190,8 @@ export interface PricePanel {
   flat_prices: Record<string, number>;       // {FAME0: 607.5, ...}
   fetched_at: string | null;
   diffs_updated_at: string | null;
+  /** Live front-month gasoil contract (e.g. "Jun26") resolved via ICE expiry rule. */
+  front_month_contract?: string;
 }
 
 // ─── Combined Diff + Flat chart types ────────────────────────────────────────

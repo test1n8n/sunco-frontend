@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Report, NewsItem, MacroSignal, Outlook, SupplyDemandOutlook, KeyDate, PricePanel } from '../../types';
+import { findFrontMonthRow } from '../../utils/frontMonth';
 import { MOCK_REPORT } from '../../mockData';
 import { API_BASE_URL, API_KEY } from '../../config';
 import BiasBadge from '../../components/BiasBadge';
@@ -144,7 +145,9 @@ function FlatPricesCard({ panel }: { panel: PricePanel | null }) {
   if (!panel) return null;
   const flatPrices = panel.flat_prices ?? {};
   const bio_diffs  = panel.bio_diffs  ?? {};
-  const lsGoM1     = panel.ls_go_curve?.[0]?.settlement ?? null;
+  const lsGoFrontRow = findFrontMonthRow(panel.ls_go_curve, panel.front_month_contract);
+  const lsGoM1     = lsGoFrontRow?.settlement ?? null;
+  const lsGoM1Contract = lsGoFrontRow?.contract ?? null;
   const hasFlatPrices = DIFF_PRODUCTS_RO.some(p => flatPrices[p] != null);
   if (!hasFlatPrices && !lsGoM1) return null;
 
@@ -154,7 +157,7 @@ function FlatPricesCard({ panel }: { panel: PricePanel | null }) {
         <div>
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">Biodiesel Flat Prices</h2>
           <p className="text-text-dim text-xs mt-0.5">
-            {lsGoM1 != null ? `LS GO M1: ${lsGoM1.toFixed(2)} USD/MT` : 'LS GO M1 + Diff · USD/MT'}
+            {lsGoM1 != null ? `LS GO ${lsGoM1Contract ?? 'M1'}: ${lsGoM1.toFixed(2)} USD/MT` : 'LS GO M1 + Diff · USD/MT'}
           </p>
         </div>
         {panel.diffs_updated_at && (

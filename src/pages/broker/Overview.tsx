@@ -8,6 +8,7 @@ import { API_BASE_URL, API_KEY } from '../../config';
 import Spinner from '../../components/Spinner';
 import { BIODIESEL_PRODUCTS } from '../../productConfig';
 import { scoreNews, sentimentDistribution, sentimentBadgeColor, sentimentArrow } from '../../utils/newsSentiment';
+import { findFrontMonthRow } from '../../utils/frontMonth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ function MarketPulseBar({
   const summary = report?.market_summary ?? report?.short_term_outlook?.summary ?? '';
   const shortSummary = summary.length > 180 ? summary.slice(0, 180) + '…' : summary;
 
-  const gasoilM1 = gasoil?.forward_curve?.[0];
+  const gasoilM1 = findFrontMonthRow(gasoil?.forward_curve, gasoil?.front_month_contract);
 
   return (
     <div className={`border ${biasConfig.border} ${biasConfig.bg} rounded p-5`}>
@@ -262,7 +263,7 @@ function PriceGrid({
           </thead>
           <tbody>
             {rows.map(({ code, name, isDiff, report }) => {
-              const m1 = report?.forward_curve?.[0];
+              const m1 = findFrontMonthRow(report?.forward_curve, report?.front_month_contract);
               const chg = formatChange(m1?.change ?? null);
               const m1Label = isDiff ? 'diff vs GO' : '$/MT';
               return (
