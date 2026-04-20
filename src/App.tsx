@@ -20,6 +20,7 @@ import AltData from './pages/broker/AltData';
 import Forecasting from './pages/broker/Forecasting';
 import FeedstockSupply from './pages/broker/FeedstockSupply';
 import Prospection from './pages/broker/Prospection';
+import Whiteboard from './pages/broker/Whiteboard';
 import Layout, { CLIENT_NAV } from './components/Layout';
 
 interface ProtectedRouteProps {
@@ -158,6 +159,16 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Products Data">
                 <ProductsData />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/whiteboard"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Whiteboard">
+                <Whiteboard />
               </Layout>
             </ProtectedRoute>
           }
