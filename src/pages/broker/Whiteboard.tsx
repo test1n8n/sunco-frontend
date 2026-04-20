@@ -212,7 +212,14 @@ function QuoteCell({
   };
 
   const commit = () => {
-    const parsedPx = parseFloat(priceDraft);
+    const trimmed = priceDraft.trim();
+    if (trimmed === '') {
+      // Empty input → clear the cell if it currently has a value
+      if (meta?.price != null) onDelete();
+      setEditing(false);
+      return;
+    }
+    const parsedPx = parseFloat(trimmed);
     if (!isNaN(parsedPx)) {
       const parsedQty = qtyDraft.trim() ? parseInt(qtyDraft, 10) : null;
       onSave(parsedPx, isNaN(parsedQty as number) ? null : parsedQty);
