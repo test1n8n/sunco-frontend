@@ -644,50 +644,138 @@ function CloseGrid({ snapshot, closeData, deliveries }: {
   );
 }
 
-function FuturesGrid({ rows, reportDate }: { rows: FuturesRow[]; reportDate: string }) {
-  if (rows.length === 0) {
+interface ProductFutures {
+  code: string;
+  name: string;
+  full_name: string;
+  color: string;
+  is_diff: boolean;
+  is_gasoil: boolean;
+  report_date: string;
+  has_data: boolean;
+  rows: FuturesRow[];
+}
+
+const PRODUCT_GROUPS: { label: string; codes: string[] }[] = [
+  { label: 'LS Gasoil', codes: ['G'] },
+  { label: 'Diffs vs GO', codes: ['BFZ', 'BRI', 'UCR', 'HVO', 'SAR'] },
+  { label: 'Flat / Outright', codes: ['FAM', 'ABI', 'BDB', 'BDA', 'ZAF'] },
+];
+
+function FuturesTable({ product }: { product: ProductFutures }) {
+  if (!product.has_data || product.rows.length === 0) {
     return (
       <div className="p-8 text-center text-text-dim text-sm">
-        No gasoil data — upload an LS Gasoil PDF in Products Data first.
+        No data for {product.name} ({product.code}) yet — upload the PDF in Products Data first.
       </div>
     );
   }
+
   return (
     <div className="flex-1 overflow-auto border border-border rounded">
-      <div className="px-4 py-2 bg-surface border-b border-border text-text-dim text-xs">
-        LS Gasoil Futures — settlement date: <span className="text-text-primary font-semibold">{reportDate || 'n/a'}</span>
+      <div className="px-4 py-2 bg-surface border-b border-border text-xs flex items-center justify-between">
+        <span style={{ color: product.color }} className="font-bold uppercase tracking-wide">
+          {product.name} ({product.code})
+        </span>
+        <span className="text-text-dim">
+          Settlement date: <span className="text-text-primary font-semibold">{product.report_date || 'n/a'}</span>
+        </span>
       </div>
       <table className="border-collapse text-xs w-full">
         <thead className="sticky top-0 bg-surface z-10">
           <tr className="border-b border-border">
             <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-left">Contract</th>
-            <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Swap Days</th>
+            {product.is_gasoil && (
+              <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Swap Days</th>
+            )}
             <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Bid</th>
             <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Ask</th>
             <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Settle</th>
             <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Close</th>
-            <th className="border-r border-border bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Chg</th>
-            <th className="bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Swap Avg</th>
+            <th className={`${product.is_gasoil ? 'border-r border-border' : ''} bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right`}>Chg</th>
+            {product.is_gasoil && (
+              <th className="bg-surface px-3 py-2 text-text-dim uppercase tracking-widest text-[10px] text-right">Swap Avg</th>
+            )}
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
+          {product.rows.map((r) => {
             const chgColor = r.change == null ? '' : r.change > 0 ? 'text-positive' : r.change < 0 ? 'text-negative' : '';
             return (
               <tr key={r.contract} className="border-b border-border/50 hover:bg-surface/40">
                 <td className="border-r border-border px-3 py-1.5 text-text-primary font-semibold">{r.contract}</td>
-                <td className="border-r border-border px-3 py-1.5 text-right font-mono text-text-dim">{r.swap_days ?? ''}</td>
+                {product.is_gasoil && (
+                  <td className="border-r border-border px-3 py-1.5 text-right font-mono text-text-dim">{r.swap_days ?? ''}</td>
+                )}
                 <td className="border-r border-border px-3 py-1.5 text-right font-mono text-blue-200">{fmt(r.bid)}</td>
                 <td className="border-r border-border px-3 py-1.5 text-right font-mono text-red-200">{fmt(r.ask)}</td>
                 <td className="border-r border-border px-3 py-1.5 text-right font-mono text-text-primary">{fmt(r.settle)}</td>
                 <td className="border-r border-border px-3 py-1.5 text-right font-mono text-text-dim">{fmt(r.close)}</td>
-                <td className={`border-r border-border px-3 py-1.5 text-right font-mono ${chgColor}`}>{r.change != null ? (r.change >= 0 ? '+' : '') + fmt(r.change) : ''}</td>
-                <td className="px-3 py-1.5 text-right font-mono text-yellow-300">{fmt(r.swap_avg)}</td>
+                <td className={`${product.is_gasoil ? 'border-r border-border' : ''} px-3 py-1.5 text-right font-mono ${chgColor}`}>
+                  {r.change != null ? (r.change >= 0 ? '+' : '') + fmt(r.change) : ''}
+                </td>
+                {product.is_gasoil && (
+                  <td className="px-3 py-1.5 text-right font-mono text-yellow-300">{fmt(r.swap_avg)}</td>
+                )}
               </tr>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function FuturesTabbedView({ products }: { products: ProductFutures[] }) {
+  const firstWithData = products.find((p) => p.has_data) ?? products[0];
+  const [activeCode, setActiveCode] = useState<string>(firstWithData?.code ?? 'G');
+
+  // If the product list updates and the active code no longer exists, reset
+  useEffect(() => {
+    if (!products.find((p) => p.code === activeCode) && products.length > 0) {
+      setActiveCode(products[0].code);
+    }
+  }, [products, activeCode]);
+
+  const activeProduct = products.find((p) => p.code === activeCode);
+  if (!products || products.length === 0) {
+    return <div className="p-8 text-center text-text-dim text-sm">Loading futures data...</div>;
+  }
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Product tabs, grouped */}
+      <div className="flex flex-col gap-1 mb-2">
+        {PRODUCT_GROUPS.map((group) => (
+          <div key={group.label} className="flex items-center gap-2">
+            <span className="text-text-dim text-[9px] uppercase tracking-widest w-24 shrink-0">{group.label}</span>
+            <div className="flex gap-1 flex-wrap">
+              {group.codes.map((code) => {
+                const p = products.find((x) => x.code === code);
+                if (!p) return null;
+                const isActive = code === activeCode;
+                const disabled = !p.has_data;
+                return (
+                  <button
+                    key={code}
+                    onClick={() => setActiveCode(code)}
+                    disabled={disabled}
+                    className={`px-2.5 py-1 text-[10px] uppercase tracking-widest rounded border font-semibold transition-colors ${
+                      isActive ? 'text-surface' : 'text-text-dim hover:text-text-primary'
+                    } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    style={isActive ? { background: p.color, borderColor: p.color } : { borderColor: p.color, color: p.color }}
+                    title={p.full_name || p.name}
+                  >
+                    {p.name} ({p.code})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {activeProduct && <FuturesTable product={activeProduct} />}
     </div>
   );
 }
@@ -931,8 +1019,7 @@ export default function Whiteboard() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [tradeFilter, setTradeFilter] = useState<string>('All');
   const [closeData, setCloseData] = useState<CloseColumnData[]>([]);
-  const [futuresRows, setFuturesRows] = useState<FuturesRow[]>([]);
-  const [futuresDate, setFuturesDate] = useState<string>('');
+  const [futuresProducts, setFuturesProducts] = useState<ProductFutures[]>([]);
   const [notes, setNotes] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddTrade, setShowAddTrade] = useState(false);
@@ -981,11 +1068,8 @@ export default function Whiteboard() {
   }, []);
 
   const fetchFutures = useCallback(async () => {
-    const data = await apiGet<{ rows: FuturesRow[]; report_date: string }>('/whiteboard/futures-detail');
-    if (data) {
-      setFuturesRows(data.rows);
-      setFuturesDate(data.report_date);
-    }
+    const data = await apiGet<{ products: ProductFutures[] }>('/whiteboard/futures-all');
+    if (data) setFuturesProducts(data.products);
   }, []);
 
   useEffect(() => { void fetchSnapshot(); }, [fetchSnapshot]);
@@ -1271,7 +1355,7 @@ export default function Whiteboard() {
             <CloseGrid snapshot={snap} closeData={closeData} deliveries={DEFAULT_DELIVERIES} />
           )}
           {activeTab === 'Futures' && (
-            <FuturesGrid rows={futuresRows} reportDate={futuresDate} />
+            <FuturesTabbedView products={futuresProducts} />
           )}
           {activeTab === 'Reports' && (
             <ReportsView
