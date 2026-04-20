@@ -34,11 +34,17 @@ const BROKER_GROUPS: NavGroup[] = [
     items: [
       { to: '/broker/daily',      label: 'Daily Report',  end: false },
       { to: '/broker/products',   label: 'Products Data', end: false },
-      { to: '/broker/whiteboard', label: 'Whiteboard',    end: false },
       { to: '/broker/charts',     label: 'Charts',        end: false },
-      { to: '/broker/spreads',  label: 'Spreads',       end: false },
-      { to: '/broker/history',  label: 'History',       end: false },
-      { to: '/broker/alt-data', label: 'Alt Data',      end: false },
+      { to: '/broker/spreads',    label: 'Spreads',       end: false },
+      { to: '/broker/history',    label: 'History',       end: false },
+      { to: '/broker/alt-data',   label: 'Alt Data',      end: false },
+    ],
+  },
+  {
+    id: 'whiteboard',
+    label: 'Whiteboard',
+    items: [
+      { to: '/broker/whiteboard', label: 'Whiteboard', end: false },
     ],
   },
   {
