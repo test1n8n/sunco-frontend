@@ -108,12 +108,12 @@ const DEFAULT_DELIVERIES = [
 ];
 
 const SUB_TABS = [
-  { key: 'WB+FP',     label: 'WB + FP' },
-  { key: 'WB+Pricer', label: 'WB + Pricer' },
-  { key: 'Pricer',    label: 'Pricer' },
-  { key: 'Close',     label: 'Close' },
-  { key: 'Futures',   label: 'Futures' },
-  { key: 'Reports',   label: 'Reports' },
+  { key: 'WB (Diffs)', label: 'WB (Diffs)' },
+  { key: 'WB (FP)',    label: 'WB (FP)' },
+  { key: 'Pricer',     label: 'Pricer' },
+  { key: 'Close',      label: 'Close' },
+  { key: 'Futures',    label: 'Futures' },
+  { key: 'Reports',    label: 'Reports' },
 ];
 
 const COLUMN_TYPE_LABELS: Record<ColumnType, string> = {
@@ -368,7 +368,7 @@ function ColHeader({
 
 function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
   onClose: () => void;
-  onAdd: (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string; panel: Panel }) => void;
+  onAdd: (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string }) => void;
   existingLabels: string[];
   activeTab: string;
 }) {
@@ -377,13 +377,11 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
   const [productB, setProductB] = useState('RME');
   const [color, setColor] = useState('#6366f1');
   const [tab, setTab] = useState(activeTab);
-  const [panel, setPanel] = useState<Panel>('top');
 
-  // Auto-adjust default tab + panel when column type changes
+  // Auto-adjust default tab when column type changes
   useEffect(() => {
-    if (colType === 'flat_price') { setTab('WB+FP'); setPanel('bottom'); }
-    else if (colType === 'product_spread') { setTab('WB+Pricer'); setPanel('bottom'); }
-    else { setPanel('top'); }
+    if (colType === 'flat_price') setTab('WB (FP)');
+    else setTab('WB (Diffs)');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colType]);
 
@@ -425,16 +423,6 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
           className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary mb-3">
           {SUB_TABS.filter(t => t.key !== 'Reports').map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
-        {(tab === 'WB+FP' || tab === 'WB+Pricer') && (
-          <>
-            <label className="block text-text-dim text-xs uppercase tracking-widest mb-1">Panel</label>
-            <select value={panel} onChange={(e) => setPanel(e.target.value as Panel)}
-              className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary mb-3">
-              <option value="top">Top (upper half)</option>
-              <option value="bottom">Bottom (lower half)</option>
-            </select>
-          </>
-        )}
         <label className="block text-text-dim text-xs uppercase tracking-widest mb-1">Color</label>
         <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
           className="w-full h-10 bg-surface border border-border rounded mb-4" />
@@ -445,7 +433,7 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest text-text-dim hover:text-text-primary">Cancel</button>
           <button disabled={duplicate}
-            onClick={() => { onAdd({ label: derivedLabel, column_type: colType, product_a: productA, product_b: productB, color, tab, panel }); onClose(); }}
+            onClick={() => { onAdd({ label: derivedLabel, column_type: colType, product_a: productA, product_b: productB, color, tab }); onClose(); }}
             className="px-4 py-2 bg-accent text-surface rounded text-xs font-bold uppercase tracking-widest disabled:opacity-50">
             Add
           </button>
@@ -1020,7 +1008,7 @@ function BlasterPanel({ columns, onBlast }: {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function Whiteboard() {
-  const [activeTab, setActiveTab] = useState('WB+FP');
+  const [activeTab, setActiveTab] = useState('WB (Diffs)');
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [ticker, setTicker] = useState<TickerEvent[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -1132,9 +1120,8 @@ export default function Whiteboard() {
 
   const columnsForTab = useMemo(() => {
     if (!snap) return [];
-    // Pricer tab shows all columns read-only; other tabs filter by tab field
+    // Pricer tab shows all columns read-only
     if (activeTab === 'Pricer') return snap.columns;
-    if (activeTab === 'WB+Pricer') return snap.columns.filter((c) => c.tab === 'WB+FP' || c.tab === 'WB+Pricer');
     if (activeTab === 'Close' || activeTab === 'Futures' || activeTab === 'Reports') return snap.columns;
     return snap.columns.filter((c) => c.tab === activeTab);
   }, [snap, activeTab]);
@@ -1160,14 +1147,8 @@ export default function Whiteboard() {
     void fetchTicker();
   };
 
-  const handleAddColumn = async (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string; panel: Panel }) => {
+  const handleAddColumn = async (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string }) => {
     await apiSend('/whiteboard/columns', 'POST', { ...payload, display_order: columnsForTab.length });
-    void fetchSnapshot();
-  };
-
-  const handleFlipPanel = async (col: WBColumn) => {
-    const newPanel: Panel = col.panel === 'top' ? 'bottom' : 'top';
-    await apiSend(`/whiteboard/columns/${col.id}`, 'PATCH', { panel: newPanel });
     void fetchSnapshot();
   };
 
@@ -1275,75 +1256,17 @@ export default function Whiteboard() {
       <div className="flex gap-3 flex-1 min-h-0">
         {/* Main content area */}
         <div className="flex-1 min-w-0 flex flex-col">
-          {activeTab === 'WB+FP' && (
-            <div className="flex flex-col gap-1 flex-1 min-h-0">
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Top panel — Outrights &amp; Spreads</div>
-                <WBGrid
-                  columns={columnsForTab.filter((c) => c.panel === 'top')}
-                  deliveries={DEFAULT_DELIVERIES}
-                  quoteMeta={snap.quote_meta}
-                  splitEnabled
-                  onSave={handleSaveQuote}
-                  onDelete={handleDeleteQuote}
-                  onRemoveCol={handleRemoveColumn}
-                  onReorder={handleReorder}
-                  onFlipPanel={handleFlipPanel}
-                  onRename={handleRenameColumn}
-                />
-              </div>
-              <div className="h-[2px] bg-accent/40 my-1 flex-shrink-0" />
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Bottom panel — Flat Prices</div>
-                <WBGrid
-                  columns={columnsForTab.filter((c) => c.panel === 'bottom' && c.tab === 'WB+FP')}
-                  deliveries={DEFAULT_DELIVERIES}
-                  quoteMeta={snap.quote_meta}
-                  splitEnabled
-                  onSave={handleSaveQuote}
-                  onDelete={handleDeleteQuote}
-                  onRemoveCol={handleRemoveColumn}
-                  onReorder={handleReorder}
-                  onFlipPanel={handleFlipPanel}
-                  onRename={handleRenameColumn}
-                />
-              </div>
-            </div>
-          )}
-          {activeTab === 'WB+Pricer' && (
-            <div className="flex flex-col gap-1 flex-1 min-h-0">
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Top panel — Outrights &amp; Spreads (shared with WB+FP)</div>
-                <WBGrid
-                  columns={columnsForTab.filter((c) => c.panel === 'top')}
-                  deliveries={DEFAULT_DELIVERIES}
-                  quoteMeta={snap.quote_meta}
-                  splitEnabled
-                  onSave={handleSaveQuote}
-                  onDelete={handleDeleteQuote}
-                  onRemoveCol={handleRemoveColumn}
-                  onReorder={handleReorder}
-                  onFlipPanel={handleFlipPanel}
-                  onRename={handleRenameColumn}
-                />
-              </div>
-              <div className="h-[2px] bg-accent/40 my-1 flex-shrink-0" />
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Bottom panel — Product Spreads</div>
-                <WBGrid
-                  columns={columnsForTab.filter((c) => c.panel === 'bottom' && c.tab === 'WB+Pricer')}
-                  deliveries={DEFAULT_DELIVERIES}
-                  quoteMeta={snap.quote_meta}
-                  splitEnabled
-                  onSave={handleSaveQuote}
-                  onDelete={handleDeleteQuote}
-                  onRemoveCol={handleRemoveColumn}
-                  onReorder={handleReorder}
-                  onFlipPanel={handleFlipPanel}
-                  onRename={handleRenameColumn}
-                />
-              </div>
-            </div>
+          {(activeTab === 'WB (Diffs)' || activeTab === 'WB (FP)') && (
+            <WBGrid
+              columns={columnsForTab}
+              deliveries={DEFAULT_DELIVERIES}
+              quoteMeta={snap.quote_meta}
+              onSave={handleSaveQuote}
+              onDelete={handleDeleteQuote}
+              onRemoveCol={handleRemoveColumn}
+              onReorder={handleReorder}
+              onRename={handleRenameColumn}
+            />
           )}
           {activeTab === 'Pricer' && (
             <WBGrid
