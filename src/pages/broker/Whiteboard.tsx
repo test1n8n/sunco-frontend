@@ -277,11 +277,12 @@ function DerivedCell({ value, accent }: { value: number | null; accent?: boolean
 }
 
 function ColHeader({
-  col, onRemove, onFlipPanel, draggable, onDragStart, onDragOver, onDrop, isDragging, showFlip,
+  col, onRemove, onFlipPanel, onRename, draggable, onDragStart, onDragOver, onDrop, isDragging, showFlip,
 }: {
   col: WBColumn;
   onRemove: () => void;
   onFlipPanel?: () => void;
+  onRename?: (newLabel: string) => void;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
@@ -290,27 +291,62 @@ function ColHeader({
   showFlip?: boolean;
 }) {
   const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(col.label);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setDraft(col.label); }, [col.label]);
+  useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } }, [editing]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== col.label && onRename) onRename(trimmed);
+    setEditing(false);
+  };
+
   return (
     <div
-      className={`h-full flex items-center justify-center gap-1 px-2 font-bold text-xs uppercase tracking-wide select-none ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-40' : ''}`}
+      className={`h-full flex items-center justify-center gap-1 px-2 font-bold text-xs uppercase tracking-wide select-none ${draggable && !editing ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-40' : ''}`}
       style={{ color: col.color }}
-      draggable={draggable}
+      draggable={draggable && !editing}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={draggable ? 'Drag to reorder' : undefined}
+      title={draggable ? 'Drag to reorder — double-click label to rename' : 'Double-click to rename'}
     >
-      <span>{col.label}</span>
-      {hover && showFlip && onFlipPanel && (
+      {editing ? (
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') { setDraft(col.label); setEditing(false); }
+          }}
+          className="bg-surface border border-accent rounded px-1 py-0.5 text-xs uppercase font-bold text-text-primary text-center outline-none max-w-[120px]"
+          style={{ color: col.color }}
+        />
+      ) : (
+        <span onDoubleClick={(e) => { e.stopPropagation(); if (onRename) setEditing(true); }}>{col.label}</span>
+      )}
+      {hover && !editing && onRename && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+          className="text-text-dim hover:text-accent text-[10px] ml-1"
+          title="Rename column"
+        >✎</button>
+      )}
+      {hover && !editing && showFlip && onFlipPanel && (
         <button
           onClick={(e) => { e.stopPropagation(); onFlipPanel(); }}
           className="text-text-dim hover:text-accent text-[10px] ml-1"
           title={col.panel === 'top' ? 'Move to bottom panel' : 'Move to top panel'}
         >{col.panel === 'top' ? '↓' : '↑'}</button>
       )}
-      {hover && (
+      {hover && !editing && (
         <button
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
           className="text-negative hover:text-red-400 text-[10px] ml-1"
@@ -336,9 +372,12 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
   const [tab, setTab] = useState(activeTab);
   const [panel, setPanel] = useState<Panel>('top');
 
-  // Auto-adjust default panel when column type changes
+  // Auto-adjust default tab + panel when column type changes
   useEffect(() => {
-    setPanel(colType === 'flat_price' ? 'bottom' : 'top');
+    if (colType === 'flat_price') { setTab('WB+FP'); setPanel('bottom'); }
+    else if (colType === 'product_spread') { setTab('WB+Pricer'); setPanel('bottom'); }
+    else { setPanel('top'); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colType]);
 
   const derivedLabel = useMemo(() => {
@@ -379,7 +418,7 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
           className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary mb-3">
           {SUB_TABS.filter(t => t.key !== 'Reports').map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
-        {tab === 'WB+FP' && (
+        {(tab === 'WB+FP' || tab === 'WB+Pricer') && (
           <>
             <label className="block text-text-dim text-xs uppercase tracking-widest mb-1">Panel</label>
             <select value={panel} onChange={(e) => setPanel(e.target.value as Panel)}
@@ -416,18 +455,19 @@ type DeleteQuoteFn = (col: WBColumn, delivery: string, side: 'BID' | 'ASK') => v
 
 function WBGrid({
   columns, deliveries, quoteMeta, readOnly, splitEnabled,
-  onSave, onDelete, onRemoveCol, onReorder, onFlipPanel,
+  onSave, onDelete, onRemoveCol, onReorder, onFlipPanel, onRename,
 }: {
   columns: WBColumn[];
   deliveries: string[];
   quoteMeta: Record<string, QuoteMeta>;
   readOnly?: boolean;
-  splitEnabled?: boolean;                    // show ↕ flip button in headers
+  splitEnabled?: boolean;
   onSave: SaveQuoteFn;
   onDelete: DeleteQuoteFn;
   onRemoveCol: (col: WBColumn) => void;
   onReorder?: (draggedId: number, targetId: number) => void;
   onFlipPanel?: (col: WBColumn) => void;
+  onRename?: (col: WBColumn, newLabel: string) => void;
 }) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const handleDragStart = (id: number) => (e: React.DragEvent) => {
@@ -463,6 +503,7 @@ function WBGrid({
                     col={col}
                     onRemove={() => onRemoveCol(col)}
                     onFlipPanel={onFlipPanel ? () => onFlipPanel(col) : undefined}
+                    onRename={!readOnly && onRename ? (newLabel: string) => onRename(col, newLabel) : undefined}
                     draggable={!readOnly && !!onReorder}
                     onDragStart={handleDragStart(col.id)}
                     onDragOver={handleDragOver}
@@ -1039,6 +1080,11 @@ export default function Whiteboard() {
     void fetchSnapshot();
   };
 
+  const handleRenameColumn = async (col: WBColumn, newLabel: string) => {
+    await apiSend(`/whiteboard/columns/${col.id}`, 'PATCH', { label: newLabel });
+    void fetchSnapshot();
+  };
+
   const handleReorder = async (draggedId: number, targetId: number) => {
     if (!snap) return;
     // Find both columns in the visible list, reorder, then send batch update
@@ -1140,7 +1186,6 @@ export default function Whiteboard() {
         <div className="flex-1 min-w-0 flex flex-col">
           {activeTab === 'WB+FP' && (
             <div className="flex flex-col gap-1 flex-1 min-h-0">
-              {/* Top panel */}
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Top panel — Outrights &amp; Spreads</div>
                 <WBGrid
@@ -1153,15 +1198,14 @@ export default function Whiteboard() {
                   onRemoveCol={handleRemoveColumn}
                   onReorder={handleReorder}
                   onFlipPanel={handleFlipPanel}
+                  onRename={handleRenameColumn}
                 />
               </div>
-              {/* Divider */}
               <div className="h-[2px] bg-accent/40 my-1 flex-shrink-0" />
-              {/* Bottom panel */}
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Bottom panel — Flat Prices</div>
                 <WBGrid
-                  columns={columnsForTab.filter((c) => c.panel === 'bottom')}
+                  columns={columnsForTab.filter((c) => c.panel === 'bottom' && c.tab === 'WB+FP')}
                   deliveries={DEFAULT_DELIVERIES}
                   quoteMeta={snap.quote_meta}
                   splitEnabled
@@ -1170,20 +1214,57 @@ export default function Whiteboard() {
                   onRemoveCol={handleRemoveColumn}
                   onReorder={handleReorder}
                   onFlipPanel={handleFlipPanel}
+                  onRename={handleRenameColumn}
                 />
               </div>
             </div>
           )}
-          {(activeTab === 'WB+Pricer' || activeTab === 'Pricer') && (
+          {activeTab === 'WB+Pricer' && (
+            <div className="flex flex-col gap-1 flex-1 min-h-0">
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Top panel — Outrights &amp; Spreads (shared with WB+FP)</div>
+                <WBGrid
+                  columns={columnsForTab.filter((c) => c.panel === 'top')}
+                  deliveries={DEFAULT_DELIVERIES}
+                  quoteMeta={snap.quote_meta}
+                  splitEnabled
+                  onSave={handleSaveQuote}
+                  onDelete={handleDeleteQuote}
+                  onRemoveCol={handleRemoveColumn}
+                  onReorder={handleReorder}
+                  onFlipPanel={handleFlipPanel}
+                  onRename={handleRenameColumn}
+                />
+              </div>
+              <div className="h-[2px] bg-accent/40 my-1 flex-shrink-0" />
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Bottom panel — Product Spreads</div>
+                <WBGrid
+                  columns={columnsForTab.filter((c) => c.panel === 'bottom' && c.tab === 'WB+Pricer')}
+                  deliveries={DEFAULT_DELIVERIES}
+                  quoteMeta={snap.quote_meta}
+                  splitEnabled
+                  onSave={handleSaveQuote}
+                  onDelete={handleDeleteQuote}
+                  onRemoveCol={handleRemoveColumn}
+                  onReorder={handleReorder}
+                  onFlipPanel={handleFlipPanel}
+                  onRename={handleRenameColumn}
+                />
+              </div>
+            </div>
+          )}
+          {activeTab === 'Pricer' && (
             <WBGrid
               columns={columnsForTab}
               deliveries={DEFAULT_DELIVERIES}
               quoteMeta={snap.quote_meta}
-              readOnly={activeTab === 'Pricer'}
+              readOnly
               onSave={handleSaveQuote}
               onDelete={handleDeleteQuote}
               onRemoveCol={handleRemoveColumn}
               onReorder={handleReorder}
+              onRename={handleRenameColumn}
             />
           )}
           {activeTab === 'Close' && (
