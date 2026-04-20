@@ -5,6 +5,8 @@ import { API_BASE_URL, API_KEY } from '../../config';
 
 type ColumnType = 'outright' | 'product_spread' | 'flat_price' | 'gasoil_swap' | 'gasoil_futures';
 
+type Panel = 'top' | 'bottom';
+
 interface WBColumn {
   id: number;
   label: string;
@@ -14,6 +16,7 @@ interface WBColumn {
   color: string;
   display_order: number;
   tab: string;
+  panel: Panel;
   cells: Record<string, { bid: number | null; ask: number | null; value: number | null; value_spread: number | null }>;
 }
 
@@ -273,19 +276,43 @@ function DerivedCell({ value, accent }: { value: number | null; accent?: boolean
   );
 }
 
-function ColHeader({ col, onRemove }: { col: WBColumn; onRemove: () => void }) {
+function ColHeader({
+  col, onRemove, onFlipPanel, draggable, onDragStart, onDragOver, onDrop, isDragging, showFlip,
+}: {
+  col: WBColumn;
+  onRemove: () => void;
+  onFlipPanel?: () => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  isDragging?: boolean;
+  showFlip?: boolean;
+}) {
   const [hover, setHover] = useState(false);
   return (
     <div
-      className="h-full flex items-center justify-center gap-1 px-2 font-bold text-xs uppercase tracking-wide"
+      className={`h-full flex items-center justify-center gap-1 px-2 font-bold text-xs uppercase tracking-wide select-none ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-40' : ''}`}
       style={{ color: col.color }}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      title={draggable ? 'Drag to reorder' : undefined}
     >
-      {col.label}
+      <span>{col.label}</span>
+      {hover && showFlip && onFlipPanel && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onFlipPanel(); }}
+          className="text-text-dim hover:text-accent text-[10px] ml-1"
+          title={col.panel === 'top' ? 'Move to bottom panel' : 'Move to top panel'}
+        >{col.panel === 'top' ? '↓' : '↑'}</button>
+      )}
       {hover && (
         <button
-          onClick={onRemove}
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
           className="text-negative hover:text-red-400 text-[10px] ml-1"
           title="Remove column"
         >✕</button>
@@ -298,7 +325,7 @@ function ColHeader({ col, onRemove }: { col: WBColumn; onRemove: () => void }) {
 
 function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
   onClose: () => void;
-  onAdd: (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string }) => void;
+  onAdd: (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string; panel: Panel }) => void;
   existingLabels: string[];
   activeTab: string;
 }) {
@@ -307,6 +334,12 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
   const [productB, setProductB] = useState('RME');
   const [color, setColor] = useState('#6366f1');
   const [tab, setTab] = useState(activeTab);
+  const [panel, setPanel] = useState<Panel>('top');
+
+  // Auto-adjust default panel when column type changes
+  useEffect(() => {
+    setPanel(colType === 'flat_price' ? 'bottom' : 'top');
+  }, [colType]);
 
   const derivedLabel = useMemo(() => {
     if (colType === 'product_spread') return `${productA}/${productB}`;
@@ -346,6 +379,16 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
           className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary mb-3">
           {SUB_TABS.filter(t => t.key !== 'Reports').map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
+        {tab === 'WB+FP' && (
+          <>
+            <label className="block text-text-dim text-xs uppercase tracking-widest mb-1">Panel</label>
+            <select value={panel} onChange={(e) => setPanel(e.target.value as Panel)}
+              className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary mb-3">
+              <option value="top">Top (upper half)</option>
+              <option value="bottom">Bottom (lower half)</option>
+            </select>
+          </>
+        )}
         <label className="block text-text-dim text-xs uppercase tracking-widest mb-1">Color</label>
         <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
           className="w-full h-10 bg-surface border border-border rounded mb-4" />
@@ -356,7 +399,7 @@ function AddColumnModal({ onClose, onAdd, existingLabels, activeTab }: {
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest text-text-dim hover:text-text-primary">Cancel</button>
           <button disabled={duplicate}
-            onClick={() => { onAdd({ label: derivedLabel, column_type: colType, product_a: productA, product_b: productB, color, tab }); onClose(); }}
+            onClick={() => { onAdd({ label: derivedLabel, column_type: colType, product_a: productA, product_b: productB, color, tab, panel }); onClose(); }}
             className="px-4 py-2 bg-accent text-surface rounded text-xs font-bold uppercase tracking-widest disabled:opacity-50">
             Add
           </button>
@@ -372,16 +415,39 @@ type SaveQuoteFn = (col: WBColumn, delivery: string, side: 'BID' | 'ASK', price:
 type DeleteQuoteFn = (col: WBColumn, delivery: string, side: 'BID' | 'ASK') => void;
 
 function WBGrid({
-  columns, deliveries, quoteMeta, readOnly, onSave, onDelete, onRemoveCol,
+  columns, deliveries, quoteMeta, readOnly, splitEnabled,
+  onSave, onDelete, onRemoveCol, onReorder, onFlipPanel,
 }: {
   columns: WBColumn[];
   deliveries: string[];
   quoteMeta: Record<string, QuoteMeta>;
   readOnly?: boolean;
+  splitEnabled?: boolean;                    // show ↕ flip button in headers
   onSave: SaveQuoteFn;
   onDelete: DeleteQuoteFn;
   onRemoveCol: (col: WBColumn) => void;
+  onReorder?: (draggedId: number, targetId: number) => void;
+  onFlipPanel?: (col: WBColumn) => void;
 }) {
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const handleDragStart = (id: number) => (e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', String(id));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingId(id);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+  const handleDrop = (targetId: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const draggedIdStr = e.dataTransfer.getData('text/plain');
+    const draggedId = parseInt(draggedIdStr, 10);
+    setDraggingId(null);
+    if (!isNaN(draggedId) && draggedId !== targetId && onReorder) {
+      onReorder(draggedId, targetId);
+    }
+  };
   return (
     <div className="flex-1 overflow-auto border border-border rounded">
       <table className="border-collapse text-xs">
@@ -393,7 +459,17 @@ function WBGrid({
               const spanCount = isEditable ? 3 : 2;
               return (
                 <th key={col.id} colSpan={spanCount} className="border-r border-border bg-surface">
-                  <ColHeader col={col} onRemove={() => onRemoveCol(col)} />
+                  <ColHeader
+                    col={col}
+                    onRemove={() => onRemoveCol(col)}
+                    onFlipPanel={onFlipPanel ? () => onFlipPanel(col) : undefined}
+                    draggable={!readOnly && !!onReorder}
+                    onDragStart={handleDragStart(col.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop(col.id)}
+                    isDragging={draggingId === col.id}
+                    showFlip={!!splitEnabled}
+                  />
                 </th>
               );
             })}
@@ -891,7 +967,8 @@ export default function Whiteboard() {
         try {
           const msg = JSON.parse(ev.data);
           if (msg.type === 'quote_updated' || msg.type === 'quote_deleted' ||
-              msg.type === 'column_created' || msg.type === 'column_updated' || msg.type === 'column_deleted') {
+              msg.type === 'column_created' || msg.type === 'column_updated' ||
+              msg.type === 'column_deleted' || msg.type === 'columns_reordered') {
             void fetchSnapshot();
             void fetchTicker();
           }
@@ -951,8 +1028,28 @@ export default function Whiteboard() {
     void fetchTicker();
   };
 
-  const handleAddColumn = async (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string }) => {
+  const handleAddColumn = async (payload: { label: string; column_type: ColumnType; product_a: string; product_b: string; color: string; tab: string; panel: Panel }) => {
     await apiSend('/whiteboard/columns', 'POST', { ...payload, display_order: columnsForTab.length });
+    void fetchSnapshot();
+  };
+
+  const handleFlipPanel = async (col: WBColumn) => {
+    const newPanel: Panel = col.panel === 'top' ? 'bottom' : 'top';
+    await apiSend(`/whiteboard/columns/${col.id}`, 'PATCH', { panel: newPanel });
+    void fetchSnapshot();
+  };
+
+  const handleReorder = async (draggedId: number, targetId: number) => {
+    if (!snap) return;
+    // Find both columns in the visible list, reorder, then send batch update
+    const allCols = [...snap.columns].sort((a, b) => a.display_order - b.display_order);
+    const draggedIdx = allCols.findIndex((c) => c.id === draggedId);
+    const targetIdx = allCols.findIndex((c) => c.id === targetId);
+    if (draggedIdx < 0 || targetIdx < 0) return;
+    const [dragged] = allCols.splice(draggedIdx, 1);
+    allCols.splice(targetIdx, 0, dragged);
+    const items = allCols.map((c, i) => ({ id: c.id, display_order: i, panel: c.panel }));
+    await apiSend('/whiteboard/columns/reorder', 'POST', { items });
     void fetchSnapshot();
   };
 
@@ -1041,7 +1138,43 @@ export default function Whiteboard() {
       <div className="flex gap-3 flex-1 min-h-0">
         {/* Main content area */}
         <div className="flex-1 min-w-0 flex flex-col">
-          {(activeTab === 'WB+FP' || activeTab === 'WB+Pricer' || activeTab === 'Pricer') && (
+          {activeTab === 'WB+FP' && (
+            <div className="flex flex-col gap-1 flex-1 min-h-0">
+              {/* Top panel */}
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Top panel — Outrights &amp; Spreads</div>
+                <WBGrid
+                  columns={columnsForTab.filter((c) => c.panel === 'top')}
+                  deliveries={DEFAULT_DELIVERIES}
+                  quoteMeta={snap.quote_meta}
+                  splitEnabled
+                  onSave={handleSaveQuote}
+                  onDelete={handleDeleteQuote}
+                  onRemoveCol={handleRemoveColumn}
+                  onReorder={handleReorder}
+                  onFlipPanel={handleFlipPanel}
+                />
+              </div>
+              {/* Divider */}
+              <div className="h-[2px] bg-accent/40 my-1 flex-shrink-0" />
+              {/* Bottom panel */}
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 px-1">Bottom panel — Flat Prices</div>
+                <WBGrid
+                  columns={columnsForTab.filter((c) => c.panel === 'bottom')}
+                  deliveries={DEFAULT_DELIVERIES}
+                  quoteMeta={snap.quote_meta}
+                  splitEnabled
+                  onSave={handleSaveQuote}
+                  onDelete={handleDeleteQuote}
+                  onRemoveCol={handleRemoveColumn}
+                  onReorder={handleReorder}
+                  onFlipPanel={handleFlipPanel}
+                />
+              </div>
+            </div>
+          )}
+          {(activeTab === 'WB+Pricer' || activeTab === 'Pricer') && (
             <WBGrid
               columns={columnsForTab}
               deliveries={DEFAULT_DELIVERIES}
@@ -1050,6 +1183,7 @@ export default function Whiteboard() {
               onSave={handleSaveQuote}
               onDelete={handleDeleteQuote}
               onRemoveCol={handleRemoveColumn}
+              onReorder={handleReorder}
             />
           )}
           {activeTab === 'Close' && (
