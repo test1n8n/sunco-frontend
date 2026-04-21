@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Overview from './pages/broker/Overview';
 import DailyReport from './pages/broker/DailyReport';
+import EveningReport from './pages/broker/EveningReport';
 import Mandates from './pages/broker/Mandates';
 import TradeBlotter from './pages/broker/TradeBlotter';
 import PositionsPnL from './pages/broker/PositionsPnL';
@@ -59,6 +60,16 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Morning Daily Report">
                 <DailyReport role="broker" />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/evening"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Daily Evening Report">
+                <EveningReport role="broker" />
               </Layout>
             </ProtectedRoute>
           }

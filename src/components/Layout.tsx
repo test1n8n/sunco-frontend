@@ -33,6 +33,7 @@ const BROKER_GROUPS: NavGroup[] = [
     label: 'Market Data',
     items: [
       { to: '/broker/daily',      label: 'Morning Daily Report',  end: false },
+      { to: '/broker/evening',    label: 'Daily Evening Report',  end: false },
       { to: '/broker/products',   label: 'Products Data', end: false },
       { to: '/broker/charts',     label: 'Charts',        end: false },
       { to: '/broker/spreads',    label: 'Spreads',       end: false },

@@ -87,6 +87,7 @@ export interface Report {
   saf_note: string;
   broker_notes: string;
   market_commentary?: string;
+  evening_market_commentary?: string;
   generated_at: string;
   version: string;
 }
