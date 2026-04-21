@@ -215,7 +215,7 @@ export default function ProductReportPanel({
   const shortName = productName.replace(/^ICE\s+/i, '').trim();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-section={prominentTitle ? `product-${productCode.toLowerCase()}` : undefined}>
       {/* Header */}
       {prominentTitle ? (
         <div

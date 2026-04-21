@@ -195,8 +195,35 @@
   .recharts-text,
   .recharts-cartesian-axis-tick-value { fill: #333 !important; }
 
-  /* ── Page breaks ───────────────────────────────────────────────────────── */
-  h2 { break-after: avoid; }
+  /* ── Page breaks — keep titles glued to their content ──────────────────── */
+  /* Section headers should never orphan from what follows */
+  h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* SectionHeader (prominent: 2px accent bottom-border) — no orphan breaks */
+  [class*="border-b-2"][class*="border-accent"],
+  [class*="border-b-\\[3px\\]"] {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Never break INSIDE a tagged section — push the whole thing to next page
+     if it doesn't fit. Tall sections (multi-card product panels) can still
+     split across pages at card boundaries thanks to break-inside: avoid on
+     individual cards further up in this file. */
+  [data-section] {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  /* First element after a section header sticks to it */
+  [data-section] > :first-child,
+  [data-section] > :nth-child(2) {
+    break-before: avoid;
+    page-break-before: avoid;
+  }
 
   /* ── Links ─────────────────────────────────────────────────────────────── */
   a[href^="http"]::after { content: none !important; }

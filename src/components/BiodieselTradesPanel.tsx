@@ -213,7 +213,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
   const recapProducts = [...new Set(recap.map((r) => r.product))];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-section={prominentTitle ? 'biodiesel-trades' : undefined}>
       {/* Header */}
       {prominentTitle ? (
         <div className="pb-2 mb-2 border-b-2 border-accent/60 flex items-end justify-between">

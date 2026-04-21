@@ -247,7 +247,7 @@ export default function CombinedProductPanel({ group, readOnly = false, prominen
   const totalOI = (diffReport?.total_oi ?? 0) + (flatReport?.total_oi ?? 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-section={`product-${group.name.toLowerCase()}`}>
       {/* Header */}
       {prominentTitle ? (
         <div
