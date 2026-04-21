@@ -93,6 +93,134 @@ const PRODUCT_COLORS: Record<string, string> = {
   SAF: '#06b6d4',
 };
 
+// ─── Compact-view aggregation ────────────────────────────────────────────────
+
+interface CompactTimeSpread {
+  product: string;
+  leg1: string;
+  leg2: string;
+  leg1High: number; leg1Low: number; leg1VWAP: number;
+  leg2High: number; leg2Low: number; leg2VWAP: number;
+  spreadHigh: number; spreadLow: number; spreadVWAP: number;
+  lots: number;
+  count: number;
+}
+
+/** Group rows sharing (product, leg1, leg2) and aggregate per-leg H/L/VWAP
+ *  prices, spread H/L/VWAP, and summed lots. Keys built from row fields, so
+ *  different leg-delivery combinations stay as separate rows even if they
+ *  share a product. */
+function aggregateTimeSpreads<
+  T extends { product: string; leg1: string; leg1_price: number; leg2: string; leg2_price: number; spread_value: number; lots: number }
+>(rows: T[]): CompactTimeSpread[] {
+  const groups = new Map<string, T[]>();
+  for (const r of rows) {
+    const k = `${r.product}|${r.leg1}|${r.leg2}`;
+    (groups.get(k) ?? groups.set(k, []).get(k)!).push(r);
+  }
+  const out: CompactTimeSpread[] = [];
+  for (const rs of groups.values()) {
+    const totalLots = rs.reduce((s, r) => s + r.lots, 0);
+    const wsum = (f: (r: T) => number) =>
+      totalLots > 0 ? rs.reduce((s, r) => s + f(r) * r.lots, 0) / totalLots : 0;
+    out.push({
+      product: rs[0].product,
+      leg1: rs[0].leg1,
+      leg2: rs[0].leg2,
+      leg1High: Math.max(...rs.map(r => r.leg1_price)),
+      leg1Low: Math.min(...rs.map(r => r.leg1_price)),
+      leg1VWAP: wsum(r => r.leg1_price),
+      leg2High: Math.max(...rs.map(r => r.leg2_price)),
+      leg2Low: Math.min(...rs.map(r => r.leg2_price)),
+      leg2VWAP: wsum(r => r.leg2_price),
+      spreadHigh: Math.max(...rs.map(r => r.spread_value)),
+      spreadLow: Math.min(...rs.map(r => r.spread_value)),
+      spreadVWAP: wsum(r => r.spread_value),
+      lots: totalLots,
+      count: rs.length,
+    });
+  }
+  return out;
+}
+
+interface CompactProductSpreadLeg {
+  product: string;
+  priceHigh: number; priceLow: number; priceVWAP: number;
+}
+
+interface CompactProductSpread {
+  delivery: string;
+  legs: CompactProductSpreadLeg[];
+  lots: number;
+  count: number;
+}
+
+/** Group product spreads sharing (delivery, sorted-set-of-leg-products) and
+ *  aggregate per-product price H/L/VWAP and summed lots. */
+function aggregateProductSpreads(rows: ProductSpread[]): CompactProductSpread[] {
+  const groups = new Map<string, { delivery: string; productsKey: string; rows: ProductSpread[] }>();
+  for (const r of rows) {
+    const productsKey = [...new Set(r.legs.map(l => l.product))].sort().join(',');
+    const k = `${r.delivery}|${productsKey}`;
+    if (!groups.has(k)) groups.set(k, { delivery: r.delivery, productsKey, rows: [] });
+    groups.get(k)!.rows.push(r);
+  }
+  const out: CompactProductSpread[] = [];
+  for (const g of groups.values()) {
+    const totalLots = g.rows.reduce((s, r) => s + r.lots, 0);
+    // Per-product: collect (price, lots) pairs across all executions in the group
+    const perProduct = new Map<string, { prices: number[]; weights: number[] }>();
+    for (const row of g.rows) {
+      for (const leg of row.legs) {
+        if (!perProduct.has(leg.product)) perProduct.set(leg.product, { prices: [], weights: [] });
+        const entry = perProduct.get(leg.product)!;
+        entry.prices.push(leg.price);
+        entry.weights.push(leg.lots);
+      }
+    }
+    const legsSummary: CompactProductSpreadLeg[] = [];
+    for (const [product, { prices, weights }] of perProduct) {
+      const w = weights.reduce((s, x) => s + x, 0);
+      const vwap = w > 0 ? prices.reduce((s, p, i) => s + p * weights[i], 0) / w : 0;
+      legsSummary.push({
+        product,
+        priceHigh: Math.max(...prices),
+        priceLow: Math.min(...prices),
+        priceVWAP: vwap,
+      });
+    }
+    out.push({ delivery: g.delivery, legs: legsSummary, lots: totalLots, count: g.rows.length });
+  }
+  return out;
+}
+
+/** Small pill toggle used at the top-right of each spread table. */
+function ViewToggle({
+  mode, setMode,
+}: {
+  mode: 'compact' | 'detailed';
+  setMode: (m: 'compact' | 'detailed') => void;
+}) {
+  const btn = (v: 'compact' | 'detailed', label: string) => (
+    <button
+      onClick={() => setMode(v)}
+      className={`px-2 py-0.5 text-[10px] uppercase tracking-widest rounded transition-colors ${
+        mode === v
+          ? 'bg-accent text-surface font-bold'
+          : 'text-text-dim hover:text-text-primary'
+      }`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div data-print-hide className="flex items-center gap-1 bg-surface border border-border rounded p-0.5">
+      {btn('compact', 'Compact')}
+      {btn('detailed', 'Detailed')}
+    </div>
+  );
+}
+
 // ─── Metric Card ─────────────────────────────────────────────────────────────
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -178,6 +306,9 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
   const [error, setError] = useState<string | null>(null);
   const [goSettlement, setGoSettlement] = useState('');
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  const [diffTimeMode, setDiffTimeMode] = useState<'compact' | 'detailed'>('detailed');
+  const [diffProductMode, setDiffProductMode] = useState<'compact' | 'detailed'>('detailed');
+  const [flatTimeMode, setFlatTimeMode] = useState<'compact' | 'detailed'>('detailed');
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/products/biodiesel-trades/latest`, {
@@ -244,6 +375,10 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
   };
   const timeSpreads = sortTimeSpreads(report?.spreads_analysis?.time_spreads ?? []);
   const flatTimeSpreads = sortTimeSpreads(report?.spreads_analysis?.flat_time_spreads ?? []);
+  // Compact (aggregated) versions — same grouping/sorting as detailed.
+  const timeSpreadsCompact = sortTimeSpreads(aggregateTimeSpreads(timeSpreads));
+  const flatTimeSpreadsCompact = sortTimeSpreads(aggregateTimeSpreads(flatTimeSpreads));
+  const productSpreadsCompact = aggregateProductSpreads(productSpreads);
 
   // Group recap by product for visual grouping
   const recapProducts = [...new Set(recap.map((r) => r.product))];
@@ -386,10 +521,14 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
           {/* Diff Time Spreads */}
           {timeSpreads.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
-              <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Diff Time Spreads
-              </h3>
-              <div className="overflow-x-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest">
+                  Diff Time Spreads
+                </h3>
+                <ViewToggle mode={diffTimeMode} setMode={setDiffTimeMode} />
+              </div>
+              {/* Detailed view */}
+              <div className={`bio-spread-detailed overflow-x-auto ${diffTimeMode === 'detailed' ? '' : 'hidden'}`}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
@@ -426,16 +565,63 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                   </tbody>
                 </table>
               </div>
+              {/* Compact view */}
+              <div className={`bio-spread-compact overflow-x-auto ${diffTimeMode === 'compact' ? '' : 'hidden'}`}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                      <th className="text-left py-2 pr-3">Product</th>
+                      <th className="text-left py-2 px-2">Leg 1</th>
+                      <th className="text-right py-2 px-2">Leg 1 Price (H / L / VWAP)</th>
+                      <th className="text-left py-2 px-2">Leg 2</th>
+                      <th className="text-right py-2 px-2">Leg 2 Price (H / L / VWAP)</th>
+                      <th className="text-right py-2 px-2">Spread (H / L / VWAP)</th>
+                      <th className="text-right py-2 pl-2">Lots</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {timeSpreadsCompact.map((s, i) => {
+                      const color = PRODUCT_COLORS[s.product] ?? '#888';
+                      const fmtSpread = (v: number) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
+                      return (
+                        <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
+                          <td className="py-2 pr-3 font-semibold" style={{ color }}>{s.product}</td>
+                          <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">
+                            {s.leg1High.toFixed(2)} / {s.leg1Low.toFixed(2)} / {s.leg1VWAP.toFixed(2)}
+                          </td>
+                          <td className="py-2 px-2 text-text-primary">{s.leg2}</td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">
+                            {s.leg2High.toFixed(2)} / {s.leg2Low.toFixed(2)} / {s.leg2VWAP.toFixed(2)}
+                          </td>
+                          <td className="text-right py-2 px-2 font-mono font-semibold">
+                            <span className={s.spreadHigh >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadHigh)}</span>
+                            <span className="text-text-dim"> / </span>
+                            <span className={s.spreadLow >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadLow)}</span>
+                            <span className="text-text-dim"> / </span>
+                            <span className={s.spreadVWAP >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadVWAP)}</span>
+                          </td>
+                          <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* Diff Product Spreads */}
           {productSpreads.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
-              <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Diff Product Spreads
-              </h3>
-              <div className="overflow-x-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest">
+                  Diff Product Spreads
+                </h3>
+                <ViewToggle mode={diffProductMode} setMode={setDiffProductMode} />
+              </div>
+              {/* Detailed view */}
+              <div className={`bio-spread-detailed overflow-x-auto ${diffProductMode === 'detailed' ? '' : 'hidden'}`}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
@@ -472,16 +658,56 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                   </tbody>
                 </table>
               </div>
+              {/* Compact view */}
+              <div className={`bio-spread-compact overflow-x-auto ${diffProductMode === 'compact' ? '' : 'hidden'}`}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                      <th className="text-left py-2 pr-3">Delivery</th>
+                      <th className="text-left py-2 px-2">Legs (H / L / VWAP per product)</th>
+                      <th className="text-right py-2 pl-2">Lots</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productSpreadsCompact.map((s, i) => (
+                      <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
+                        <td className="py-2 pr-3 text-text-primary">{s.delivery}</td>
+                        <td className="py-2 px-2">
+                          <div className="flex flex-wrap gap-3">
+                            {s.legs.map((leg, j) => (
+                              <span key={j} className="text-xs">
+                                <span className="font-semibold" style={{ color: PRODUCT_COLORS[leg.product] ?? '#888' }}>
+                                  {leg.product}
+                                </span>
+                                {' '}
+                                <span className="font-mono">
+                                  {leg.priceHigh.toFixed(2)} / {leg.priceLow.toFixed(2)} / {leg.priceVWAP.toFixed(2)}
+                                </span>
+                                {j < s.legs.length - 1 && <span className="text-text-dim mx-1">vs</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* Flat Time Spreads (time spreads on flat biodiesel prices) */}
           {flatTimeSpreads.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
-              <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Flat Time Spreads
-              </h3>
-              <div className="overflow-x-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest">
+                  Flat Time Spreads
+                </h3>
+                <ViewToggle mode={flatTimeMode} setMode={setFlatTimeMode} />
+              </div>
+              {/* Detailed view */}
+              <div className={`bio-spread-detailed overflow-x-auto ${flatTimeMode === 'detailed' ? '' : 'hidden'}`}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
@@ -516,6 +742,49 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                             {legsDiffer ? `${s.leg1_lots} / ${s.leg2_lots}` : s.lots}
                           </td>
                           <td className="text-right py-2 pl-2 text-text-dim text-xs">{s.time}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {/* Compact view */}
+              <div className={`bio-spread-compact overflow-x-auto ${flatTimeMode === 'compact' ? '' : 'hidden'}`}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                      <th className="text-left py-2 pr-3">Product</th>
+                      <th className="text-left py-2 px-2">Leg 1</th>
+                      <th className="text-right py-2 px-2">Leg 1 Price (H / L / VWAP)</th>
+                      <th className="text-left py-2 px-2">Leg 2</th>
+                      <th className="text-right py-2 px-2">Leg 2 Price (H / L / VWAP)</th>
+                      <th className="text-right py-2 px-2">Spread (H / L / VWAP)</th>
+                      <th className="text-right py-2 pl-2">Lots</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {flatTimeSpreadsCompact.map((s, i) => {
+                      const color = PRODUCT_COLORS[s.product] ?? '#888';
+                      const fmtSpread = (v: number) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
+                      return (
+                        <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
+                          <td className="py-2 pr-3 font-semibold" style={{ color }}>{s.product}</td>
+                          <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">
+                            {s.leg1High.toFixed(2)} / {s.leg1Low.toFixed(2)} / {s.leg1VWAP.toFixed(2)}
+                          </td>
+                          <td className="py-2 px-2 text-text-primary">{s.leg2}</td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">
+                            {s.leg2High.toFixed(2)} / {s.leg2Low.toFixed(2)} / {s.leg2VWAP.toFixed(2)}
+                          </td>
+                          <td className="text-right py-2 px-2 font-mono font-semibold">
+                            <span className={s.spreadHigh >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadHigh)}</span>
+                            <span className="text-text-dim"> / </span>
+                            <span className={s.spreadLow >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadLow)}</span>
+                            <span className="text-text-dim"> / </span>
+                            <span className={s.spreadVWAP >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadVWAP)}</span>
+                          </td>
+                          <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
                         </tr>
                       );
                     })}

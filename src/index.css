@@ -186,6 +186,15 @@
     border: 1px solid #fcd34d !important;
   }
 
+  /* ── Biodiesel spread tables: compact vs detailed ──────────────────────
+     Normal (long) PDF always shows Detailed and hides Compact, regardless
+     of the on-screen toggle. body.short-pdf (Download Short PDF) flips it:
+     Compact is shown, Detailed is hidden. */
+  .bio-spread-compact { display: none !important; }
+  .bio-spread-detailed { display: block !important; }
+  body.short-pdf .bio-spread-compact { display: block !important; }
+  body.short-pdf .bio-spread-detailed { display: none !important; }
+
   /* ── Charts ────────────────────────────────────────────────────────────── */
   /* Force a fixed pixel width so Recharts ResponsiveContainer doesn't render
      at 0×0 due to print-mode resize timing. 680px fits inside A4 margins. */
