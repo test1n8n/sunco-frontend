@@ -270,22 +270,9 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
         </div>
       )}
 
-      {/* Drop Zone + GO Settlement */}
+      {/* Drop Zone */}
       {!readOnly && (
-        <div className="flex gap-3 items-start">
-          <div className="flex-1">
-            <FileDropZone onFile={handleFile} uploading={uploading} filename={uploadedFilename} />
-          </div>
-          <div className="flex flex-col gap-1 shrink-0">
-            <label className="text-text-dim text-xs uppercase tracking-widest">LS GO M1 Settlement</label>
-            <input
-              type="number" step="0.01" placeholder="e.g. 682.50"
-              value={goSettlement} onChange={(e) => setGoSettlement(e.target.value)}
-              className="bg-surface border border-border rounded px-3 py-2 text-text-primary text-sm font-mono w-36 focus:outline-none focus:border-accent"
-            />
-            <span className="text-text-dim text-xs">$/MT (auto-filled if available)</span>
-          </div>
-        </div>
+        <FileDropZone onFile={handleFile} uploading={uploading} filename={uploadedFilename} />
       )}
 
       {/* Error */}
@@ -313,7 +300,16 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
             <MetricCard label="Time Spread Volume" value={`${(report.time_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
             <MetricCard label="Product Spread Volume" value={`${(report.product_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
             <MetricCard label="Flat Spread Volume" value={`${(report.flat_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
-            <MetricCard label="GO Settlement" value={report.go_settlement != null ? `${report.go_settlement.toLocaleString()}` : '\u2014'} sub="$/MT" />
+            <MetricCard
+              label="Total Volume"
+              value={(
+                report.outright_volume
+                + (report.spread_volume ?? 0)
+                + (report.flat_spread_volume ?? 0)
+                + (report.flat_volume ?? 0)
+              ).toLocaleString()}
+              sub="lots (outright + spreads + flat)"
+            />
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════
