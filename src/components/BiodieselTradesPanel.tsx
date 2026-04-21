@@ -33,8 +33,10 @@ interface FlatTimeSpread {
   product: string;
   leg1: string;
   leg1_price: number;
+  leg1_lots?: number;
   leg2: string;
   leg2_price: number;
+  leg2_lots?: number;
   spread_value: number;
   lots: number;
   time: string;
@@ -371,11 +373,11 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
               TABLE 2: SPREADS — Time Spreads + Product Spreads
               ═══════════════════════════════════════════════════════════════ */}
 
-          {/* Time Spreads */}
+          {/* Diff Time Spreads */}
           {timeSpreads.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
               <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Time Spreads
+                Diff Time Spreads
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -417,11 +419,11 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
             </div>
           )}
 
-          {/* Product Spreads */}
+          {/* Diff Product Spreads */}
           {productSpreads.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
               <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Product Spreads
+                Diff Product Spreads
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -463,11 +465,11 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
             </div>
           )}
 
-          {/* Flat Spreads (time spreads on flat biodiesel prices) */}
+          {/* Flat Time Spreads (time spreads on flat biodiesel prices) */}
           {flatTimeSpreads.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
               <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Flat Spreads
+                Flat Time Spreads
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -487,6 +489,8 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                   <tbody>
                     {flatTimeSpreads.map((s, i) => {
                       const color = PRODUCT_COLORS[s.product] ?? '#888';
+                      const legsDiffer =
+                        s.leg1_lots != null && s.leg2_lots != null && s.leg1_lots !== s.leg2_lots;
                       return (
                         <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
                           <td className="py-2 pr-3 text-text-dim text-xs" data-print-hide>{s.spread_id}</td>
@@ -498,7 +502,9 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                           <td className={`text-right py-2 px-2 font-mono font-semibold ${s.spread_value >= 0 ? 'text-positive' : 'text-negative'}`}>
                             {s.spread_value >= 0 ? `+${s.spread_value.toFixed(2)}` : s.spread_value.toFixed(2)}
                           </td>
-                          <td className="text-right py-2 px-2 font-mono text-text-primary">{s.lots}</td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">
+                            {legsDiffer ? `${s.leg1_lots} / ${s.leg2_lots}` : s.lots}
+                          </td>
                           <td className="text-right py-2 pl-2 text-text-dim text-xs">{s.time}</td>
                         </tr>
                       );
