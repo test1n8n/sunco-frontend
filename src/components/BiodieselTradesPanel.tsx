@@ -194,6 +194,52 @@ function aggregateProductSpreads(rows: ProductSpread[]): CompactProductSpread[] 
   return out;
 }
 
+interface CompactRecapRow {
+  product: string;
+  deliveries: string;
+  total_lots: number;
+  total_oi: number | null;
+  oi_change: number | null;
+  num_trades: number;
+  high_diff: number | null;
+  low_diff: number | null;
+  flat_price_high: number | null;
+  flat_price_low: number | null;
+}
+
+/** Group recap rows by product — collapse deliveries into a comma-joined list,
+ *  sum lots/OI/trades, max/min for H/L columns. Null-safe throughout. */
+function aggregateRecap(rows: RecapRow[]): CompactRecapRow[] {
+  const groups = new Map<string, RecapRow[]>();
+  for (const r of rows) {
+    (groups.get(r.product) ?? groups.set(r.product, []).get(r.product)!).push(r);
+  }
+  const maxOrNull = (vals: (number | null)[]): number | null => {
+    const nums = vals.filter((v): v is number => v != null);
+    return nums.length ? Math.max(...nums) : null;
+  };
+  const minOrNull = (vals: (number | null)[]): number | null => {
+    const nums = vals.filter((v): v is number => v != null);
+    return nums.length ? Math.min(...nums) : null;
+  };
+  const sumOrNull = (vals: (number | null)[]): number | null => {
+    const nums = vals.filter((v): v is number => v != null);
+    return nums.length ? nums.reduce((s, n) => s + n, 0) : null;
+  };
+  return [...groups.values()].map((rs) => ({
+    product: rs[0].product,
+    deliveries: rs.map((r) => r.delivery).join(', '),
+    total_lots: rs.reduce((s, r) => s + r.total_lots, 0),
+    total_oi: sumOrNull(rs.map((r) => r.total_oi)),
+    oi_change: sumOrNull(rs.map((r) => r.oi_change)),
+    num_trades: rs.reduce((s, r) => s + r.num_trades, 0),
+    high_diff: maxOrNull(rs.map((r) => r.high_diff)),
+    low_diff: minOrNull(rs.map((r) => r.low_diff)),
+    flat_price_high: maxOrNull(rs.map((r) => r.flat_price_high)),
+    flat_price_low: minOrNull(rs.map((r) => r.flat_price_low)),
+  }));
+}
+
 /** Small pill toggle used at the top-right of each spread table. */
 function ViewToggle({
   mode, setMode,
@@ -306,6 +352,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
   const [error, setError] = useState<string | null>(null);
   const [goSettlement, setGoSettlement] = useState('');
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  const [recapMode, setRecapMode] = useState<'compact' | 'detailed'>('detailed');
   const [diffTimeMode, setDiffTimeMode] = useState<'compact' | 'detailed'>('detailed');
   const [diffProductMode, setDiffProductMode] = useState<'compact' | 'detailed'>('detailed');
   const [flatTimeMode, setFlatTimeMode] = useState<'compact' | 'detailed'>('detailed');
@@ -376,9 +423,22 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
   const timeSpreads = sortTimeSpreads(report?.spreads_analysis?.time_spreads ?? []);
   const flatTimeSpreads = sortTimeSpreads(report?.spreads_analysis?.flat_time_spreads ?? []);
   // Compact (aggregated) versions — same grouping/sorting as detailed.
+  const recapCompact = aggregateRecap(recap);
   const timeSpreadsCompact = sortTimeSpreads(aggregateTimeSpreads(timeSpreads));
   const flatTimeSpreadsCompact = sortTimeSpreads(aggregateTimeSpreads(flatTimeSpreads));
   const productSpreadsCompact = aggregateProductSpreads(productSpreads);
+
+  // Degenerate-case rule: if a table's Compact view only produces ≤1 group,
+  // there is nothing worth collapsing — hide the toggle and force Detailed
+  // everywhere (including short PDF).
+  const recapHasCompact = recapCompact.length > 1;
+  const diffTimeHasCompact = timeSpreadsCompact.length > 1;
+  const diffProductHasCompact = productSpreadsCompact.length > 1;
+  const flatTimeHasCompact = flatTimeSpreadsCompact.length > 1;
+  const effectiveRecapMode = recapHasCompact ? recapMode : 'detailed';
+  const effectiveDiffTimeMode = diffTimeHasCompact ? diffTimeMode : 'detailed';
+  const effectiveDiffProductMode = diffProductHasCompact ? diffProductMode : 'detailed';
+  const effectiveFlatTimeMode = flatTimeHasCompact ? flatTimeMode : 'detailed';
 
   // Group recap by product for visual grouping
   const recapProducts = [...new Set(recap.map((r) => r.product))];
@@ -452,10 +512,14 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
               ═══════════════════════════════════════════════════════════════ */}
           {recap.length > 0 && (
             <div className="bg-card border border-border rounded p-5">
-              <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
-                Diff Swaps Recap — By Product &amp; Delivery
-              </h3>
-              <div className="overflow-x-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest">
+                  Diff Swaps Recap — By Product &amp; Delivery
+                </h3>
+                {recapHasCompact && <ViewToggle mode={recapMode} setMode={setRecapMode} />}
+              </div>
+              {/* Detailed view */}
+              <div className={`${recapHasCompact ? 'bio-spread-detailed' : ''} overflow-x-auto ${effectiveRecapMode === 'detailed' ? '' : 'hidden'}`}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
@@ -511,6 +575,63 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                   </tbody>
                 </table>
               </div>
+              {/* Compact view */}
+              {recapHasCompact && (
+                <div className={`bio-spread-compact overflow-x-auto ${effectiveRecapMode === 'compact' ? '' : 'hidden'}`}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                        <th className="text-left py-2 pr-3">Product</th>
+                        <th className="text-left py-2 px-2">Deliveries</th>
+                        <th className="text-right py-2 px-2">Lots</th>
+                        <th className="text-right py-2 px-2">OI</th>
+                        <th className="text-right py-2 px-2">OI Chg</th>
+                        <th className="text-right py-2 px-2">Trades</th>
+                        <th className="text-right py-2 px-2">High Diff</th>
+                        <th className="text-right py-2 px-2">Low Diff</th>
+                        <th className="text-right py-2 px-2">Flat High</th>
+                        <th className="text-right py-2 pl-2">Flat Low</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recapCompact.map((row) => {
+                        const color = PRODUCT_COLORS[row.product] ?? '#888';
+                        return (
+                          <tr key={row.product} className="border-b border-border/50 hover:bg-surface/30">
+                            <td className="py-2 pr-3 font-semibold" style={{ color }}>{row.product}</td>
+                            <td className="py-2 px-2 text-text-primary">{row.deliveries}</td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary font-semibold">
+                              {row.total_lots.toLocaleString()}
+                            </td>
+                            <td className="text-right py-2 px-2 font-mono text-text-dim">
+                              {row.total_oi != null ? row.total_oi.toLocaleString() : '\u2014'}
+                            </td>
+                            <td className={`text-right py-2 px-2 font-mono ${
+                              row.oi_change != null && row.oi_change > 0 ? 'text-positive' :
+                              row.oi_change != null && row.oi_change < 0 ? 'text-negative' : 'text-text-dim'
+                            }`}>
+                              {row.oi_change != null ? (row.oi_change >= 0 ? `+${row.oi_change}` : row.oi_change) : '\u2014'}
+                            </td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">{row.num_trades}</td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">
+                              {row.high_diff != null ? row.high_diff.toFixed(2) : '\u2014'}
+                            </td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">
+                              {row.low_diff != null ? row.low_diff.toFixed(2) : '\u2014'}
+                            </td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">
+                              {row.flat_price_high != null ? row.flat_price_high.toFixed(2) : '\u2014'}
+                            </td>
+                            <td className="text-right py-2 pl-2 font-mono text-text-primary">
+                              {row.flat_price_low != null ? row.flat_price_low.toFixed(2) : '\u2014'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -525,10 +646,10 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest">
                   Diff Time Spreads
                 </h3>
-                <ViewToggle mode={diffTimeMode} setMode={setDiffTimeMode} />
+                {diffTimeHasCompact && <ViewToggle mode={diffTimeMode} setMode={setDiffTimeMode} />}
               </div>
               {/* Detailed view */}
-              <div className={`bio-spread-detailed overflow-x-auto ${diffTimeMode === 'detailed' ? '' : 'hidden'}`}>
+              <div className={`${diffTimeHasCompact ? 'bio-spread-detailed' : ''} overflow-x-auto ${effectiveDiffTimeMode === 'detailed' ? '' : 'hidden'}`}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
@@ -566,48 +687,50 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 </table>
               </div>
               {/* Compact view */}
-              <div className={`bio-spread-compact overflow-x-auto ${diffTimeMode === 'compact' ? '' : 'hidden'}`}>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
-                      <th className="text-left py-2 pr-3">Product</th>
-                      <th className="text-left py-2 px-2">Leg 1</th>
-                      <th className="text-right py-2 px-2">Leg 1 Price (H / L / VWAP)</th>
-                      <th className="text-left py-2 px-2">Leg 2</th>
-                      <th className="text-right py-2 px-2">Leg 2 Price (H / L / VWAP)</th>
-                      <th className="text-right py-2 px-2">Spread (H / L / VWAP)</th>
-                      <th className="text-right py-2 pl-2">Lots</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timeSpreadsCompact.map((s, i) => {
-                      const color = PRODUCT_COLORS[s.product] ?? '#888';
-                      const fmtSpread = (v: number) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
-                      return (
-                        <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
-                          <td className="py-2 pr-3 font-semibold" style={{ color }}>{s.product}</td>
-                          <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
-                          <td className="text-right py-2 px-2 font-mono text-text-primary">
-                            {s.leg1High.toFixed(2)} / {s.leg1Low.toFixed(2)} / {s.leg1VWAP.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-2 text-text-primary">{s.leg2}</td>
-                          <td className="text-right py-2 px-2 font-mono text-text-primary">
-                            {s.leg2High.toFixed(2)} / {s.leg2Low.toFixed(2)} / {s.leg2VWAP.toFixed(2)}
-                          </td>
-                          <td className="text-right py-2 px-2 font-mono font-semibold">
-                            <span className={s.spreadHigh >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadHigh)}</span>
-                            <span className="text-text-dim"> / </span>
-                            <span className={s.spreadLow >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadLow)}</span>
-                            <span className="text-text-dim"> / </span>
-                            <span className={s.spreadVWAP >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadVWAP)}</span>
-                          </td>
-                          <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {diffTimeHasCompact && (
+                <div className={`bio-spread-compact overflow-x-auto ${effectiveDiffTimeMode === 'compact' ? '' : 'hidden'}`}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                        <th className="text-left py-2 pr-3">Product</th>
+                        <th className="text-left py-2 px-2">Leg 1</th>
+                        <th className="text-right py-2 px-2">Leg 1 Price (H / L / VWAP)</th>
+                        <th className="text-left py-2 px-2">Leg 2</th>
+                        <th className="text-right py-2 px-2">Leg 2 Price (H / L / VWAP)</th>
+                        <th className="text-right py-2 px-2">Spread (H / L / VWAP)</th>
+                        <th className="text-right py-2 pl-2">Lots</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {timeSpreadsCompact.map((s, i) => {
+                        const color = PRODUCT_COLORS[s.product] ?? '#888';
+                        const fmtSpread = (v: number) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
+                        return (
+                          <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
+                            <td className="py-2 pr-3 font-semibold" style={{ color }}>{s.product}</td>
+                            <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">
+                              {s.leg1High.toFixed(2)} / {s.leg1Low.toFixed(2)} / {s.leg1VWAP.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-2 text-text-primary">{s.leg2}</td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">
+                              {s.leg2High.toFixed(2)} / {s.leg2Low.toFixed(2)} / {s.leg2VWAP.toFixed(2)}
+                            </td>
+                            <td className="text-right py-2 px-2 font-mono font-semibold">
+                              <span className={s.spreadHigh >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadHigh)}</span>
+                              <span className="text-text-dim"> / </span>
+                              <span className={s.spreadLow >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadLow)}</span>
+                              <span className="text-text-dim"> / </span>
+                              <span className={s.spreadVWAP >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadVWAP)}</span>
+                            </td>
+                            <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -618,10 +741,10 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest">
                   Diff Product Spreads
                 </h3>
-                <ViewToggle mode={diffProductMode} setMode={setDiffProductMode} />
+                {diffProductHasCompact && <ViewToggle mode={diffProductMode} setMode={setDiffProductMode} />}
               </div>
               {/* Detailed view */}
-              <div className={`bio-spread-detailed overflow-x-auto ${diffProductMode === 'detailed' ? '' : 'hidden'}`}>
+              <div className={`${diffProductHasCompact ? 'bio-spread-detailed' : ''} overflow-x-auto ${effectiveDiffProductMode === 'detailed' ? '' : 'hidden'}`}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
@@ -659,41 +782,43 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 </table>
               </div>
               {/* Compact view */}
-              <div className={`bio-spread-compact overflow-x-auto ${diffProductMode === 'compact' ? '' : 'hidden'}`}>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
-                      <th className="text-left py-2 pr-3">Delivery</th>
-                      <th className="text-left py-2 px-2">Legs (H / L / VWAP per product)</th>
-                      <th className="text-right py-2 pl-2">Lots</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {productSpreadsCompact.map((s, i) => (
-                      <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
-                        <td className="py-2 pr-3 text-text-primary">{s.delivery}</td>
-                        <td className="py-2 px-2">
-                          <div className="flex flex-wrap gap-3">
-                            {s.legs.map((leg, j) => (
-                              <span key={j} className="text-xs">
-                                <span className="font-semibold" style={{ color: PRODUCT_COLORS[leg.product] ?? '#888' }}>
-                                  {leg.product}
-                                </span>
-                                {' '}
-                                <span className="font-mono">
-                                  {leg.priceHigh.toFixed(2)} / {leg.priceLow.toFixed(2)} / {leg.priceVWAP.toFixed(2)}
-                                </span>
-                                {j < s.legs.length - 1 && <span className="text-text-dim mx-1">vs</span>}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
+              {diffProductHasCompact && (
+                <div className={`bio-spread-compact overflow-x-auto ${effectiveDiffProductMode === 'compact' ? '' : 'hidden'}`}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                        <th className="text-left py-2 pr-3">Delivery</th>
+                        <th className="text-left py-2 px-2">Legs (H / L / VWAP per product)</th>
+                        <th className="text-right py-2 pl-2">Lots</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {productSpreadsCompact.map((s, i) => (
+                        <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
+                          <td className="py-2 pr-3 text-text-primary">{s.delivery}</td>
+                          <td className="py-2 px-2">
+                            <div className="flex flex-wrap gap-3">
+                              {s.legs.map((leg, j) => (
+                                <span key={j} className="text-xs">
+                                  <span className="font-semibold" style={{ color: PRODUCT_COLORS[leg.product] ?? '#888' }}>
+                                    {leg.product}
+                                  </span>
+                                  {' '}
+                                  <span className="font-mono">
+                                    {leg.priceHigh.toFixed(2)} / {leg.priceLow.toFixed(2)} / {leg.priceVWAP.toFixed(2)}
+                                  </span>
+                                  {j < s.legs.length - 1 && <span className="text-text-dim mx-1">vs</span>}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -704,10 +829,10 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest">
                   Flat Time Spreads
                 </h3>
-                <ViewToggle mode={flatTimeMode} setMode={setFlatTimeMode} />
+                {flatTimeHasCompact && <ViewToggle mode={flatTimeMode} setMode={setFlatTimeMode} />}
               </div>
               {/* Detailed view */}
-              <div className={`bio-spread-detailed overflow-x-auto ${flatTimeMode === 'detailed' ? '' : 'hidden'}`}>
+              <div className={`${flatTimeHasCompact ? 'bio-spread-detailed' : ''} overflow-x-auto ${effectiveFlatTimeMode === 'detailed' ? '' : 'hidden'}`}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
@@ -749,48 +874,50 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 </table>
               </div>
               {/* Compact view */}
-              <div className={`bio-spread-compact overflow-x-auto ${flatTimeMode === 'compact' ? '' : 'hidden'}`}>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
-                      <th className="text-left py-2 pr-3">Product</th>
-                      <th className="text-left py-2 px-2">Leg 1</th>
-                      <th className="text-right py-2 px-2">Leg 1 Price (H / L / VWAP)</th>
-                      <th className="text-left py-2 px-2">Leg 2</th>
-                      <th className="text-right py-2 px-2">Leg 2 Price (H / L / VWAP)</th>
-                      <th className="text-right py-2 px-2">Spread (H / L / VWAP)</th>
-                      <th className="text-right py-2 pl-2">Lots</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {flatTimeSpreadsCompact.map((s, i) => {
-                      const color = PRODUCT_COLORS[s.product] ?? '#888';
-                      const fmtSpread = (v: number) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
-                      return (
-                        <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
-                          <td className="py-2 pr-3 font-semibold" style={{ color }}>{s.product}</td>
-                          <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
-                          <td className="text-right py-2 px-2 font-mono text-text-primary">
-                            {s.leg1High.toFixed(2)} / {s.leg1Low.toFixed(2)} / {s.leg1VWAP.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-2 text-text-primary">{s.leg2}</td>
-                          <td className="text-right py-2 px-2 font-mono text-text-primary">
-                            {s.leg2High.toFixed(2)} / {s.leg2Low.toFixed(2)} / {s.leg2VWAP.toFixed(2)}
-                          </td>
-                          <td className="text-right py-2 px-2 font-mono font-semibold">
-                            <span className={s.spreadHigh >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadHigh)}</span>
-                            <span className="text-text-dim"> / </span>
-                            <span className={s.spreadLow >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadLow)}</span>
-                            <span className="text-text-dim"> / </span>
-                            <span className={s.spreadVWAP >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadVWAP)}</span>
-                          </td>
-                          <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {flatTimeHasCompact && (
+                <div className={`bio-spread-compact overflow-x-auto ${effectiveFlatTimeMode === 'compact' ? '' : 'hidden'}`}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                        <th className="text-left py-2 pr-3">Product</th>
+                        <th className="text-left py-2 px-2">Leg 1</th>
+                        <th className="text-right py-2 px-2">Leg 1 Price (H / L / VWAP)</th>
+                        <th className="text-left py-2 px-2">Leg 2</th>
+                        <th className="text-right py-2 px-2">Leg 2 Price (H / L / VWAP)</th>
+                        <th className="text-right py-2 px-2">Spread (H / L / VWAP)</th>
+                        <th className="text-right py-2 pl-2">Lots</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {flatTimeSpreadsCompact.map((s, i) => {
+                        const color = PRODUCT_COLORS[s.product] ?? '#888';
+                        const fmtSpread = (v: number) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
+                        return (
+                          <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
+                            <td className="py-2 pr-3 font-semibold" style={{ color }}>{s.product}</td>
+                            <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">
+                              {s.leg1High.toFixed(2)} / {s.leg1Low.toFixed(2)} / {s.leg1VWAP.toFixed(2)}
+                            </td>
+                            <td className="py-2 px-2 text-text-primary">{s.leg2}</td>
+                            <td className="text-right py-2 px-2 font-mono text-text-primary">
+                              {s.leg2High.toFixed(2)} / {s.leg2Low.toFixed(2)} / {s.leg2VWAP.toFixed(2)}
+                            </td>
+                            <td className="text-right py-2 px-2 font-mono font-semibold">
+                              <span className={s.spreadHigh >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadHigh)}</span>
+                              <span className="text-text-dim"> / </span>
+                              <span className={s.spreadLow >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadLow)}</span>
+                              <span className="text-text-dim"> / </span>
+                              <span className={s.spreadVWAP >= 0 ? 'text-positive' : 'text-negative'}>{fmtSpread(s.spreadVWAP)}</span>
+                            </td>
+                            <td className="text-right py-2 pl-2 font-mono text-text-primary">{s.lots}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </>
