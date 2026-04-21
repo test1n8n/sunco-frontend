@@ -300,8 +300,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                       return rows.map((row, i) => (
                         <tr
                           key={`${product}-${row.delivery}`}
-                          className={`border-b border-border/50 hover:bg-surface/30 ${i === 0 ? 'border-l-2' : 'border-l-2'}`}
-                          style={{ borderLeftColor: color }}
+                          className="border-b border-border/50 hover:bg-surface/30"
                         >
                           <td className="py-2 pr-3 font-semibold" style={{ color }}>
                             {i === 0 ? product : ''}
