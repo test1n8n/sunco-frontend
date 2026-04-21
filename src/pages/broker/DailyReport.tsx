@@ -318,8 +318,8 @@ function SupplyDemandCard({ outlook }: { outlook: SupplyDemandOutlook }) {
   if (!outlook.summary) return null;
   return (
     <div className="bg-card border border-border rounded p-5">
-      <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Supply / Demand Outlook</h2>
-      <div className="flex flex-wrap gap-3 mb-4">
+      <SectionHeader title="Supply / Demand Outlook" />
+      <div className="flex flex-wrap gap-3 mb-4 mt-3">
         <SignalPill label="Supply" value={outlook.supply_signal ?? ''} colorMap={SUPPLY_COLORS} />
         <SignalPill label="Demand" value={outlook.demand_signal ?? ''} colorMap={DEMAND_COLORS} />
       </div>
@@ -350,10 +350,8 @@ function KeyDatesCard({ dates }: { dates: KeyDate[] }) {
   if (!dates || dates.length === 0) return null;
   return (
     <div className="bg-card border border-border rounded p-5">
-      <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">
-        📅 Upcoming Key Dates
-      </h2>
-      <div className="space-y-3">
+      <SectionHeader title="📅 Upcoming Key Dates" />
+      <div className="space-y-3 mt-3">
         {dates.map((d, idx) => (
           <div key={idx} className="flex items-start gap-3 pb-3 border-b border-border/40 last:border-0 last:pb-0">
             <span className="text-xs font-mono font-semibold text-accent bg-accent/10 border border-accent/20 px-2 py-1 rounded shrink-0 mt-0.5">
@@ -777,7 +775,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ═══════════════════════════════════════════════════════════════════
           4 — ICE BIODIESEL DIFF SWAPS — Trades, Recap & Spreads
           ═══════════════════════════════════════════════════════════════════ */}
-      <BiodieselTradesPanel readOnly />
+      <BiodieselTradesPanel readOnly prominentTitle />
 
       {/* ═══════════════════════════════════════════════════════════════════
           5 — DIFF & FLAT ANALYSIS — order: UCOME, HVO, FAME0, RME, SAF
@@ -787,14 +785,14 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         const byName = new Map(COMBINED_PRODUCT_GROUPS.map((g) => [g.name, g]));
         const ordered = ORDER.map((n) => byName.get(n)).filter(Boolean) as typeof COMBINED_PRODUCT_GROUPS;
         return ordered.map((group) => (
-          <CombinedProductPanel key={group.name} group={group} readOnly />
+          <CombinedProductPanel key={group.name} group={group} readOnly prominentTitle />
         ));
       })()}
 
       {/* ═══════════════════════════════════════════════════════════════════
           6 — ICE LS GASOIL — Forward Curve & Market Data
           ═══════════════════════════════════════════════════════════════════ */}
-      <GasoilReportPanel readOnly reportDate={report.report_date} />
+      <GasoilReportPanel readOnly prominentTitle reportDate={report.report_date} />
 
       {/* ═══════════════════════════════════════════════════════════════════
           HEADLINES (AI) — 3-4 factual sentences, the 10-second scan.
@@ -918,13 +916,13 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ── Broker Notes (broker only) ─────────────────────────────────── */}
       {isBroker && (
         <div className="bg-card border border-border rounded p-5">
-          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-3">Broker Notes</h2>
+          <SectionHeader title="Broker Notes" subtitle="Internal commentary — visible to brokers only" />
           <textarea
             value={brokerNotes}
             onChange={(e) => setBrokerNotes(e.target.value)}
             rows={4}
             placeholder="Add internal broker notes here..."
-            className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-none"
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-none mt-3"
           />
           <div className="mt-3 flex justify-end">
             <button

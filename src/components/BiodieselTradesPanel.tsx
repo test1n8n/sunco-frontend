@@ -148,9 +148,10 @@ function FileDropZone({
 
 interface Props {
   readOnly?: boolean;
+  prominentTitle?: boolean;
 }
 
-export default function BiodieselTradesPanel({ readOnly = false }: Props) {
+export default function BiodieselTradesPanel({ readOnly = false, prominentTitle = false }: Props) {
   const [report, setReport] = useState<BiodieselTradeReport | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,12 +215,24 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
-          ICE Biodiesel Diff Swaps — Trades, Recap &amp; Spreads
-        </h2>
-        {uploadedAt && <span className="text-text-dim text-xs">uploaded {uploadedAt}</span>}
-      </div>
+      {prominentTitle ? (
+        <div className="pb-2 mb-2 border-b-2 border-accent/60 flex items-end justify-between">
+          <div>
+            <h2 className="text-text-primary font-bold text-base uppercase tracking-widest">
+              ICE Biodiesel Diff Swaps
+            </h2>
+            <p className="text-text-dim text-xs mt-0.5">Trades, Recap &amp; Spreads</p>
+          </div>
+          {uploadedAt && <span className="text-text-dim text-xs pb-1">uploaded {uploadedAt}</span>}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
+            ICE Biodiesel Diff Swaps — Trades, Recap &amp; Spreads
+          </h2>
+          {uploadedAt && <span className="text-text-dim text-xs">uploaded {uploadedAt}</span>}
+        </div>
+      )}
 
       {/* Drop Zone + GO Settlement */}
       {!readOnly && (
@@ -249,10 +262,10 @@ export default function BiodieselTradesPanel({ readOnly = false }: Props) {
           {/* Metric Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <MetricCard label="Total Trades" value={report.total_trades.toLocaleString()} />
-            <MetricCard label="Diff Outright Vol" value={`${report.outright_volume.toLocaleString()}`} sub="lots (no spread)" />
-            <MetricCard label="Time Spread Vol" value={`${(report.time_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
-            <MetricCard label="Product Spread Vol" value={`${(report.product_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
-            <MetricCard label="Total Spread Vol" value={`${report.spread_volume.toLocaleString()}`} sub="lots (time + product)" />
+            <MetricCard label="Diff Outright Volume" value={`${report.outright_volume.toLocaleString()}`} sub="lots (no spread)" />
+            <MetricCard label="Time Spread Volume" value={`${(report.time_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
+            <MetricCard label="Product Spread Volume" value={`${(report.product_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
+            <MetricCard label="Total Spread Volume" value={`${report.spread_volume.toLocaleString()}`} sub="lots (time + product)" />
             <MetricCard label="GO Settlement" value={report.go_settlement != null ? `${report.go_settlement.toLocaleString()}` : '\u2014'} sub="$/MT" />
           </div>
 

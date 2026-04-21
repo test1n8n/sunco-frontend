@@ -3,9 +3,10 @@ import ProductReportPanel from './ProductReportPanel';
 interface Props {
   reportDate?: string;
   readOnly?: boolean;
+  prominentTitle?: boolean;
 }
 
-export default function GasoilReportPanel({ readOnly = false }: Props) {
+export default function GasoilReportPanel({ readOnly = false, prominentTitle = false }: Props) {
   return (
     <ProductReportPanel
       productCode="G"
@@ -13,6 +14,7 @@ export default function GasoilReportPanel({ readOnly = false }: Props) {
       accentColor="#6366f1"
       dropZoneLabel="Drop ICE LS Gasoil PDF here, or click to select"
       readOnly={readOnly}
+      prominentTitle={prominentTitle}
     />
   );
 }

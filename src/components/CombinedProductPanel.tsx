@@ -174,9 +174,10 @@ function DropZone({
 interface CombinedProductPanelProps {
   group: CombinedProductGroup;
   readOnly?: boolean;
+  prominentTitle?: boolean;
 }
 
-export default function CombinedProductPanel({ group, readOnly = false }: CombinedProductPanelProps) {
+export default function CombinedProductPanel({ group, readOnly = false, prominentTitle = false }: CombinedProductPanelProps) {
   const [diffReport, setDiffReport] = useState<GasoilReport | null>(null);
   const [flatReport, setFlatReport] = useState<GasoilReport | null>(null);
   const [diffUploading, setDiffUploading] = useState(false);
@@ -248,15 +249,33 @@ export default function CombinedProductPanel({ group, readOnly = false }: Combin
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
-          {group.name} — Diff &amp; Flat Analysis
-        </h2>
-        <div className="flex gap-3 text-text-dim text-xs">
-          {diffReport?.source_filename && <span>Diff: {diffReport.source_filename}</span>}
-          {flatReport?.source_filename && <span>Flat: {flatReport.source_filename}</span>}
+      {prominentTitle ? (
+        <div
+          className="pb-2 mb-2 border-b-[3px] flex items-end justify-between"
+          style={{ borderColor: group.diffColor }}
+        >
+          <div>
+            <h2 className="font-bold text-2xl uppercase tracking-widest" style={{ color: group.diffColor }}>
+              {group.name}
+            </h2>
+            <p className="text-text-dim text-xs mt-1 uppercase tracking-widest">Diff &amp; Flat Analysis</p>
+          </div>
+          <div className="flex flex-col items-end gap-0.5 text-text-dim text-xs pb-1">
+            {diffReport?.source_filename && <span>Diff: {diffReport.source_filename}</span>}
+            {flatReport?.source_filename && <span>Flat: {flatReport.source_filename}</span>}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
+            {group.name} — Diff &amp; Flat Analysis
+          </h2>
+          <div className="flex gap-3 text-text-dim text-xs">
+            {diffReport?.source_filename && <span>Diff: {diffReport.source_filename}</span>}
+            {flatReport?.source_filename && <span>Flat: {flatReport.source_filename}</span>}
+          </div>
+        </div>
+      )}
 
       {/* Drop Zones — side by side */}
       {!readOnly && (

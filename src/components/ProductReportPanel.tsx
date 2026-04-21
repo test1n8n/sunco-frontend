@@ -146,6 +146,7 @@ interface ProductReportPanelProps {
   dropZoneLabel: string;
   isDiff?: boolean;   // true = values are diffs vs LS Gasoil, false = outright prices
   readOnly?: boolean;
+  prominentTitle?: boolean;
 }
 
 export default function ProductReportPanel({
@@ -155,6 +156,7 @@ export default function ProductReportPanel({
   dropZoneLabel,
   isDiff = false,
   readOnly = false,
+  prominentTitle = false,
 }: ProductReportPanelProps) {
   const [report, setReport] = useState<GasoilReport | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -209,19 +211,41 @@ export default function ProductReportPanel({
       }) + ' UTC'
     : null;
 
+  // Short, bold title stripped of "ICE " prefix for the prominent heading style
+  const shortName = productName.replace(/^ICE\s+/i, '').trim();
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
-          {productName} — Forward Curve &amp; Market Data
-        </h2>
-        {uploadedAt && report && (
-          <span className="text-text-dim text-xs">
-            {report.source_filename} · uploaded {uploadedAt}
-          </span>
-        )}
-      </div>
+      {prominentTitle ? (
+        <div
+          className="pb-2 mb-2 border-b-[3px] flex items-end justify-between"
+          style={{ borderColor: accentColor }}
+        >
+          <div>
+            <h2 className="font-bold text-2xl uppercase tracking-widest" style={{ color: accentColor }}>
+              {shortName}
+            </h2>
+            <p className="text-text-dim text-xs mt-1 uppercase tracking-widest">Forward Curve &amp; Market Data</p>
+          </div>
+          {uploadedAt && report && (
+            <span className="text-text-dim text-xs pb-1">
+              {report.source_filename} · uploaded {uploadedAt}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
+            {productName} — Forward Curve &amp; Market Data
+          </h2>
+          {uploadedAt && report && (
+            <span className="text-text-dim text-xs">
+              {report.source_filename} · uploaded {uploadedAt}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Drop Zone — only in full mode (Products Data tab) */}
       {!readOnly && (
