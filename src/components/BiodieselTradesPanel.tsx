@@ -53,6 +53,9 @@ interface BiodieselTradeReport {
   };
   total_volume: number;
   total_trades: number;
+  diff_trade_count?: number;
+  flat_trade_count?: number;
+  spread_trade_count?: number;
   outright_volume: number;
   spread_volume: number;
   time_spread_volume: number;
@@ -261,7 +264,17 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
         <>
           {/* Metric Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <MetricCard label="Total Trades" value={report.total_trades.toLocaleString()} />
+            <MetricCard
+              label="Total Trades"
+              value={report.total_trades.toLocaleString()}
+              sub={
+                report.diff_trade_count != null &&
+                report.flat_trade_count != null &&
+                report.spread_trade_count != null
+                  ? `${report.diff_trade_count} Diffs · ${report.flat_trade_count} Flats · ${report.spread_trade_count} Spreads`
+                  : undefined
+              }
+            />
             <MetricCard label="Diff Outright Volume" value={`${report.outright_volume.toLocaleString()}`} sub="lots (no spread)" />
             <MetricCard label="Time Spread Volume" value={`${(report.time_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
             <MetricCard label="Product Spread Volume" value={`${(report.product_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
