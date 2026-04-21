@@ -28,6 +28,18 @@ interface TimeSpread {
   time: string;
 }
 
+interface FlatTimeSpread {
+  spread_id: string;
+  product: string;
+  leg1: string;
+  leg1_price: number;
+  leg2: string;
+  leg2_price: number;
+  spread_value: number;
+  lots: number;
+  time: string;
+}
+
 interface ProductSpreadLeg {
   product: string;
   delivery: string;
@@ -50,16 +62,20 @@ interface BiodieselTradeReport {
   spreads_analysis: {
     time_spreads: TimeSpread[];
     product_spreads: ProductSpread[];
+    flat_time_spreads?: FlatTimeSpread[];
   };
   total_volume: number;
   total_trades: number;
   diff_trade_count?: number;
   flat_trade_count?: number;
+  diff_spread_trade_count?: number;
+  flat_spread_trade_count?: number;
   spread_trade_count?: number;
   outright_volume: number;
   spread_volume: number;
   time_spread_volume: number;
   product_spread_volume: number;
+  flat_spread_volume?: number;
   flat_volume: number;
   go_settlement: number | null;
   uploaded_at: string | null;
@@ -211,6 +227,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
   const recap = report?.recap_by_delivery ?? [];
   const timeSpreads = report?.spreads_analysis?.time_spreads ?? [];
   const productSpreads = report?.spreads_analysis?.product_spreads ?? [];
+  const flatTimeSpreads = report?.spreads_analysis?.flat_time_spreads ?? [];
 
   // Group recap by product for visual grouping
   const recapProducts = [...new Set(recap.map((r) => r.product))];
@@ -270,15 +287,16 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
               sub={
                 report.diff_trade_count != null &&
                 report.flat_trade_count != null &&
-                report.spread_trade_count != null
-                  ? `${report.diff_trade_count} Diffs · ${report.flat_trade_count} Flats · ${report.spread_trade_count} Spreads`
+                report.diff_spread_trade_count != null &&
+                report.flat_spread_trade_count != null
+                  ? `${report.diff_trade_count} Diffs · ${report.flat_trade_count} Flats · ${report.diff_spread_trade_count} Diff Spreads · ${report.flat_spread_trade_count} Flat Spreads`
                   : undefined
               }
             />
             <MetricCard label="Diff Outright Volume" value={`${report.outright_volume.toLocaleString()}`} sub="lots (no spread)" />
             <MetricCard label="Time Spread Volume" value={`${(report.time_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
             <MetricCard label="Product Spread Volume" value={`${(report.product_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
-            <MetricCard label="Total Spread Volume" value={`${report.spread_volume.toLocaleString()}`} sub="lots (time + product)" />
+            <MetricCard label="Flat Spread Volume" value={`${(report.flat_spread_volume ?? 0).toLocaleString()}`} sub="lots" />
             <MetricCard label="GO Settlement" value={report.go_settlement != null ? `${report.go_settlement.toLocaleString()}` : '\u2014'} sub="$/MT" />
           </div>
 
@@ -439,6 +457,52 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                         <td className="text-right py-2 pl-2 text-text-dim text-xs">{s.time}</td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Flat Spreads (time spreads on flat biodiesel prices) */}
+          {flatTimeSpreads.length > 0 && (
+            <div className="bg-card border border-border rounded p-5">
+              <h3 className="text-text-dim text-xs font-semibold uppercase tracking-widest mb-4">
+                Flat Spreads
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
+                      <th className="text-left py-2 pr-3" data-print-hide>ID</th>
+                      <th className="text-left py-2 px-2">Product</th>
+                      <th className="text-left py-2 px-2">Leg 1</th>
+                      <th className="text-right py-2 px-2">Price</th>
+                      <th className="text-left py-2 px-2">Leg 2</th>
+                      <th className="text-right py-2 px-2">Price</th>
+                      <th className="text-right py-2 px-2">Spread</th>
+                      <th className="text-right py-2 px-2">Lots</th>
+                      <th className="text-right py-2 pl-2">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {flatTimeSpreads.map((s, i) => {
+                      const color = PRODUCT_COLORS[s.product] ?? '#888';
+                      return (
+                        <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
+                          <td className="py-2 pr-3 text-text-dim text-xs" data-print-hide>{s.spread_id}</td>
+                          <td className="py-2 px-2 font-semibold" style={{ color }}>{s.product}</td>
+                          <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">{s.leg1_price.toFixed(2)}</td>
+                          <td className="py-2 px-2 text-text-primary">{s.leg2}</td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">{s.leg2_price.toFixed(2)}</td>
+                          <td className={`text-right py-2 px-2 font-mono font-semibold ${s.spread_value >= 0 ? 'text-positive' : 'text-negative'}`}>
+                            {s.spread_value >= 0 ? `+${s.spread_value.toFixed(2)}` : s.spread_value.toFixed(2)}
+                          </td>
+                          <td className="text-right py-2 px-2 font-mono text-text-primary">{s.lots}</td>
+                          <td className="text-right py-2 pl-2 text-text-dim text-xs">{s.time}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
