@@ -223,14 +223,14 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
             </h2>
             <p className="text-text-dim text-xs mt-0.5">Trades, Recap &amp; Spreads</p>
           </div>
-          {uploadedAt && <span className="text-text-dim text-xs pb-1">uploaded {uploadedAt}</span>}
+          {uploadedAt && <span data-print-hide className="text-text-dim text-xs pb-1">uploaded {uploadedAt}</span>}
         </div>
       ) : (
         <div className="flex items-center justify-between">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
             ICE Biodiesel Diff Swaps — Trades, Recap &amp; Spreads
           </h2>
-          {uploadedAt && <span className="text-text-dim text-xs">uploaded {uploadedAt}</span>}
+          {uploadedAt && <span data-print-hide className="text-text-dim text-xs">uploaded {uploadedAt}</span>}
         </div>
       )}
 

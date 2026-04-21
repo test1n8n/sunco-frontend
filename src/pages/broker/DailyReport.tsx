@@ -778,8 +778,11 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       <BiodieselTradesPanel readOnly prominentTitle />
 
       {/* ═══════════════════════════════════════════════════════════════════
-          5 — DIFF & FLAT ANALYSIS — order: UCOME, HVO, FAME0, RME, SAF
+          5 — DIFF & FLAT PRICE ANALYSIS — order: UCOME, HVO, FAME0, RME, SAF
           ═══════════════════════════════════════════════════════════════════ */}
+      <div data-section="diff-flat-analysis">
+        <SectionHeader title="Diff & Flat Price Analysis" subtitle="Per-product diff vs flat pricing — UCOME, HVO, FAME0, RME, SAF" />
+      </div>
       {(() => {
         const ORDER = ['UCOME', 'HVO', 'FAME0', 'RME', 'SAF'];
         const byName = new Map(COMBINED_PRODUCT_GROUPS.map((g) => [g.name, g]));

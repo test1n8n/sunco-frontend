@@ -251,29 +251,19 @@ export default function CombinedProductPanel({ group, readOnly = false, prominen
       {/* Header */}
       {prominentTitle ? (
         <div
-          className="pb-2 mb-2 border-b-[3px] flex items-end justify-between"
+          className="pb-2 mb-2 border-b-[3px]"
           style={{ borderColor: group.diffColor }}
         >
-          <div>
-            <h2 className="font-bold text-2xl uppercase tracking-widest" style={{ color: group.diffColor }}>
-              {group.name}
-            </h2>
-            <p className="text-text-dim text-xs mt-1 uppercase tracking-widest">Diff &amp; Flat Analysis</p>
-          </div>
-          <div className="flex flex-col items-end gap-0.5 text-text-dim text-xs pb-1">
-            {diffReport?.source_filename && <span>Diff: {diffReport.source_filename}</span>}
-            {flatReport?.source_filename && <span>Flat: {flatReport.source_filename}</span>}
-          </div>
+          <h2 className="font-bold text-2xl uppercase tracking-widest" style={{ color: group.diffColor }}>
+            {group.name}
+          </h2>
+          <p className="text-text-dim text-xs mt-1 uppercase tracking-widest">Diff &amp; Flat Price Analysis</p>
         </div>
       ) : (
         <div className="flex items-center justify-between">
           <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest">
-            {group.name} — Diff &amp; Flat Analysis
+            {group.name} — Diff &amp; Flat Price Analysis
           </h2>
-          <div className="flex gap-3 text-text-dim text-xs">
-            {diffReport?.source_filename && <span>Diff: {diffReport.source_filename}</span>}
-            {flatReport?.source_filename && <span>Flat: {flatReport.source_filename}</span>}
-          </div>
         </div>
       )}
 
