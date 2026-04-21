@@ -41,9 +41,9 @@ function formatPubDate(iso: string): string {
 /** Reusable section header component */
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="pb-2 mb-1 border-b border-border/60">
-      <h2 className="text-text-primary font-semibold text-sm uppercase tracking-widest">{title}</h2>
-      {subtitle && <p className="text-text-dim text-[10px] mt-0.5">{subtitle}</p>}
+    <div className="pb-2 mb-2 border-b-2 border-accent/60">
+      <h2 className="text-text-primary font-bold text-base uppercase tracking-widest">{title}</h2>
+      {subtitle && <p className="text-text-dim text-xs mt-0.5">{subtitle}</p>}
     </div>
   );
 }
@@ -390,6 +390,8 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
   const [notFound, setNotFound] = useState(false);
   const [brokerNotes, setBrokerNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [marketCommentary, setMarketCommentary] = useState('');
+  const [savingCommentary, setSavingCommentary] = useState(false);
   const [sendingToClients, setSendingToClients] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshStep, setRefreshStep] = useState('');
@@ -415,6 +417,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         } else {
           setReport(data);
           setBrokerNotes(data.broker_notes ?? '');
+          setMarketCommentary(data.market_commentary ?? '');
           // Fetch price panel in parallel (non-blocking)
           fetch(`${API_BASE_URL}/price-panel/latest`, {
             headers: { 'X-API-Key': API_KEY },
@@ -429,6 +432,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         setFetchError(msg);
         setReport(MOCK_REPORT);
         setBrokerNotes(MOCK_REPORT.broker_notes ?? '');
+        setMarketCommentary(MOCK_REPORT.market_commentary ?? '');
         setUsedMock(true);
       } finally {
         setLoading(false);
@@ -469,6 +473,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
               if (latest) {
                 setReport(latest);
                 setBrokerNotes(latest.broker_notes ?? '');
+                setMarketCommentary(latest.market_commentary ?? '');
                 setNotFound(false);
                 setUsedMock(false);
               }
@@ -517,6 +522,28 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       showToast('error', `Failed to save notes: ${msg}`);
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const handleSaveCommentary = async () => {
+    if (!report) return;
+    setSavingCommentary(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/report/${report.report_date}/commentary`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+        body: JSON.stringify({ market_commentary: marketCommentary }),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || `HTTP ${res.status}`);
+      }
+      showToast('success', 'Market commentary saved.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      showToast('error', `Failed to save commentary: ${msg}`);
+    } finally {
+      setSavingCommentary(false);
     }
   };
 
@@ -573,7 +600,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
   // ── News data (new 4-section architecture — no old format fallback) ──────
   const marketMoving = report.market_moving ?? [];
   const newsByRegion = report.news_by_region ?? {};
-  const upcomingEvents = report.upcoming_events ?? [];
+  // Note: upcoming_events (plain-text) section removed — we now show upcoming_key_dates only
   const hasAnyRegionalNews = Object.values(newsByRegion).some((items: unknown) => Array.isArray(items) && items.length > 0);
 
   const hasSDOutlook =
@@ -691,18 +718,46 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       <FlatPricesCard panel={panel} />
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 1 — HEADLINE SUMMARY
-          3-4 factual sentences. The 10-second scan.
+          1 — MARKET COMMENTARY (analyst-written, manual — not AI)
           ═══════════════════════════════════════════════════════════════════ */}
-      {report.headline_summary && (
-        <div className="bg-surface/60 border-l-4 border-accent rounded p-5">
-          <SectionHeader title="Headlines" subtitle="Key events — last 48 hours" />
-          <p className="text-text-primary text-sm leading-relaxed font-medium mt-3">{report.headline_summary}</p>
+      {isBroker ? (
+        <div className="bg-card border border-border border-l-4 border-l-accent rounded p-5" data-section="market-commentary">
+          <SectionHeader title="Market Commentary" subtitle="Written by Sunco analysts" />
+          <textarea
+            value={marketCommentary}
+            onChange={(e) => setMarketCommentary(e.target.value)}
+            rows={6}
+            placeholder="Write today's market commentary here — your own analysis, views, and colour from the desk."
+            className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-none mt-3"
+          />
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={() => void handleSaveCommentary()}
+              disabled={savingCommentary}
+              className="bg-accent text-surface px-5 py-2 rounded text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2 uppercase tracking-widest"
+            >
+              {savingCommentary ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-surface border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Commentary'
+              )}
+            </button>
+          </div>
         </div>
+      ) : (
+        marketCommentary.trim() && (
+          <div className="bg-card border border-border border-l-4 border-l-accent rounded p-5" data-section="market-commentary">
+            <SectionHeader title="Market Commentary" subtitle="Written by Sunco analysts" />
+            <p className="text-text-primary text-sm leading-relaxed mt-3 whitespace-pre-wrap">{marketCommentary}</p>
+          </div>
+        )
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          MARKET SUMMARY
+          2 — MARKET SUMMARY (AI)
           ═══════════════════════════════════════════════════════════════════ */}
       <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
         <SectionHeader title="Market Summary" subtitle="ICE settlements, volumes, spreads" />
@@ -710,8 +765,39 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 2 — MARKET-MOVING (high-relevance articles)
-          Built by code from Haiku classification. Colored event-type cards.
+          3 — UPCOMING EVENTS (the dated Key Dates version)
+          Duplicate plain-text "Upcoming Events" section removed.
+          ═══════════════════════════════════════════════════════════════════ */}
+      {report.upcoming_key_dates && report.upcoming_key_dates.length > 0 && (
+        <div data-section="key-dates">
+          <KeyDatesCard dates={report.upcoming_key_dates} />
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          4 — ICE BIODIESEL DIFF SWAPS — Trades, Recap & Spreads
+          ═══════════════════════════════════════════════════════════════════ */}
+      <BiodieselTradesPanel readOnly />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          5 — DIFF & FLAT ANALYSIS — order: UCOME, HVO, FAME0, RME, SAF
+          ═══════════════════════════════════════════════════════════════════ */}
+      {(() => {
+        const ORDER = ['UCOME', 'HVO', 'FAME0', 'RME', 'SAF'];
+        const byName = new Map(COMBINED_PRODUCT_GROUPS.map((g) => [g.name, g]));
+        const ordered = ORDER.map((n) => byName.get(n)).filter(Boolean) as typeof COMBINED_PRODUCT_GROUPS;
+        return ordered.map((group) => (
+          <CombinedProductPanel key={group.name} group={group} readOnly />
+        ));
+      })()}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          6 — ICE LS GASOIL — Forward Curve & Market Data
+          ═══════════════════════════════════════════════════════════════════ */}
+      <GasoilReportPanel readOnly reportDate={report.report_date} />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          7 — MARKET-MOVING (high-relevance articles)
           ═══════════════════════════════════════════════════════════════════ */}
       {marketMoving.length > 0 && (
         <div className="space-y-3" data-section="market-moving">
@@ -747,7 +833,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3 — NEWS BY REGION
+          8 — NEWS BY REGION
           ═══════════════════════════════════════════════════════════════════ */}
       {hasAnyRegionalNews && (
         <div className="space-y-4" data-section="news">
@@ -795,59 +881,20 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         </div>
       )}
 
-      {/* SAF note */}
-      {report.saf_note && (
-        <p className="text-text-dim text-xs italic border-l-2 border-border pl-3">
-          <span className="font-semibold text-text-dim uppercase tracking-wide text-xs">SAF pricing note:</span>{' '}
-          {report.saf_note}
-        </p>
-      )}
-
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 4 — UPCOMING EVENTS
-          Date + event calendar. No commentary.
+          9 — SUPPLY/DEMAND + MACRO SIGNALS + MARKET OUTLOOK
           ═══════════════════════════════════════════════════════════════════ */}
-      {upcomingEvents.length > 0 && (
-        <div className="bg-card border border-border rounded p-4" data-section="upcoming-events">
-          <SectionHeader title="Upcoming Events" />
-          <div className="divide-y divide-border/50">
-            {upcomingEvents.map((ev, idx) => (
-              <div key={idx} className="py-2 flex items-baseline gap-3">
-                <span className="text-accent font-mono font-bold text-xs shrink-0 min-w-[90px]">{ev.date}</span>
-                <span className="text-text-primary text-sm">{ev.event}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── LS Gasoil Charts (read-only — data from Products Data tab) ───── */}
-      <GasoilReportPanel readOnly reportDate={report.report_date} />
-
-      {/* ── Combined Diff + Flat Charts (read-only — data from Products Data tab) ── */}
-      {COMBINED_PRODUCT_GROUPS.map((group) => (
-        <CombinedProductPanel key={group.name} group={group} readOnly />
-      ))}
-
-      {/* SAF is now part of COMBINED_PRODUCT_GROUPS above (SAR diff + ZAF flat) */}
-
-      {/* ── Biodiesel Trades (read-only — data from Products Data tab) ────── */}
-      <BiodieselTradesPanel readOnly />
-
-      {/* ── Supply & Demand Outlook ───────────────────────────────────────── */}
       {hasSDOutlook && (
         <div data-section="supply-demand">
           <SupplyDemandCard outlook={report.supply_demand_outlook!} />
         </div>
       )}
 
-      {/* ── Macro Signals ─────────────────────────────────────────────────── */}
       <div data-section="macro-signals">
         <SectionHeader title="Macro Signals" />
         <MacroSignalsTable signals={report.macro_signals} />
       </div>
 
-      {/* ── Market Outlook ────────────────────────────────────────────────── */}
       <div>
         <SectionHeader title="Market Outlook" />
         <div className="grid gap-4 md:grid-cols-2">
@@ -856,12 +903,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         </div>
       </div>
 
-      {/* ── Upcoming Key Dates ────────────────────────────────────────────── */}
-      {report.upcoming_key_dates && report.upcoming_key_dates.length > 0 && (
-        <div data-section="key-dates">
-          <KeyDatesCard dates={report.upcoming_key_dates} />
-        </div>
-      )}
+      {/* SAF pricing note + duplicate plain-text Upcoming Events removed. */}
 
       {/* ── Broker Notes (broker only) ─────────────────────────────────── */}
       {isBroker && (

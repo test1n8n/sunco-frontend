@@ -57,7 +57,7 @@ export default function App() {
           path="/broker/daily"
           element={
             <ProtectedRoute requiredRole="broker">
-              <Layout pageTitle="Daily Report">
+              <Layout pageTitle="Morning Daily Report">
                 <DailyReport role="broker" />
               </Layout>
             </ProtectedRoute>

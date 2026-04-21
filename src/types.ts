@@ -86,6 +86,7 @@ export interface Report {
   upcoming_key_dates?: KeyDate[];
   saf_note: string;
   broker_notes: string;
+  market_commentary?: string;
   generated_at: string;
   version: string;
 }
