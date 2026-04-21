@@ -1,34 +1,10 @@
-import { useState, useEffect } from 'react';
-import type { PricePanel } from '../../types';
-import { API_BASE_URL, API_KEY } from '../../config';
 import GasoilReportPanel from '../../components/GasoilReportPanel';
 import CombinedProductPanel from '../../components/CombinedProductPanel';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
 import DiffRecapChart from '../../components/DiffRecapChart';
-import PricePanelForm from '../../components/PricePanelForm';
 import { COMBINED_PRODUCT_GROUPS } from '../../productConfig';
 
 export default function ProductsData() {
-  const [panel, setPanel] = useState<PricePanel | null>(null);
-  const [reportDate, setReportDate] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
-
-  // Load latest price panel on mount
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/price-panel/latest`, {
-      headers: { 'X-API-Key': API_KEY },
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then((p: PricePanel | null) => {
-        if (p) {
-          setPanel(p);
-          setReportDate(p.report_date);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   return (
     <div className="max-w-4xl space-y-6">
 
@@ -61,23 +37,8 @@ export default function ProductsData() {
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Section 5: Biodiesel trade screenshots */}
+      {/* Section 4: Biodiesel trade screenshots */}
       <BiodieselTradesPanel />
-
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-      {/* Section 4: Biodiesel diff entry + flat prices */}
-      <div>
-        <h2 className="text-text-dim font-semibold text-xs uppercase tracking-widest mb-4">
-          Biodiesel Settlements
-        </h2>
-        <PricePanelForm
-          panel={panel}
-          reportDate={reportDate}
-          onDiffsUpdated={setPanel}
-        />
-      </div>
 
     </div>
   );
