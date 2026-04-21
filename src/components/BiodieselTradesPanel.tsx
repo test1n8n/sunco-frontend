@@ -227,9 +227,23 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
     : null;
 
   const recap = report?.recap_by_delivery ?? [];
-  const timeSpreads = report?.spreads_analysis?.time_spreads ?? [];
   const productSpreads = report?.spreads_analysis?.product_spreads ?? [];
-  const flatTimeSpreads = report?.spreads_analysis?.flat_time_spreads ?? [];
+
+  // Sort time-spread tables: group by product (highest total lots first),
+  // then within each product group sort by lots descending.
+  const sortTimeSpreads = <T extends { product: string; lots: number }>(rows: T[]): T[] => {
+    const productTotals = new Map<string, number>();
+    for (const r of rows) {
+      productTotals.set(r.product, (productTotals.get(r.product) ?? 0) + r.lots);
+    }
+    return [...rows].sort((a, b) => {
+      const diff = (productTotals.get(b.product) ?? 0) - (productTotals.get(a.product) ?? 0);
+      if (diff !== 0) return diff;
+      return b.lots - a.lots;
+    });
+  };
+  const timeSpreads = sortTimeSpreads(report?.spreads_analysis?.time_spreads ?? []);
+  const flatTimeSpreads = sortTimeSpreads(report?.spreads_analysis?.flat_time_spreads ?? []);
 
   // Group recap by product for visual grouping
   const recapProducts = [...new Set(recap.map((r) => r.product))];
