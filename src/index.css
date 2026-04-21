@@ -195,62 +195,35 @@
   .recharts-text,
   .recharts-cartesian-axis-tick-value { fill: #333 !important; }
 
-  /* ── Page breaks — keep titles glued to content, new page per section ──── */
-  /* 1) Titles never orphan at the bottom of a page */
-  h1, h2, h3 {
+  /* ── Page breaks — keep titles glued to their content ──────────────────── */
+  /* Section headers should never orphan from what follows */
+  h2, h3 {
     break-after: avoid;
     page-break-after: avoid;
   }
 
-  /* 2) SectionHeader (prominent: 2–3px colored bottom-border) — same rule */
+  /* SectionHeader (prominent: 2px accent bottom-border) — no orphan breaks */
   [class*="border-b-2"][class*="border-accent"],
   [class*="border-b-\\[3px\\]"] {
     break-after: avoid;
     page-break-after: avoid;
   }
 
-  /* 3) Each top-level section starts on a new page. This is the rule the
-        browser can always honor (unlike break-inside on tall sections).
-        First section stays on page 1 — no blank leading page. */
+  /* Never break INSIDE a tagged section — push the whole thing to next page
+     if it doesn't fit. Tall sections (multi-card product panels) can still
+     split across pages at card boundaries thanks to break-inside: avoid on
+     individual cards further up in this file. */
   [data-section] {
-    break-before: page;
-    page-break-before: always;
-  }
-  [data-section]:first-of-type {
-    break-before: auto;
-    page-break-before: auto;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
   }
 
-  /* 4) First child(ren) of a section glue to its title */
+  /* First element after a section header sticks to it */
   [data-section] > :first-child,
   [data-section] > :nth-child(2) {
     break-before: avoid;
     page-break-before: avoid;
   }
-
-  /* ── Preserve inline colors in print (product names, value/border colors) ── */
-  /* The blanket * { color: #1a1a1a !important } above kills inline styles.
-     Explicitly re-allow them on elements that carry style="color:..." */
-  h1[style*="color"],
-  h2[style*="color"],
-  h3[style*="color"],
-  td[style*="color"],
-  span[style*="color"],
-  div[style*="color"],
-  p[style*="color"],
-  a[style*="color"] {
-    color: inherit !important;
-  }
-
-  /* Preserve inline border colors (e.g. the 3px bottom-border under each
-     per-product title that uses style={{ borderColor: group.diffColor }}) */
-  div[style*="border"],
-  tr[style*="border"] {
-    border-color: inherit !important;
-  }
-
-  /* ── Columns marked to hide in print (e.g. Spread ID column) ─────────── */
-  .print-hide-col { display: none !important; }
 
   /* ── Links ─────────────────────────────────────────────────────────────── */
   a[href^="http"]::after { content: none !important; }
