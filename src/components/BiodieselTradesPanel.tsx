@@ -351,7 +351,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
-                      <th className="text-left py-2 pr-3">ID</th>
+                      <th className="text-left py-2 pr-3" data-print-hide>ID</th>
                       <th className="text-left py-2 px-2">Product</th>
                       <th className="text-left py-2 px-2">Leg 1</th>
                       <th className="text-right py-2 px-2">Price</th>
@@ -367,7 +367,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                       const color = PRODUCT_COLORS[s.product] ?? '#888';
                       return (
                         <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
-                          <td className="py-2 pr-3 text-text-dim text-xs">{s.spread_id}</td>
+                          <td className="py-2 pr-3 text-text-dim text-xs" data-print-hide>{s.spread_id}</td>
                           <td className="py-2 px-2 font-semibold" style={{ color }}>{s.product}</td>
                           <td className="py-2 px-2 text-text-primary">{s.leg1}</td>
                           <td className="text-right py-2 px-2 font-mono text-text-primary">{s.leg1_price.toFixed(2)}</td>
@@ -397,7 +397,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-text-dim text-xs uppercase tracking-widest border-b border-border">
-                      <th className="text-left py-2 pr-3">ID</th>
+                      <th className="text-left py-2 pr-3" data-print-hide>ID</th>
                       <th className="text-left py-2 px-2">Delivery</th>
                       <th className="text-left py-2 px-2">Legs</th>
                       <th className="text-right py-2 px-2">Lots</th>
@@ -407,7 +407,7 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                   <tbody>
                     {productSpreads.map((s, i) => (
                       <tr key={i} className="border-b border-border/50 hover:bg-surface/30">
-                        <td className="py-2 pr-3 text-text-dim text-xs">{s.spread_id}</td>
+                        <td className="py-2 pr-3 text-text-dim text-xs" data-print-hide>{s.spread_id}</td>
                         <td className="py-2 px-2 text-text-primary">{s.delivery}</td>
                         <td className="py-2 px-2">
                           <div className="flex flex-wrap gap-2">
