@@ -344,13 +344,13 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
                     {recapProducts.map((product) => {
                       const rows = recap.filter((r) => r.product === product);
                       const color = PRODUCT_COLORS[product] ?? '#888';
-                      return rows.map((row, i) => (
+                      return rows.map((row) => (
                         <tr
                           key={`${product}-${row.delivery}`}
                           className="border-b border-border/50 hover:bg-surface/30"
                         >
                           <td className="py-2 pr-3 font-semibold" style={{ color }}>
-                            {i === 0 ? product : ''}
+                            {product}
                           </td>
                           <td className="py-2 px-2 text-text-primary">{row.delivery}</td>
                           <td className="text-right py-2 px-2 font-mono text-text-primary font-semibold">
