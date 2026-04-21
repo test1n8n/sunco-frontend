@@ -68,16 +68,17 @@
     text-shadow: none !important;
   }
 
-  /* ── Restore colors that need to survive print ─────────────────────────── */
-  /* Product name colors set via inline style */
-  td[style*="color"], span[style*="color"], tr[style*="border"],
-  h1[style*="color"], h2[style*="color"], h3[style*="color"] {
-    color: inherit !important;
-  }
-  /* Colored left-border on section titles (product diff colors) */
-  [style*="border-color"], [style*="borderColor"] {
-    border-color: inherit !important;
-  }
+  /* ── Restore product colors that need to survive print ────────────────── */
+  /* The blanket `* { color: #1a1a1a !important }` above beats inline styles,
+     so we pin concrete per-product colors here. rgb values match
+     productConfig.ts (UCOME red, HVO violet, FAME0 green, RME amber,
+     SAF cyan, LS Gasoil indigo). */
+  [style*="239, 68, 68"]  { color: rgb(239, 68, 68)  !important; border-color: rgb(239, 68, 68)  !important; }
+  [style*="139, 92, 246"] { color: rgb(139, 92, 246) !important; border-color: rgb(139, 92, 246) !important; }
+  [style*="16, 185, 129"] { color: rgb(16, 185, 129) !important; border-color: rgb(16, 185, 129) !important; }
+  [style*="245, 158, 11"] { color: rgb(245, 158, 11) !important; border-color: rgb(245, 158, 11) !important; }
+  [style*="8, 145, 178"]  { color: rgb(8, 145, 178)  !important; border-color: rgb(8, 145, 178)  !important; }
+  [style*="99, 102, 241"] { color: rgb(99, 102, 241) !important; border-color: rgb(99, 102, 241) !important; }
   /* Positive/negative */
   [class*="text-positive"] { color: #15803d !important; }
   [class*="text-negative"] { color: #dc2626 !important; }
