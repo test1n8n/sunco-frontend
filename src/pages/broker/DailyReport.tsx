@@ -633,12 +633,10 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       )}
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-border">
+      <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-border">
         <div>
-          <h1 className="text-text-primary font-bold text-2xl md:text-3xl tracking-tight mb-2">
-            {formatDate(report.report_date)}
-          </h1>
-          <div data-print-hide className="flex items-center gap-2 flex-wrap">
+          <p className="text-text-dim text-xs tracking-widest uppercase mb-1">{formatDate(report.report_date)}</p>
+          <div className="flex items-center gap-2 flex-wrap">
             {report.short_term_outlook?.bias && <BiasBadge bias={report.short_term_outlook.bias} />}
             <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
             {report.data_confidence && (
@@ -649,7 +647,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
             )}
           </div>
           {report.generated_at && (
-            <p data-print-hide className="text-text-dim text-xs mt-1.5">
+            <p className="text-text-dim text-xs mt-1.5">
               Generated {new Date(report.generated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
             </p>
           )}
@@ -759,7 +757,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ═══════════════════════════════════════════════════════════════════
           2 — MARKET SUMMARY (AI)
           ═══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5" data-section="market-summary">
+      <div className="bg-card border border-border border-l-2 border-l-accent rounded p-5">
         <SectionHeader title="Market Summary" subtitle="ICE settlements, volumes, spreads" />
         <p className="text-text-primary text-sm leading-relaxed mt-3">{report.market_summary}</p>
       </div>
@@ -803,7 +801,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
           HEADLINES (AI) — 3-4 factual sentences, the 10-second scan.
           ═══════════════════════════════════════════════════════════════════ */}
       {report.headline_summary && (
-        <div className="bg-surface/60 border-l-4 border-accent rounded p-5" data-section="headlines">
+        <div className="bg-surface/60 border-l-4 border-accent rounded p-5">
           <SectionHeader title="Headlines" subtitle="Key events — last 48 hours" />
           <p className="text-text-primary text-sm leading-relaxed font-medium mt-3">{report.headline_summary}</p>
         </div>
@@ -908,7 +906,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
         <MacroSignalsTable signals={report.macro_signals} />
       </div>
 
-      <div data-section="market-outlook">
+      <div>
         <SectionHeader title="Market Outlook" />
         <div className="grid gap-4 md:grid-cols-2">
           <OutlookCard outlook={report.short_term_outlook} />
@@ -920,7 +918,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
 
       {/* ── Broker Notes (broker only) ─────────────────────────────────── */}
       {isBroker && (
-        <div className="bg-card border border-border rounded p-5" data-section="broker-notes">
+        <div className="bg-card border border-border rounded p-5">
           <SectionHeader title="Broker Notes" subtitle="Internal commentary — visible to brokers only" />
           <textarea
             value={brokerNotes}
