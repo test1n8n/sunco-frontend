@@ -439,6 +439,17 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
     void loadReport();
   }, []);
 
+  // Force Recharts to re-measure before print so charts render at full print width
+  useEffect(() => {
+    const trigger = () => window.dispatchEvent(new Event('resize'));
+    window.addEventListener('beforeprint', trigger);
+    window.addEventListener('afterprint', trigger);
+    return () => {
+      window.removeEventListener('beforeprint', trigger);
+      window.removeEventListener('afterprint', trigger);
+    };
+  }, []);
+
   const handleRefresh = async () => {
     if (refreshing) return;
     setRefreshing(true);
@@ -635,22 +646,24 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-border">
         <div>
-          <p className="text-text-dim text-xs tracking-widest uppercase mb-1">{formatDate(report.report_date)}</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            {report.short_term_outlook?.bias && <BiasBadge bias={report.short_term_outlook.bias} />}
-            <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
-            {report.data_confidence && (
-              <>
-                <span className="text-text-dim text-xs">·</span>
-                <ConfidenceBadge confidence={report.data_confidence} />
-              </>
+          <h1 className="text-text-primary font-bold text-3xl mb-2">{formatDate(report.report_date)}</h1>
+          <div data-print-hide>
+            <div className="flex items-center gap-2 flex-wrap">
+              {report.short_term_outlook?.bias && <BiasBadge bias={report.short_term_outlook.bias} />}
+              <span className="text-xs text-text-dim uppercase tracking-widest">Short-term bias</span>
+              {report.data_confidence && (
+                <>
+                  <span className="text-text-dim text-xs">·</span>
+                  <ConfidenceBadge confidence={report.data_confidence} />
+                </>
+              )}
+            </div>
+            {report.generated_at && (
+              <p className="text-text-dim text-xs mt-1.5">
+                Generated {new Date(report.generated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
+              </p>
             )}
           </div>
-          {report.generated_at && (
-            <p className="text-text-dim text-xs mt-1.5">
-              Generated {new Date(report.generated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
-            </p>
-          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {isBroker && (

@@ -122,8 +122,8 @@ export default function EveningReport({ role = 'broker' }: { role?: 'broker' | '
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-border">
         <div>
-          <p className="text-text-dim text-xs tracking-widest uppercase mb-1">{formatDate(report.report_date)}</p>
-          <p className="text-text-primary text-sm uppercase tracking-widest font-semibold">Daily Evening Report</p>
+          <h1 className="text-text-primary font-bold text-3xl mb-2">{formatDate(report.report_date)}</h1>
+          <p className="text-text-dim text-xs uppercase tracking-widest font-semibold" data-print-hide>Daily Evening Report</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

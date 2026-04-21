@@ -70,8 +70,13 @@
 
   /* ── Restore colors that need to survive print ─────────────────────────── */
   /* Product name colors set via inline style */
-  td[style*="color"], span[style*="color"], tr[style*="border"] {
+  td[style*="color"], span[style*="color"], tr[style*="border"],
+  h1[style*="color"], h2[style*="color"], h3[style*="color"] {
     color: inherit !important;
+  }
+  /* Colored left-border on section titles (product diff colors) */
+  [style*="border-color"], [style*="borderColor"] {
+    border-color: inherit !important;
   }
   /* Positive/negative */
   [class*="text-positive"] { color: #15803d !important; }
@@ -181,13 +186,17 @@
   }
 
   /* ── Charts ────────────────────────────────────────────────────────────── */
-  .recharts-wrapper {
+  /* Force a fixed pixel width so Recharts ResponsiveContainer doesn't render
+     at 0×0 due to print-mode resize timing. 680px fits inside A4 margins. */
+  .recharts-wrapper,
+  .recharts-responsive-container {
+    width: 680px !important;
+    max-width: 680px !important;
     break-inside: avoid;
     overflow: visible !important;
   }
-
-  .recharts-responsive-container {
-    overflow: visible !important;
+  .recharts-wrapper svg {
+    width: 680px !important;
   }
 
   .recharts-cartesian-grid-bg { fill: transparent !important; }
