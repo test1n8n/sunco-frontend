@@ -797,6 +797,16 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       <GasoilReportPanel readOnly reportDate={report.report_date} />
 
       {/* ═══════════════════════════════════════════════════════════════════
+          HEADLINES (AI) — 3-4 factual sentences, the 10-second scan.
+          ═══════════════════════════════════════════════════════════════════ */}
+      {report.headline_summary && (
+        <div className="bg-surface/60 border-l-4 border-accent rounded p-5">
+          <SectionHeader title="Headlines" subtitle="Key events — last 48 hours" />
+          <p className="text-text-primary text-sm leading-relaxed font-medium mt-3">{report.headline_summary}</p>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
           7 — MARKET-MOVING (high-relevance articles)
           ═══════════════════════════════════════════════════════════════════ */}
       {marketMoving.length > 0 && (
