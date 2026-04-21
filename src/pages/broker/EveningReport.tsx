@@ -4,6 +4,7 @@ import { API_BASE_URL, API_KEY } from '../../config';
 import Spinner from '../../components/Spinner';
 import { useToast, ToastContainer } from '../../components/Toast';
 import BiodieselTradesPanel from '../../components/BiodieselTradesPanel';
+import FlowSnapshot from '../../components/FlowSnapshot';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -189,7 +190,12 @@ export default function EveningReport({ role = 'broker' }: { role?: 'broker' | '
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          2 — ICE BIODIESEL DIFF SWAPS — same data as morning report
+          2 — FLOW SNAPSHOT — one-line-per-product narrative summary
+          ═══════════════════════════════════════════════════════════════════ */}
+      <FlowSnapshot />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          3 — ICE BIODIESEL DIFF SWAPS — same data as morning report
           ═══════════════════════════════════════════════════════════════════ */}
       <BiodieselTradesPanel readOnly prominentTitle />
     </div>

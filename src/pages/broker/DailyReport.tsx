@@ -788,7 +788,7 @@ export default function DailyReport({ role = 'broker' }: { role?: 'broker' | 'cl
       {/* ═══════════════════════════════════════════════════════════════════
           4 — ICE BIODIESEL DIFF SWAPS — Trades, Recap & Spreads
           ═══════════════════════════════════════════════════════════════════ */}
-      <BiodieselTradesPanel readOnly prominentTitle />
+      <BiodieselTradesPanel readOnly prominentTitle showFlowSnapshot printFlowSnapshot={false} />
 
       {/* ═══════════════════════════════════════════════════════════════════
           5 — DIFF & FLAT PRICE ANALYSIS — order: UCOME, HVO, FAME0, RME, SAF

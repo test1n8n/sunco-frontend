@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { API_BASE_URL, API_KEY } from '../config';
+import FlowSnapshot from './FlowSnapshot';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -344,9 +345,18 @@ function FileDropZone({
 interface Props {
   readOnly?: boolean;
   prominentTitle?: boolean;
+  /** Render the Flow Snapshot block above the metric cards. */
+  showFlowSnapshot?: boolean;
+  /** If false, Flow Snapshot is hidden in the PDF (on-screen only). */
+  printFlowSnapshot?: boolean;
 }
 
-export default function BiodieselTradesPanel({ readOnly = false, prominentTitle = false }: Props) {
+export default function BiodieselTradesPanel({
+  readOnly = false,
+  prominentTitle = false,
+  showFlowSnapshot = false,
+  printFlowSnapshot = true,
+}: Props) {
   const [report, setReport] = useState<BiodieselTradeReport | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -477,6 +487,9 @@ export default function BiodieselTradesPanel({ readOnly = false, prominentTitle 
 
       {report && (
         <>
+          {/* Flow Snapshot — narrative summary above the metric cards */}
+          {showFlowSnapshot && <FlowSnapshot printable={printFlowSnapshot} />}
+
           {/* Metric Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <MetricCard

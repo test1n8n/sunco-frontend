@@ -38,7 +38,7 @@ export default function ProductsData() {
       <div className="border-t border-border" />
 
       {/* Section 4: Biodiesel trade screenshots */}
-      <BiodieselTradesPanel />
+      <BiodieselTradesPanel showFlowSnapshot />
 
     </div>
   );
