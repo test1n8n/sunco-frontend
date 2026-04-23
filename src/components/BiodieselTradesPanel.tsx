@@ -157,14 +157,27 @@ interface CompactProductSpread {
 }
 
 /** Group product spreads sharing (delivery, sorted-set-of-leg-products) and
- *  aggregate per-product price H/L/VWAP and summed lots. */
+ *  aggregate per-product price H/L/VWAP and summed lots.
+ *
+ *  Defensive: filters out malformed legs (missing product name, NaN price
+ *  or lots) before grouping, and drops aggregated rows with fewer than 2
+ *  valid legs — a real product spread always has ≥2 distinct products,
+ *  so a 1-leg "product spread" is backend junk we hide from the UI. */
 function aggregateProductSpreads(rows: ProductSpread[]): CompactProductSpread[] {
+  const isValidLeg = (l: ProductSpreadLeg): boolean =>
+    typeof l.product === 'string' && l.product.trim().length > 0
+    && Number.isFinite(l.price)
+    && Number.isFinite(l.lots);
+
   const groups = new Map<string, { delivery: string; productsKey: string; rows: ProductSpread[] }>();
   for (const r of rows) {
-    const productsKey = [...new Set(r.legs.map(l => l.product))].sort().join(',');
+    const cleanLegs = r.legs.filter(isValidLeg);
+    if (cleanLegs.length < 2) continue; // drop junk rows before grouping
+    const cleaned: ProductSpread = { ...r, legs: cleanLegs };
+    const productsKey = [...new Set(cleanLegs.map(l => l.product))].sort().join(',');
     const k = `${r.delivery}|${productsKey}`;
     if (!groups.has(k)) groups.set(k, { delivery: r.delivery, productsKey, rows: [] });
-    groups.get(k)!.rows.push(r);
+    groups.get(k)!.rows.push(cleaned);
   }
   const out: CompactProductSpread[] = [];
   for (const g of groups.values()) {
@@ -173,6 +186,7 @@ function aggregateProductSpreads(rows: ProductSpread[]): CompactProductSpread[] 
     const perProduct = new Map<string, { prices: number[]; weights: number[] }>();
     for (const row of g.rows) {
       for (const leg of row.legs) {
+        if (!isValidLeg(leg)) continue;
         if (!perProduct.has(leg.product)) perProduct.set(leg.product, { prices: [], weights: [] });
         const entry = perProduct.get(leg.product)!;
         entry.prices.push(leg.price);
@@ -190,6 +204,7 @@ function aggregateProductSpreads(rows: ProductSpread[]): CompactProductSpread[] 
         priceVWAP: vwap,
       });
     }
+    if (legsSummary.length < 2) continue; // no real product spread → skip
     out.push({ delivery: g.delivery, legs: legsSummary, lots: totalLots, count: g.rows.length });
   }
   return out;
