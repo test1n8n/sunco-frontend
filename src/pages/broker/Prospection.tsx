@@ -52,6 +52,81 @@ type Tab = (typeof TABS)[number];
 
 const STATUSES = ['identified', 'contacted', 'meeting', 'proposal', 'won', 'lost'] as const;
 
+// ─── Continents ─────────────────────────────────────────────────────────────
+// Dropdown options (order matters — display order in the filter UI)
+const CONTINENTS = ['Europe', 'North America', 'South America', 'Asia', 'Africa', 'Oceania'] as const;
+type Continent = (typeof CONTINENTS)[number];
+
+// ISO-3166-1 alpha-2 → continent map. Conventions used here:
+//   RU, TR → Europe (political / trade block)
+//   AM, AZ, GE → Asia (geographic South Caucasus)
+//   CY → Europe (EU member)
+const CONTINENT_BY_ISO: Record<string, Continent> = {
+  // Europe
+  AD: 'Europe', AL: 'Europe', AT: 'Europe', BA: 'Europe', BE: 'Europe',
+  BG: 'Europe', BY: 'Europe', CH: 'Europe', CY: 'Europe', CZ: 'Europe',
+  DE: 'Europe', DK: 'Europe', EE: 'Europe', ES: 'Europe', FI: 'Europe',
+  FO: 'Europe', FR: 'Europe', GB: 'Europe', GG: 'Europe', GI: 'Europe',
+  GR: 'Europe', HR: 'Europe', HU: 'Europe', IE: 'Europe', IM: 'Europe',
+  IS: 'Europe', IT: 'Europe', JE: 'Europe', LI: 'Europe', LT: 'Europe',
+  LU: 'Europe', LV: 'Europe', MC: 'Europe', MD: 'Europe', ME: 'Europe',
+  MK: 'Europe', MT: 'Europe', NL: 'Europe', NO: 'Europe', PL: 'Europe',
+  PT: 'Europe', RO: 'Europe', RS: 'Europe', RU: 'Europe', SE: 'Europe',
+  SI: 'Europe', SK: 'Europe', SM: 'Europe', TR: 'Europe', UA: 'Europe',
+  VA: 'Europe', XK: 'Europe',
+
+  // North America (incl. Central America + Caribbean)
+  AG: 'North America', AI: 'North America', AW: 'North America', BB: 'North America',
+  BM: 'North America', BS: 'North America', BZ: 'North America', CA: 'North America',
+  CR: 'North America', CU: 'North America', CW: 'North America', DM: 'North America',
+  DO: 'North America', GD: 'North America', GL: 'North America', GP: 'North America',
+  GT: 'North America', HN: 'North America', HT: 'North America', JM: 'North America',
+  KN: 'North America', KY: 'North America', LC: 'North America', MF: 'North America',
+  MQ: 'North America', MS: 'North America', MX: 'North America', NI: 'North America',
+  PA: 'North America', PM: 'North America', PR: 'North America', SV: 'North America',
+  SX: 'North America', TC: 'North America', TT: 'North America', US: 'North America',
+  VC: 'North America', VG: 'North America', VI: 'North America', BL: 'North America',
+
+  // South America
+  AR: 'South America', BO: 'South America', BR: 'South America', CL: 'South America',
+  CO: 'South America', EC: 'South America', FK: 'South America', GF: 'South America',
+  GY: 'South America', PE: 'South America', PY: 'South America', SR: 'South America',
+  UY: 'South America', VE: 'South America',
+
+  // Asia (East, SE, South, Central, Middle East)
+  AE: 'Asia', AF: 'Asia', AM: 'Asia', AZ: 'Asia', BD: 'Asia',
+  BH: 'Asia', BN: 'Asia', BT: 'Asia', CN: 'Asia', GE: 'Asia',
+  HK: 'Asia', ID: 'Asia', IL: 'Asia', IN: 'Asia', IQ: 'Asia',
+  IR: 'Asia', JO: 'Asia', JP: 'Asia', KG: 'Asia', KH: 'Asia',
+  KP: 'Asia', KR: 'Asia', KW: 'Asia', KZ: 'Asia', LA: 'Asia',
+  LB: 'Asia', LK: 'Asia', MM: 'Asia', MN: 'Asia', MO: 'Asia',
+  MV: 'Asia', MY: 'Asia', NP: 'Asia', OM: 'Asia', PH: 'Asia',
+  PK: 'Asia', PS: 'Asia', QA: 'Asia', SA: 'Asia', SG: 'Asia',
+  SY: 'Asia', TH: 'Asia', TJ: 'Asia', TL: 'Asia', TM: 'Asia',
+  TW: 'Asia', UZ: 'Asia', VN: 'Asia', YE: 'Asia',
+
+  // Africa
+  AO: 'Africa', BF: 'Africa', BI: 'Africa', BJ: 'Africa', BW: 'Africa',
+  CD: 'Africa', CF: 'Africa', CG: 'Africa', CI: 'Africa', CM: 'Africa',
+  CV: 'Africa', DJ: 'Africa', DZ: 'Africa', EG: 'Africa', EH: 'Africa',
+  ER: 'Africa', ET: 'Africa', GA: 'Africa', GH: 'Africa', GM: 'Africa',
+  GN: 'Africa', GQ: 'Africa', GW: 'Africa', KE: 'Africa', KM: 'Africa',
+  LR: 'Africa', LS: 'Africa', LY: 'Africa', MA: 'Africa', MG: 'Africa',
+  ML: 'Africa', MR: 'Africa', MU: 'Africa', MW: 'Africa', MZ: 'Africa',
+  NA: 'Africa', NE: 'Africa', NG: 'Africa', RE: 'Africa', RW: 'Africa',
+  SC: 'Africa', SD: 'Africa', SH: 'Africa', SL: 'Africa', SN: 'Africa',
+  SO: 'Africa', SS: 'Africa', ST: 'Africa', SZ: 'Africa', TD: 'Africa',
+  TG: 'Africa', TN: 'Africa', TZ: 'Africa', UG: 'Africa', YT: 'Africa',
+  ZA: 'Africa', ZM: 'Africa', ZW: 'Africa',
+
+  // Oceania
+  AS: 'Oceania', AU: 'Oceania', CK: 'Oceania', FJ: 'Oceania', FM: 'Oceania',
+  GU: 'Oceania', KI: 'Oceania', MH: 'Oceania', MP: 'Oceania', NC: 'Oceania',
+  NF: 'Oceania', NR: 'Oceania', NU: 'Oceania', NZ: 'Oceania', PF: 'Oceania',
+  PG: 'Oceania', PN: 'Oceania', PW: 'Oceania', SB: 'Oceania', TK: 'Oceania',
+  TO: 'Oceania', TV: 'Oceania', VU: 'Oceania', WF: 'Oceania', WS: 'Oceania',
+};
+
 function apiGet<T>(path: string): Promise<T> {
   return fetch(`${API_BASE_URL}${path}`, { headers: { 'X-API-Key': API_KEY } }).then(async (res) => {
     if (!res.ok) throw new Error(await res.text());
@@ -287,6 +362,7 @@ function CompaniesView() {
   const [pageSize, setPageSize] = useState(100);
 
   // Per-column filters
+  const [fLocation, setFLocation] = useState<'' | Continent>('');
   const [fCountry, setFCountry] = useState('');
   const [fType, setFType] = useState('');
   const [fScope, setFScope] = useState('');
@@ -308,27 +384,41 @@ function CompaniesView() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // Unique values for filter dropdowns
+  // Unique values for filter dropdowns. The Country list cascades off Location:
+  // when a continent is selected, only show countries that belong to it AND
+  // actually appear in the data.
   const uniqVals = useMemo(() => {
     const s = (arr: CompanyRow[], fn: (c: CompanyRow) => string) => Array.from(new Set(arr.map(fn))).filter(Boolean).sort();
+    const allCountries = s(companies, c => c.country);
+    const countries = fLocation
+      ? allCountries.filter(iso => CONTINENT_BY_ISO[iso] === fLocation)
+      : allCountries;
     return {
-      countries: s(companies, c => c.country),
+      countries,
       types: s(companies, c => c.company_type),
       scopes: s(companies, c => c.iscc_scope),
       processing: s(companies, c => c.iscc_processing_unit_type),
       feedstocks: Array.from(new Set(companies.flatMap(c => c.feedstocks))).filter(Boolean).sort(),
       products: Array.from(new Set(companies.flatMap(c => c.products))).filter(Boolean).sort(),
     };
-  }, [companies]);
+  }, [companies, fLocation]);
+
+  // Cascade: when Location changes and makes the current Country invalid, clear it.
+  useEffect(() => {
+    if (fCountry && fLocation && CONTINENT_BY_ISO[fCountry] !== fLocation) {
+      setFCountry('');
+    }
+  }, [fLocation, fCountry]);
 
   // Reset to page 0 when any filter changes
-  useEffect(() => { setPage(0); }, [search, fCountry, fType, fScope, fProcessing, fFeedstock, fProduct, fSuspended, fValidity]);
+  useEffect(() => { setPage(0); }, [search, fLocation, fCountry, fType, fScope, fProcessing, fFeedstock, fProduct, fSuspended, fValidity]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     const today = new Date().toISOString().slice(0, 10);
     const in3mo = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     return companies.filter(c => {
+      if (fLocation && CONTINENT_BY_ISO[c.country] !== fLocation) return false;
       if (fCountry && c.country !== fCountry) return false;
       if (fType && c.company_type !== fType) return false;
       if (fScope && c.iscc_scope !== fScope) return false;
@@ -343,7 +433,7 @@ function CompaniesView() {
       if (q && !c.name.toLowerCase().includes(q) && !c.country.toLowerCase().includes(q) && !c.description.toLowerCase().includes(q) && !c.iscc_raw_materials.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [companies, search, fCountry, fType, fScope, fProcessing, fFeedstock, fProduct, fSuspended, fValidity]);
+  }, [companies, search, fLocation, fCountry, fType, fScope, fProcessing, fFeedstock, fProduct, fSuspended, fValidity]);
 
   const exportCsv = () => {
     const headers = ['Company', 'Country', 'Role', 'Scope', 'Processing', 'Feedstocks', 'Products', 'Valid From', 'Valid Until', 'Suspended', 'Cert Body', 'Cert ID', 'Certificate PDF', 'Audit Report', 'In CRM', 'Notes'];
@@ -394,6 +484,10 @@ function CompaniesView() {
               <option value="">All countries</option>
               {uniqVals.countries.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
+            <select value={fLocation} onChange={e => setFLocation(e.target.value as '' | Continent)} className={selCls}>
+              <option value="">All locations</option>
+              {CONTINENTS.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
             <select value={fType} onChange={e => setFType(e.target.value)} className={selCls}>
               <option value="">All roles</option>
               {uniqVals.types.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
@@ -425,8 +519,8 @@ function CompaniesView() {
               <option value="expiring">Expiring ≤3mo</option>
               <option value="expired">Expired</option>
             </select>
-            {(fCountry || fType || fScope || fProcessing || fFeedstock || fProduct || fSuspended || fValidity) && (
-              <button onClick={() => { setFCountry(''); setFType(''); setFScope(''); setFProcessing(''); setFFeedstock(''); setFProduct(''); setFSuspended(''); setFValidity(''); }} className="text-negative text-[10px] hover:underline shrink-0">Clear all</button>
+            {(fLocation || fCountry || fType || fScope || fProcessing || fFeedstock || fProduct || fSuspended || fValidity) && (
+              <button onClick={() => { setFLocation(''); setFCountry(''); setFType(''); setFScope(''); setFProcessing(''); setFFeedstock(''); setFProduct(''); setFSuspended(''); setFValidity(''); }} className="text-negative text-[10px] hover:underline shrink-0">Clear all</button>
             )}
           </div>
 
