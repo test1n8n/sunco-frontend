@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { API_BASE_URL, API_KEY } from '../../config';
 
 interface Message {
@@ -193,7 +195,43 @@ export default function Ask() {
               <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1">
                 {m.role === 'user' ? 'You' : 'Assistant'}
               </div>
-              <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+              {m.role === 'user' ? (
+                <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+              ) : (
+                <div className="markdown-body leading-relaxed">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({ children }) => <h2 className="text-base font-bold uppercase tracking-widest mt-3 mb-2 text-text-primary">{children}</h2>,
+                      h2: ({ children }) => <h3 className="text-sm font-bold uppercase tracking-widest mt-3 mb-2 text-text-primary">{children}</h3>,
+                      h3: ({ children }) => <h4 className="text-xs font-bold uppercase tracking-widest mt-3 mb-1.5 text-text-secondary">{children}</h4>,
+                      p: ({ children }) => <p className="my-2">{children}</p>,
+                      strong: ({ children }) => <strong className="font-bold text-text-primary">{children}</strong>,
+                      em: ({ children }) => <em className="italic">{children}</em>,
+                      hr: () => <hr className="my-3 border-border" />,
+                      ul: ({ children }) => <ul className="my-2 ml-5 list-disc space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="my-2 ml-5 list-decimal space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="text-sm">{children}</li>,
+                      code: ({ children }) => <code className="px-1 py-0.5 rounded bg-surface/60 border border-border text-[12px] font-mono">{children}</code>,
+                      pre: ({ children }) => <pre className="my-2 p-2 rounded bg-surface/60 border border-border text-[11px] font-mono overflow-x-auto">{children}</pre>,
+                      blockquote: ({ children }) => <blockquote className="my-2 pl-3 border-l-2 border-accent/40 text-text-secondary italic">{children}</blockquote>,
+                      a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-accent underline hover:text-accent-hover">{children}</a>,
+                      table: ({ children }) => (
+                        <div className="my-3 overflow-x-auto">
+                          <table className="w-full text-xs border-collapse">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="border-b border-border">{children}</thead>,
+                      tbody: ({ children }) => <tbody>{children}</tbody>,
+                      tr: ({ children }) => <tr className="border-b border-border/40">{children}</tr>,
+                      th: ({ children }) => <th className="text-left py-1.5 px-2 font-semibold uppercase tracking-widest text-[10px] text-text-dim">{children}</th>,
+                      td: ({ children }) => <td className="py-1.5 px-2 text-text-primary font-mono">{children}</td>,
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              )}
               {m.role === 'assistant' && toolCallsByMsg[i]?.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
                   <div className="text-[10px] uppercase tracking-widest text-text-dim">
