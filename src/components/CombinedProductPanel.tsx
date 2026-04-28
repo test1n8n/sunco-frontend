@@ -184,6 +184,7 @@ export default function CombinedProductPanel({ group, readOnly = false, prominen
   const [flatUploading, setFlatUploading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [flatError, setFlatError] = useState<string | null>(null);
+  const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   // Fetch both reports on mount
   useEffect(() => {
@@ -204,7 +205,10 @@ export default function CombinedProductPanel({ group, readOnly = false, prominen
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(`${API_BASE_URL}/products/${code}/report`, {
+      const dateForUpload = (reportDate && /^\d{4}-\d{2}-\d{2}$/.test(reportDate))
+        ? reportDate
+        : new Date().toISOString().slice(0, 10);
+      const res = await fetch(`${API_BASE_URL}/products/${code}/report?report_date=${dateForUpload}`, {
         method: 'POST',
         headers: { 'X-API-Key': API_KEY },
         body: formData,
@@ -267,21 +271,51 @@ export default function CombinedProductPanel({ group, readOnly = false, prominen
         </div>
       )}
 
-      {/* Drop Zones — side by side */}
+      {/* Date picker (applies to both Diff + Flat uploads) + Drop Zones side by side */}
       {!readOnly && (
-        <div className="grid grid-cols-2 gap-3">
-          <DropZone
-            onFile={(f) => handleUpload(group.diffCode, f, setDiffReport, setDiffUploading, setDiffError)}
-            uploading={diffUploading}
-            filename={diffReport?.source_filename ?? null}
-            dropZoneLabel={`Diff (${group.diffCode}) PDF`}
-          />
-          <DropZone
-            onFile={(f) => handleUpload(group.flatCode, f, setFlatReport, setFlatUploading, setFlatError)}
-            uploading={flatUploading}
-            filename={flatReport?.source_filename ?? null}
-            dropZoneLabel={`Flat (${group.flatCode}) PDF`}
-          />
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-text-dim text-xs uppercase tracking-widest shrink-0">File these PDFs as</label>
+            <input
+              type="date"
+              value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)}
+              className="bg-surface border border-border rounded px-2 py-1 text-text-primary text-xs font-mono focus:outline-none focus:border-accent"
+            />
+            <button
+              type="button"
+              onClick={() => setReportDate(new Date().toISOString().slice(0, 10))}
+              className="text-[10px] uppercase tracking-widest text-text-dim hover:text-text-primary"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 1);
+                setReportDate(d.toISOString().slice(0, 10));
+              }}
+              className="text-[10px] uppercase tracking-widest text-text-dim hover:text-text-primary"
+            >
+              Yesterday
+            </button>
+            <span className="text-text-dim text-[10px]">— overrides any date in the filename. Re-uploading the same date overwrites that day's data.</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <DropZone
+              onFile={(f) => handleUpload(group.diffCode, f, setDiffReport, setDiffUploading, setDiffError)}
+              uploading={diffUploading}
+              filename={diffReport?.source_filename ?? null}
+              dropZoneLabel={`Diff (${group.diffCode}) PDF`}
+            />
+            <DropZone
+              onFile={(f) => handleUpload(group.flatCode, f, setFlatReport, setFlatUploading, setFlatError)}
+              uploading={flatUploading}
+              filename={flatReport?.source_filename ?? null}
+              dropZoneLabel={`Flat (${group.flatCode}) PDF`}
+            />
+          </div>
         </div>
       )}
 

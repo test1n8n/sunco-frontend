@@ -378,6 +378,7 @@ export default function BiodieselTradesPanel({
   const [goSettlement, setGoSettlement] = useState('');
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [recapMode, setRecapMode] = useState<'compact' | 'detailed'>('detailed');
+  const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [diffTimeMode, setDiffTimeMode] = useState<'compact' | 'detailed'>('detailed');
   const [diffProductMode, setDiffProductMode] = useState<'compact' | 'detailed'>('detailed');
   const [flatTimeMode, setFlatTimeMode] = useState<'compact' | 'detailed'>('detailed');
@@ -402,8 +403,10 @@ export default function BiodieselTradesPanel({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const today = new Date().toISOString().slice(0, 10);
-      const params = new URLSearchParams({ report_date: today });
+      const dateForUpload = (reportDate && /^\d{4}-\d{2}-\d{2}$/.test(reportDate))
+        ? reportDate
+        : new Date().toISOString().slice(0, 10);
+      const params = new URLSearchParams({ report_date: dateForUpload });
       if (goSettlement.trim()) params.set('go_settlement', goSettlement.trim());
 
       const res = await fetch(`${API_BASE_URL}/products/biodiesel-trades?${params.toString()}`, {
@@ -490,9 +493,39 @@ export default function BiodieselTradesPanel({
         </div>
       )}
 
-      {/* Drop Zone */}
+      {/* Drop Zone + Report-date picker */}
       {!readOnly && (
-        <FileDropZone onFile={handleFile} uploading={uploading} filename={uploadedFilename} />
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-text-dim text-xs uppercase tracking-widest shrink-0">File this upload as</label>
+            <input
+              type="date"
+              value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)}
+              className="bg-surface border border-border rounded px-2 py-1 text-text-primary text-xs font-mono focus:outline-none focus:border-accent"
+            />
+            <button
+              type="button"
+              onClick={() => setReportDate(new Date().toISOString().slice(0, 10))}
+              className="text-[10px] uppercase tracking-widest text-text-dim hover:text-text-primary"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 1);
+                setReportDate(d.toISOString().slice(0, 10));
+              }}
+              className="text-[10px] uppercase tracking-widest text-text-dim hover:text-text-primary"
+            >
+              Yesterday
+            </button>
+            <span className="text-text-dim text-[10px]">— used as the trading-day key in the database. Re-uploading the same date overwrites that day's data.</span>
+          </div>
+          <FileDropZone onFile={handleFile} uploading={uploading} filename={uploadedFilename} />
+        </div>
       )}
 
       {/* Error */}

@@ -161,6 +161,7 @@ export default function ProductReportPanel({
   const [report, setReport] = useState<GasoilReport | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   // Load latest on mount
   useEffect(() => {
@@ -178,8 +179,14 @@ export default function ProductReportPanel({
     try {
       const formData = new FormData();
       formData.append('file', file);
-
-      const res = await fetch(`${API_BASE_URL}/products/${productCode}/report`, {
+      const dateForUpload = (reportDate && /^\d{4}-\d{2}-\d{2}$/.test(reportDate))
+        ? reportDate
+        : new Date().toISOString().slice(0, 10);
+      const isGasoil = productCode === 'G' || productCode.toUpperCase() === 'GASOIL';
+      const url = isGasoil
+        ? `${API_BASE_URL}/products/gasoil-report?report_date=${dateForUpload}`
+        : `${API_BASE_URL}/products/${productCode}/report?report_date=${dateForUpload}`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'X-API-Key': API_KEY },
         body: formData,
@@ -247,14 +254,46 @@ export default function ProductReportPanel({
         </div>
       )}
 
-      {/* Drop Zone — only in full mode (Products Data tab) */}
+      {/* Drop Zone + Report-date picker — only in full mode (Products Data tab) */}
       {!readOnly && (
-        <DropZone
-          onFile={handleFile}
-          uploading={uploading}
-          filename={report?.source_filename ?? null}
-          dropZoneLabel={dropZoneLabel}
-        />
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-text-dim text-xs uppercase tracking-widest shrink-0">File this PDF as</label>
+            <input
+              type="date"
+              value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)}
+              className="bg-surface border border-border rounded px-2 py-1 text-text-primary text-xs font-mono focus:outline-none focus:border-accent"
+            />
+            <button
+              type="button"
+              onClick={() => setReportDate(new Date().toISOString().slice(0, 10))}
+              className="text-[10px] uppercase tracking-widest text-text-dim hover:text-text-primary"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 1);
+                setReportDate(d.toISOString().slice(0, 10));
+              }}
+              className="text-[10px] uppercase tracking-widest text-text-dim hover:text-text-primary"
+            >
+              Yesterday
+            </button>
+            <span className="text-text-dim text-[10px]">
+              — overrides the date in the filename. Re-uploading the same date overwrites that day's data.
+            </span>
+          </div>
+          <DropZone
+            onFile={handleFile}
+            uploading={uploading}
+            filename={report?.source_filename ?? null}
+            dropZoneLabel={dropZoneLabel}
+          />
+        </div>
       )}
 
       {/* Error */}
