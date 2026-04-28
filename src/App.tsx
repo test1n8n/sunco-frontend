@@ -4,6 +4,8 @@ import Overview from './pages/broker/Overview';
 import DailyReport from './pages/broker/DailyReport';
 import EveningReport from './pages/broker/EveningReport';
 import WeeklyReport from './pages/broker/WeeklyReport';
+import BiweeklyReport from './pages/broker/BiweeklyReport';
+import MonthlyReport from './pages/broker/MonthlyReport';
 import Mandates from './pages/broker/Mandates';
 import TradeBlotter from './pages/broker/TradeBlotter';
 import PositionsPnL from './pages/broker/PositionsPnL';
@@ -81,6 +83,26 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="Weekly Report">
                 <WeeklyReport />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/biweekly"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Biweekly Report">
+                <BiweeklyReport />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/monthly"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Monthly Report">
+                <MonthlyReport />
               </Layout>
             </ProtectedRoute>
           }

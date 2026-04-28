@@ -46,6 +46,8 @@ const BROKER_GROUPS: NavGroup[] = [
     label: 'Periodic Reports',
     items: [
       { to: '/broker/weekly',    label: 'Weekly Report',    end: false },
+      { to: '/broker/biweekly',  label: 'Biweekly Report',  end: false },
+      { to: '/broker/monthly',   label: 'Monthly Report',   end: false },
     ],
   },
   {
