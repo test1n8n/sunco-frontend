@@ -58,6 +58,13 @@ const BROKER_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: 'system',
+    label: 'System',
+    items: [
+      { to: '/broker/db-overview', label: 'DB Overview', end: false },
+    ],
+  },
+  {
     id: 'trading',
     label: 'Trading',
     items: [
