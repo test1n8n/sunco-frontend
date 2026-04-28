@@ -105,7 +105,7 @@ export default function Ask() {
     setInput('');
 
     try {
-      const res = await fetch(`${API_BASE_URL}/chat`, {
+      const res = await fetch(`${API_BASE_URL}/db-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
         body: JSON.stringify({ messages: next }),
