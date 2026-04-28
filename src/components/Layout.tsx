@@ -42,6 +42,13 @@ const BROKER_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: 'periodic',
+    label: 'Periodic Reports',
+    items: [
+      { to: '/broker/weekly',    label: 'Weekly Report',    end: false },
+    ],
+  },
+  {
     id: 'whiteboard',
     label: 'Whiteboard',
     items: [
