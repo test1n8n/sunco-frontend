@@ -53,25 +53,115 @@ function saveHistory(messages: Message[]) {
   }
 }
 
-function ToolCallChip({ call }: { call: ToolCall }) {
+// ─── Deep-link inference ────────────────────────────────────────────────────
+// Map a tool call to a CTA pointing at the matching existing page so the user
+// can cross-check the answer visually.
+
+interface DeepLink { label: string; href: string; }
+
+function deepLinksFromToolCalls(calls: ToolCall[]): DeepLink[] {
+  const out: DeepLink[] = [];
+  const seen = new Set<string>();
+  const push = (l: DeepLink) => {
+    if (seen.has(l.href)) return;
+    seen.add(l.href);
+    out.push(l);
+  };
+  for (const c of calls) {
+    const inp = c.input as { date?: string; start?: string; end?: string };
+    if (c.name === 'get_trades_by_date' && inp.date) {
+      push({ label: `Open Daily Report (${inp.date})`, href: `/broker/daily` });
+    }
+    if (c.name === 'get_daily_report' && inp.date) {
+      push({ label: `Open Daily Report (${inp.date})`, href: `/broker/daily` });
+    }
+    if ((c.name === 'get_trades_in_range' || c.name === 'get_spreads' || c.name === 'get_settlement_summary') && inp.start && inp.end) {
+      const days = Math.round((new Date(inp.end).getTime() - new Date(inp.start).getTime()) / 86400000) + 1;
+      // 5 days → Weekly, 10–14 days → Biweekly, longer → Monthly. Sensible default.
+      const slug = days <= 7 ? 'weekly' : days <= 14 ? 'biweekly' : 'monthly';
+      const titleMap: Record<string, string> = { weekly: 'Weekly', biweekly: 'Biweekly', monthly: 'Monthly' };
+      push({
+        label: `Open ${titleMap[slug]} Report (${inp.start} → ${inp.end})`,
+        href: `/broker/${slug}?start=${inp.start}&end=${inp.end}`,
+      });
+    }
+    if (c.name === 'get_db_coverage') {
+      push({ label: 'Open DB Overview', href: '/broker/db-overview' });
+    }
+  }
+  return out;
+}
+
+// ─── Sources & raw data panel ───────────────────────────────────────────────
+
+function SourcesPanel({ calls }: { calls: ToolCall[] }) {
   const [open, setOpen] = useState(false);
-  const isError = typeof (call.output as { error?: string }).error === 'string';
+  const errCount = calls.filter(c => typeof (c.output as { error?: string }).error === 'string').length;
   return (
-    <div className={`text-[11px] mt-1 ${isError ? 'text-negative' : 'text-text-dim'}`}>
+    <div className="mt-3 pt-3 border-t border-border/50">
       <button
         onClick={() => setOpen(o => !o)}
-        className="font-mono inline-flex items-center gap-1 hover:text-text-primary"
+        className="group w-full flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface/40 hover:bg-surface/70 border border-border hover:border-accent/40 transition-colors"
       >
-        <span>{open ? '▾' : '▸'}</span>
-        <span>{isError ? '⚠' : '🛠'}</span>
-        <span>{call.name}</span>
-        <span className="text-text-dim">({Object.entries(call.input).map(([k, v]) => `${k}=${v}`).join(', ') || '—'})</span>
+        <span className="flex items-center gap-2 text-xs text-text-secondary group-hover:text-text-primary">
+          <span className="text-[10px] uppercase tracking-widest text-text-dim">Sources</span>
+          <span className="font-mono text-text-dim">·</span>
+          <span>{calls.length} data {calls.length === 1 ? 'query' : 'queries'} run</span>
+          {errCount > 0 && <span className="text-negative">· {errCount} error{errCount === 1 ? '' : 's'}</span>}
+        </span>
+        <span className="text-text-dim text-xs">{open ? '▴ hide raw data' : '▾ view raw data'}</span>
       </button>
       {open && (
-        <pre className="mt-1 p-2 bg-surface/40 border border-border rounded text-[10px] font-mono text-text-secondary max-h-48 overflow-auto">
-          {JSON.stringify(call.output, null, 2)}
-        </pre>
+        <div className="mt-2 space-y-3">
+          {calls.map((c, i) => {
+            const isError = typeof (c.output as { error?: string }).error === 'string';
+            const argEntries = Object.entries(c.input);
+            return (
+              <div key={i} className="bg-surface/40 border border-border rounded overflow-hidden">
+                <div className="px-3 py-2 border-b border-border/60 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                    <span className={isError ? 'text-negative' : 'text-text-dim'}>{isError ? '⚠' : '🛠'}</span>
+                    <span className="font-mono font-semibold text-text-primary">{c.name}</span>
+                    {argEntries.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {argEntries.map(([k, v]) => (
+                          <span key={k} className="px-1.5 py-0.5 rounded bg-surface border border-border text-[10px] font-mono text-text-secondary">
+                            {k}={String(v)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <pre className="p-3 text-[11px] font-mono text-text-secondary max-h-72 overflow-auto whitespace-pre-wrap">
+                  {JSON.stringify(c.output, null, 2)}
+                </pre>
+              </div>
+            );
+          })}
+        </div>
       )}
+    </div>
+  );
+}
+
+function VerifyButtons({ links }: { links: DeepLink[] }) {
+  if (links.length === 0) return null;
+  return (
+    <div className="mt-3 pt-3 border-t border-border/50">
+      <div className="text-[10px] uppercase tracking-widest text-text-dim mb-2">Verify in matching report</div>
+      <div className="flex flex-wrap gap-2">
+        {links.map((l, i) => (
+          <a
+            key={i}
+            href={l.href}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
+          >
+            <span>↗</span>
+            <span>{l.label}</span>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
@@ -233,12 +323,10 @@ export default function Ask() {
                 </div>
               )}
               {m.role === 'assistant' && toolCallsByMsg[i]?.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
-                  <div className="text-[10px] uppercase tracking-widest text-text-dim">
-                    Data sources used ({toolCallsByMsg[i].length})
-                  </div>
-                  {toolCallsByMsg[i].map((c, j) => <ToolCallChip key={j} call={c} />)}
-                </div>
+                <>
+                  <VerifyButtons links={deepLinksFromToolCalls(toolCallsByMsg[i])} />
+                  <SourcesPanel calls={toolCallsByMsg[i]} />
+                </>
               )}
             </div>
           </div>

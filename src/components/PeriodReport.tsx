@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -246,9 +247,28 @@ function defaultWindow(kind: 'weekly' | 'biweekly' | 'monthly'): { start: string
 }
 
 export default function PeriodReport({ windowKind, pageTitle, subtitle }: Props) {
-  const initial = useMemo(() => defaultWindow(windowKind), [windowKind]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initial = useMemo(() => {
+    // URL ?start=&end= overrides the default window. Lets the Ask page
+    // deep-link to a specific period.
+    const urlStart = searchParams.get('start');
+    const urlEnd = searchParams.get('end');
+    if (urlStart && urlEnd && /^\d{4}-\d{2}-\d{2}$/.test(urlStart) && /^\d{4}-\d{2}-\d{2}$/.test(urlEnd)) {
+      return { start: urlStart, end: urlEnd };
+    }
+    return defaultWindow(windowKind);
+  }, [windowKind, searchParams]);
   const [start, setStart] = useState<string>(initial.start);
   const [end, setEnd] = useState<string>(initial.end);
+
+  // Keep URL in sync when the user navigates the window from the page itself.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('start', start);
+    next.set('end', end);
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start, end]);
   const [data, setData] = useState<PeriodReportPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
