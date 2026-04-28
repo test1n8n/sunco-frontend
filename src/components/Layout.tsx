@@ -61,6 +61,7 @@ const BROKER_GROUPS: NavGroup[] = [
     id: 'system',
     label: 'System',
     items: [
+      { to: '/broker/ask',         label: 'Ask the DB',  end: false },
       { to: '/broker/db-overview', label: 'DB Overview', end: false },
     ],
   },

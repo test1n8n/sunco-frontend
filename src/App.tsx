@@ -7,6 +7,7 @@ import WeeklyReport from './pages/broker/WeeklyReport';
 import BiweeklyReport from './pages/broker/BiweeklyReport';
 import MonthlyReport from './pages/broker/MonthlyReport';
 import DbOverview from './pages/broker/DbOverview';
+import Ask from './pages/broker/Ask';
 import Mandates from './pages/broker/Mandates';
 import TradeBlotter from './pages/broker/TradeBlotter';
 import PositionsPnL from './pages/broker/PositionsPnL';
@@ -114,6 +115,16 @@ export default function App() {
             <ProtectedRoute requiredRole="broker">
               <Layout pageTitle="DB Overview">
                 <DbOverview />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/broker/ask"
+          element={
+            <ProtectedRoute requiredRole="broker">
+              <Layout pageTitle="Ask the DB">
+                <Ask />
               </Layout>
             </ProtectedRoute>
           }
